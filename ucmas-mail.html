@@ -2119,14 +2119,22 @@ async function submitBootstrap() {
   const errEl = document.getElementById('bs-err');
   errEl.classList.remove('show');
   if (!url || !anon) { errEl.textContent = 'Vui lòng nhập đầy đủ URL và Anon Key'; errEl.classList.add('show'); return; }
+  if (!url.startsWith('https://') || !url.includes('.supabase.co')) {
+    errEl.textContent = 'URL không hợp lệ. Phải có dạng https://xxx.supabase.co';
+    errEl.classList.add('show'); return;
+  }
   try {
+    // Test kết nối bằng auth API — không phụ thuộc vào bảng nào
     const client = window.supabase.createClient(url, anon);
-    const { error } = await client.from('levels').select('id').limit(1);
-    if (error && error.code !== 'PGRST116') throw new Error(error.message);
+    const { error } = await client.auth.getSession();
+    if (error) throw new Error(error.message);
     _authClient = client;
     saveBootstrap(url, anon);
     showAuthView('login');
-  } catch (e) { errEl.textContent = 'Không thể kết nối: ' + e.message; errEl.classList.add('show'); }
+  } catch (e) {
+    errEl.textContent = 'Không thể kết nối tới Supabase. Kiểm tra lại URL và Anon Key.';
+    errEl.classList.add('show');
+  }
 }
 
 async function submitLogin() {
