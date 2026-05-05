@@ -299,24 +299,30 @@ tr:hover td{background:var(--surface2)}
 
 /* TEMPLATE EDITOR */
 .tmpl-editor-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:16px}
-.editor-toolbar{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.editor-toolbar-label{font-family:var(--fm);font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.editor-toolbar{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--surface)}
+.editor-toolbar-label{font-family:var(--fm);font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-right:2px}
 .editor-btn{padding:4px 10px;border-radius:5px;font-size:12px;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text);font-family:var(--fb);transition:all .12s}
 .editor-btn:hover{border-color:var(--accent2);color:var(--accent2)}
 .editor-btn.active-mode{background:var(--accent-glow);border-color:var(--accent);color:var(--accent2)}
-.editor-area{display:grid;grid-template-columns:1fr 1fr;min-height:400px}
+.editor-area{display:grid;grid-template-columns:1fr 1fr;min-height:500px}
 .editor-pane{border-right:1px solid var(--border);display:flex;flex-direction:column}
 .editor-pane:last-child{border-right:none}
-.editor-pane-hd{padding:8px 14px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
-.editor-textarea{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--fm);font-size:12.5px;line-height:1.8;padding:14px;resize:none;width:100%;min-height:380px}
-.preview-pane{flex:1;padding:16px;overflow-y:auto;font-size:13.5px;line-height:1.75;color:var(--text)}
-.preview-pane h1{font-size:18px;font-weight:700;margin-bottom:10px;font-family:var(--fh)}
-.preview-pane h2{font-size:15px;font-weight:600;margin-bottom:8px;font-family:var(--fh)}
-.preview-pane p{margin-bottom:10px}
-.preview-pane .highlight{background:var(--l1b);color:var(--l1);padding:1px 5px;border-radius:3px;font-family:var(--fm);font-size:12px}
+.editor-pane-hd{padding:7px 14px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
+.editor-textarea{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--fm);font-size:12.5px;line-height:1.8;padding:14px;resize:none;width:100%;min-height:460px}
+.preview-pane{flex:1;overflow:hidden}
 .var-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .var-pill{padding:3px 10px;border-radius:12px;font-size:11.5px;cursor:pointer;border:1px solid var(--border2);background:var(--surface2);color:var(--accent2);font-family:var(--fm);transition:all .12s}
 .var-pill:hover{border-color:var(--accent);background:var(--accent-glow)}
+
+/* VISUAL EDITOR TOOLBAR */
+.ve-toolbar{padding:7px 10px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:3px;flex-wrap:wrap}
+.ve-btn{width:28px;height:28px;border-radius:5px;border:none;background:transparent;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .12s;flex-shrink:0}
+.ve-btn:hover{background:var(--surface3);color:var(--accent2)}
+.ve-btn.active{background:var(--accent-glow);color:var(--accent2)}
+.ve-sep{width:1px;height:20px;background:var(--border2);margin:0 3px;flex-shrink:0}
+.ve-select{background:var(--surface3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--fb);font-size:12px;padding:3px 6px;cursor:pointer;outline:none;height:28px}
+.ve-label{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;padding:0 4px}
+.ve-iframe{width:100%;flex:1;border:none;background:#fff;min-height:460px}
 
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;display:flex;align-items:center;justify-content:center;display:none}
@@ -343,6 +349,75 @@ tr:hover td{background:var(--surface2)}
 
 <!-- TOAST -->
 <div class="toast-area" id="toast-area"></div>
+
+<!-- LINK MODAL -->
+<div class="modal-overlay" id="modal-link">
+  <div class="modal" style="width:420px">
+    <div class="modal-header"><div class="modal-title">🔗 Chèn liên kết</div><button class="modal-close" onclick="closeModal('modal-link')">✕</button></div>
+    <div class="modal-body">
+      <div class="fg"><label class="fl">Text hiển thị</label><input class="fi" id="link-text" placeholder="Bấm vào đây"></div>
+      <div class="fg"><label class="fl">URL</label><input class="fi" id="link-url" placeholder="https://ucmasvietnam.com" type="url"></div>
+      <div class="fg"><label class="fl">Mở trong</label>
+        <select class="fsel" id="link-target"><option value="_blank">Tab mới</option><option value="_self">Cùng tab</option></select>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-link')">Huỷ</button><button class="btn btn-primary" onclick="applyLink()">Chèn</button></div>
+  </div>
+</div>
+
+<!-- IMAGE MODAL -->
+<div class="modal-overlay" id="modal-image">
+  <div class="modal" style="width:440px">
+    <div class="modal-header"><div class="modal-title">🖼 Chèn ảnh</div><button class="modal-close" onclick="closeModal('modal-image')">✕</button></div>
+    <div class="modal-body">
+      <div style="font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Từ URL</div>
+      <div class="fg"><label class="fl">URL ảnh</label><input class="fi" id="img-url" placeholder="https://example.com/image.jpg" oninput="previewImg()"></div>
+      <div id="img-preview-wrap" style="display:none;margin-bottom:12px;text-align:center">
+        <img id="img-preview" style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid var(--border)">
+      </div>
+      <div style="height:1px;background:var(--border);margin:12px 0"></div>
+      <div style="font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Hoặc upload file</div>
+      <label class="btn" style="cursor:pointer;width:100%;text-align:center;display:block">
+        ↑ Chọn ảnh từ máy tính
+        <input type="file" accept="image/*" style="display:none" onchange="loadImgFile(event)">
+      </label>
+      <div class="fg" style="margin-top:12px"><label class="fl">Alt text (tuỳ chọn)</label><input class="fi" id="img-alt" placeholder="Mô tả ảnh"></div>
+      <div class="fg"><label class="fl">Chiều rộng</label>
+        <select class="fsel" id="img-width"><option value="100%">Full width (100%)</option><option value="50%">Nửa (50%)</option><option value="auto">Tự động</option><option value="custom">Tuỳ chỉnh...</option></select>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-image')">Huỷ</button><button class="btn btn-primary" onclick="applyImage()">Chèn ảnh</button></div>
+  </div>
+</div>
+
+<!-- BUTTON MODAL -->
+<div class="modal-overlay" id="modal-button">
+  <div class="modal" style="width:440px">
+    <div class="modal-header"><div class="modal-title">⬛ Chèn Button/CTA</div><button class="modal-close" onclick="closeModal('modal-button')">✕</button></div>
+    <div class="modal-body">
+      <div class="fg"><label class="fl">Nội dung button</label><input class="fi" id="btn-text" placeholder="Đăng ký ngay" oninput="updateBtnPreview()"></div>
+      <div class="fg"><label class="fl">URL liên kết</label><input class="fi" id="btn-url" placeholder="https://ucmasvietnam.com" type="url"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Màu nền</label><input class="fi" id="btn-bg" type="color" value="#4f6cff" oninput="updateBtnPreview()" style="height:38px;padding:4px"></div>
+        <div class="fg"><label class="fl">Màu chữ</label><input class="fi" id="btn-color" type="color" value="#ffffff" oninput="updateBtnPreview()" style="height:38px;padding:4px"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label class="fl">Bo góc (px)</label><input class="fi" id="btn-radius" type="number" value="6" min="0" max="50" oninput="updateBtnPreview()"></div>
+        <div class="fg"><label class="fl">Kích cỡ chữ (px)</label><input class="fi" id="btn-size" type="number" value="15" min="10" max="30" oninput="updateBtnPreview()"></div>
+      </div>
+      <div class="fg"><label class="fl">Căn chỉnh</label>
+        <select class="fsel" id="btn-align" onchange="updateBtnPreview()">
+          <option value="left">Trái</option><option value="center" selected>Giữa</option><option value="right">Phải</option>
+        </select>
+      </div>
+      <div style="margin-top:10px;padding:14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-family:var(--fm);font-size:10px;color:var(--muted);margin-bottom:8px;letter-spacing:.8px;text-transform:uppercase">Preview</div>
+        <div id="btn-preview-area" style="background:#fff;padding:16px;border-radius:6px;text-align:center"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-button')">Huỷ</button><button class="btn btn-primary" onclick="applyButton()">Chèn Button</button></div>
+  </div>
+</div>
 
 <!-- QUICK ADD CONTACTS MODAL -->
 <div class="modal-overlay" id="modal-quick-add">
@@ -719,32 +794,80 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
 
   <!-- Editor -->
   <div class="tmpl-editor-wrap">
+    <!-- Mode selector + template name -->
     <div class="editor-toolbar">
-      <span class="editor-toolbar-label">Editor</span>
-      <button class="editor-btn active-mode" id="btn-mode-split" onclick="setEditorMode('split')">Split</button>
+      <span class="editor-toolbar-label">Chế độ</span>
+      <button class="editor-btn active-mode" id="btn-mode-visual" onclick="setEditorMode('visual')">✦ Visual</button>
+      <button class="editor-btn" id="btn-mode-split" onclick="setEditorMode('split')">Split</button>
       <button class="editor-btn" id="btn-mode-code" onclick="setEditorMode('code')">Code</button>
       <button class="editor-btn" id="btn-mode-preview" onclick="setEditorMode('preview')">Preview</button>
       <div style="width:1px;height:18px;background:var(--border);margin:0 4px"></div>
       <span class="editor-toolbar-label">Biến:</span>
-      <div class="var-pills" style="margin-top:0">
-        <span class="var-pill" onclick="insertTmplVar('{{name}}')">{{name}}</span>
-        <span class="var-pill" onclick="insertTmplVar('{{email}}')">{{email}}</span>
-        <span class="var-pill" onclick="insertTmplVar('{{level}}')">{{level}}</span>
-        <span class="var-pill" onclick="insertTmplVar('{{company}}')">{{company}}</span>
-        <span class="var-pill" onclick="insertTmplVar('{{date}}')">{{date}}</span>
-      </div>
+      <span class="var-pill" style="margin-top:0" onclick="insertTmplVar('{{name}}')">{{name}}</span>
+      <span class="var-pill" onclick="insertTmplVar('{{email}}')">{{email}}</span>
+      <span class="var-pill" onclick="insertTmplVar('{{level}}')">{{level}}</span>
+      <span class="var-pill" onclick="insertTmplVar('{{company}}')">{{company}}</span>
+      <span class="var-pill" onclick="insertTmplVar('{{date}}')">{{date}}</span>
       <div style="margin-left:auto;display:flex;gap:6px">
         <input class="fi" style="width:200px;padding:5px 10px;font-size:12px" id="tmpl-name-input" placeholder="Tên template...">
       </div>
     </div>
+
+    <!-- Visual editor toolbar (chỉ hiện khi ở mode visual/split) -->
+    <div class="ve-toolbar" id="ve-toolbar">
+      <!-- Format -->
+      <select class="ve-select" onchange="veExecBlock(this.value);this.value='p'" title="Kiểu đoạn văn">
+        <option value="p">Normal</option>
+        <option value="h1">Heading 1</option>
+        <option value="h2">Heading 2</option>
+        <option value="h3">Heading 3</option>
+      </select>
+      <div class="ve-sep"></div>
+      <!-- Text style -->
+      <button class="ve-btn" onclick="veExec('bold')" title="Bold (Ctrl+B)"><b>B</b></button>
+      <button class="ve-btn" onclick="veExec('italic')" title="Italic (Ctrl+I)"><i>I</i></button>
+      <button class="ve-btn" onclick="veExec('underline')" title="Underline (Ctrl+U)"><u>U</u></button>
+      <button class="ve-btn" onclick="veExec('strikeThrough')" title="Strikethrough"><s>S</s></button>
+      <div class="ve-sep"></div>
+      <!-- Color -->
+      <button class="ve-btn" onclick="document.getElementById('ve-fgcolor').click()" title="Màu chữ" style="font-size:16px;position:relative">
+        A<input id="ve-fgcolor" type="color" value="#000000" style="opacity:0;position:absolute;width:0;height:0" onchange="veExec('foreColor',this.value)">
+      </button>
+      <button class="ve-btn" onclick="document.getElementById('ve-bgcolor').click()" title="Màu nền chữ" style="font-size:15px;position:relative">
+        ▓<input id="ve-bgcolor" type="color" value="#ffff00" style="opacity:0;position:absolute;width:0;height:0" onchange="veExec('hiliteColor',this.value)">
+      </button>
+      <div class="ve-sep"></div>
+      <!-- Align -->
+      <button class="ve-btn" onclick="veExec('justifyLeft')" title="Căn trái">≡</button>
+      <button class="ve-btn" onclick="veExec('justifyCenter')" title="Căn giữa" style="letter-spacing:-1px">≡</button>
+      <button class="ve-btn" onclick="veExec('justifyRight')" title="Căn phải">≡</button>
+      <div class="ve-sep"></div>
+      <!-- Lists -->
+      <button class="ve-btn" onclick="veExec('insertUnorderedList')" title="Danh sách chấm">•≡</button>
+      <button class="ve-btn" onclick="veExec('insertOrderedList')" title="Danh sách số">1≡</button>
+      <div class="ve-sep"></div>
+      <!-- Insert -->
+      <button class="ve-btn" style="width:auto;padding:0 8px;font-size:12px" onclick="openLinkDialog()" title="Chèn liên kết">🔗 Link</button>
+      <button class="ve-btn" style="width:auto;padding:0 8px;font-size:12px" onclick="openImageDialog()" title="Chèn ảnh">🖼 Ảnh</button>
+      <button class="ve-btn" style="width:auto;padding:0 8px;font-size:12px" onclick="openButtonDialog()" title="Chèn button">⬛ Button</button>
+      <div class="ve-sep"></div>
+      <!-- Undo/Redo -->
+      <button class="ve-btn" onclick="veExec('undo')" title="Undo">↩</button>
+      <button class="ve-btn" onclick="veExec('redo')" title="Redo">↪</button>
+    </div>
+
     <div class="editor-area" id="editor-area">
       <div class="editor-pane" id="code-pane">
         <div class="editor-pane-hd">HTML / TEXT</div>
-        <textarea class="editor-textarea" id="tmpl-code" oninput="updatePreview()" spellcheck="false"></textarea>
+        <textarea class="editor-textarea" id="tmpl-code" oninput="onCodeInput()" spellcheck="false"></textarea>
       </div>
-      <div class="editor-pane" id="preview-pane-wrap">
-        <div class="editor-pane-hd">Preview (sample data)</div>
-        <div class="preview-pane" id="tmpl-preview-content"></div>
+      <div class="editor-pane" id="visual-pane">
+        <div class="editor-pane-hd">Visual Editor</div>
+        <iframe id="ve-frame" class="ve-iframe" sandbox="allow-same-origin allow-scripts"></iframe>
+      </div>
+      <div class="editor-pane" id="preview-pane-wrap" style="display:none">
+        <div class="editor-pane-hd">Preview</div>
+        <iframe id="preview-frame" class="ve-iframe" sandbox="allow-same-origin allow-scripts"></iframe>
       </div>
     </div>
   </div>
@@ -1505,7 +1628,7 @@ function gotoPage(id, tabEl, sbEl) {
   document.querySelector('.main').scrollTop = 0;
   if (id === 'levels') renderLevelPage();
   if (id === 'campaign') renderCampaignTargets();
-  if (id === 'templates') renderTemplates();
+  if (id === 'templates') { renderTemplates(); setTimeout(()=>setEditorMode('visual'),100); }
   if (id === 'contacts') renderContactTable();
   if (id === 'database') gotoDbPanel('setup');
 }
@@ -1792,41 +1915,284 @@ function selectTemplate(id) {
   activeTemplate = id;
   const t = templates.find(x=>x.id===id);
   if (!t) return;
+  _veReady = false; // reset để reinit với nội dung mới
   document.getElementById('tmpl-code').value = t.body;
   document.getElementById('tmpl-name-input').value = t.name;
-  updatePreview();
+  // Reinit visual editor với nội dung mới
+  if (editorMode === 'visual' || editorMode === 'split') {
+    initVisualEditor(t.body);
+  }
+  updatePreviewFrame();
   renderTemplates();
   toast(`Đã tải template: ${t.name}`);
 }
 
-function updatePreview() {
-  const code = document.getElementById('tmpl-code').value;
-  const sample = {name:'Nguyễn Văn A', email:'sample@ucmas.vn', level:'L1', company:'UCMAS', date:'22/05/2025'};
-  let rendered = code;
-  Object.entries(sample).forEach(([k,v]) => { rendered = rendered.replaceAll('{{'+k+'}}', `<span class="highlight">{{${k}}} → ${v}</span>`); });
-  rendered = rendered.replace(/\n/g,'<br>');
-  document.getElementById('tmpl-preview-content').innerHTML = rendered;
+
+// ════════════════════════════════════════
+// VISUAL EDITOR
+// ════════════════════════════════════════
+let _veReady = false;
+let _codeSyncTimer = null;
+
+function getVeFrame() { return document.getElementById('ve-frame'); }
+function getVeDoc()   { return getVeFrame()?.contentDocument; }
+
+function initVisualEditor(html) {
+  const frame = getVeFrame();
+  if (!frame) return;
+  const doc = frame.contentDocument;
+  const content = html || document.getElementById('tmpl-code').value || '<p>Bắt đầu soạn email...</p>';
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head>
+    <meta charset="UTF-8">
+    <style>
+      body{margin:0;padding:16px;font-family:Arial,sans-serif;font-size:15px;line-height:1.7;color:#222;min-height:460px;outline:none}
+      body:empty:before{content:'Nhấp để bắt đầu soạn...';color:#aaa}
+      a{color:#4f6cff}img{max-width:100%}
+      *{box-sizing:border-box}
+    </style>
+  </head><body></body></html>`);
+  doc.close();
+  doc.body.innerHTML = content;
+  doc.designMode = 'on';
+  _veReady = true;
+
+  // Sync visual → code khi user gõ
+  doc.addEventListener('input', () => {
+    clearTimeout(_codeSyncTimer);
+    _codeSyncTimer = setTimeout(syncVisualToCode, 400);
+  });
+  doc.addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && e.key==='z') { e.preventDefault(); veExec('undo'); }
+    if ((e.ctrlKey||e.metaKey) && e.key==='y') { e.preventDefault(); veExec('redo'); }
+  });
+}
+
+function syncVisualToCode() {
+  if (!_veReady) return;
+  const doc = getVeDoc();
+  if (!doc) return;
+  document.getElementById('tmpl-code').value = doc.body.innerHTML;
+  updatePreviewFrame();
+}
+
+function syncCodeToVisual() {
+  if (!_veReady) return;
+  const doc = getVeDoc();
+  if (!doc) return;
+  doc.body.innerHTML = document.getElementById('tmpl-code').value;
+}
+
+function onCodeInput() {
+  clearTimeout(_codeSyncTimer);
+  _codeSyncTimer = setTimeout(() => {
+    syncCodeToVisual();
+    updatePreviewFrame();
+  }, 500);
+}
+
+function veExec(cmd, val) {
+  const doc = getVeDoc();
+  if (doc && doc.designMode === 'on') { doc.execCommand(cmd, false, val || null); doc.body.focus(); syncVisualToCode(); }
+}
+
+function veExecBlock(tag) {
+  const doc = getVeDoc();
+  if (!doc) return;
+  doc.execCommand('formatBlock', false, tag);
+  doc.body.focus();
+  syncVisualToCode();
 }
 
 function setEditorMode(mode) {
   editorMode = mode;
-  document.querySelectorAll('#editor-area .editor-pane').forEach(p=>p.style.display='');
-  document.querySelectorAll('.editor-btn').forEach(b=>b.classList.remove('active-mode'));
-  document.getElementById('btn-mode-'+mode).classList.add('active-mode');
   const area = document.getElementById('editor-area');
   const codePane = document.getElementById('code-pane');
+  const visualPane = document.getElementById('visual-pane');
   const previewPane = document.getElementById('preview-pane-wrap');
-  if (mode==='split') { area.style.gridTemplateColumns='1fr 1fr'; codePane.style.display=''; previewPane.style.display=''; }
-  if (mode==='code')  { area.style.gridTemplateColumns='1fr'; codePane.style.display=''; previewPane.style.display='none'; }
-  if (mode==='preview') { area.style.gridTemplateColumns='1fr'; codePane.style.display='none'; previewPane.style.display=''; }
+  const veToolbar = document.getElementById('ve-toolbar');
+
+  document.querySelectorAll('.editor-btn').forEach(b => b.classList.remove('active-mode'));
+  const modeBtn = document.getElementById('btn-mode-'+mode);
+  if (modeBtn) modeBtn.classList.add('active-mode');
+
+  // Reset all
+  [codePane, visualPane, previewPane].forEach(p => { if(p) p.style.display = 'none'; });
+  veToolbar.style.display = 'none';
+
+  if (mode === 'visual') {
+    area.style.gridTemplateColumns = '1fr';
+    visualPane.style.display = '';
+    veToolbar.style.display = '';
+    if (!_veReady) initVisualEditor();
+    else syncCodeToVisual();
+  } else if (mode === 'split') {
+    area.style.gridTemplateColumns = '1fr 1fr';
+    codePane.style.display = '';
+    visualPane.style.display = '';
+    veToolbar.style.display = '';
+    if (!_veReady) initVisualEditor();
+    else syncCodeToVisual();
+  } else if (mode === 'code') {
+    area.style.gridTemplateColumns = '1fr';
+    codePane.style.display = '';
+  } else if (mode === 'preview') {
+    area.style.gridTemplateColumns = '1fr';
+    previewPane.style.display = '';
+    updatePreviewFrame();
+  }
+}
+
+function updatePreviewFrame() {
+  const frame = document.getElementById('preview-frame');
+  if (!frame) return;
+  const code = document.getElementById('tmpl-code').value;
+  const sample = {name:'Nguyễn Văn A', email:'sample@ucmas.vn', level:'L1', company:'UCMAS', date: new Date().toLocaleDateString('vi-VN')};
+  let rendered = code;
+  Object.entries(sample).forEach(([k,v]) => { rendered = rendered.replaceAll('{{'+k+'}}', v); });
+  frame.srcdoc = rendered;
+}
+
+// Override updatePreview để cũng cập nhật frame
+const _oldUpdatePreview = typeof updatePreview === 'function' ? updatePreview : null;
+function updatePreview() { updatePreviewFrame(); }
+
+// ── Link dialog ──────────────────────────
+let _savedRange = null;
+function openLinkDialog() {
+  const doc = getVeDoc();
+  if (doc) {
+    const sel = doc.getSelection();
+    if (sel.rangeCount) _savedRange = sel.getRangeAt(0).cloneRange();
+    const selectedText = sel.toString();
+    document.getElementById('link-text').value = selectedText || '';
+    document.getElementById('link-url').value = '';
+  }
+  document.getElementById('modal-link').classList.add('open');
+}
+
+function applyLink() {
+  const text   = document.getElementById('link-text').value.trim();
+  const url    = document.getElementById('link-url').value.trim();
+  const target = document.getElementById('link-target').value;
+  if (!url) { toast('Nhập URL!', 'err'); return; }
+
+  const doc = getVeDoc();
+  if (doc && doc.designMode === 'on') {
+    doc.body.focus();
+    if (_savedRange) {
+      const sel = doc.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(_savedRange);
+    }
+    const html = `<a href="${url}" target="${target}">${text || url}</a>`;
+    doc.execCommand('insertHTML', false, html);
+    syncVisualToCode();
+  } else {
+    insertTmplVar(`<a href="${url}" target="${target}">${text || url}</a>`);
+  }
+  closeModal('modal-link');
+}
+
+// ── Image dialog ─────────────────────────
+function previewImg() {
+  const url = document.getElementById('img-url').value.trim();
+  const wrap = document.getElementById('img-preview-wrap');
+  const img  = document.getElementById('img-preview');
+  if (url) { img.src = url; wrap.style.display = ''; }
+  else { wrap.style.display = 'none'; }
+}
+
+function loadImgFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('img-url').value = ev.target.result;
+    previewImg();
+  };
+  reader.readAsDataURL(file);
+}
+
+function applyImage() {
+  const url   = document.getElementById('img-url').value.trim();
+  const alt   = document.getElementById('img-alt').value.trim() || '';
+  const width = document.getElementById('img-width').value;
+  if (!url) { toast('Chọn ảnh hoặc nhập URL!', 'err'); return; }
+
+  const style = `max-width:100%;width:${width};height:auto;display:block;${width==='center'?'margin:0 auto':''}`;
+  const html  = `<img src="${url}" alt="${alt}" style="${style}">`;
+
+  const doc = getVeDoc();
+  if (doc && doc.designMode === 'on') {
+    doc.body.focus();
+    doc.execCommand('insertHTML', false, html);
+    syncVisualToCode();
+  } else { insertTmplVar(html); }
+  closeModal('modal-image');
+}
+
+function openImageDialog() {
+  document.getElementById('img-url').value = '';
+  document.getElementById('img-alt').value = '';
+  document.getElementById('img-preview-wrap').style.display = 'none';
+  document.getElementById('modal-image').classList.add('open');
+}
+
+// ── Button dialog ─────────────────────────
+function openButtonDialog() {
+  document.getElementById('btn-text').value = 'Bấm vào đây';
+  document.getElementById('btn-url').value  = 'https://';
+  updateBtnPreview();
+  document.getElementById('modal-button').classList.add('open');
+}
+
+function updateBtnPreview() {
+  const text   = document.getElementById('btn-text').value || 'Button';
+  const bg     = document.getElementById('btn-bg').value;
+  const color  = document.getElementById('btn-color').value;
+  const radius = document.getElementById('btn-radius').value + 'px';
+  const size   = document.getElementById('btn-size').value + 'px';
+  const align  = document.getElementById('btn-align').value;
+  document.getElementById('btn-preview-area').style.textAlign = align;
+  document.getElementById('btn-preview-area').innerHTML =
+    `<a style="display:inline-block;padding:12px 28px;background:${bg};color:${color};text-decoration:none;border-radius:${radius};font-size:${size};font-weight:600;font-family:Arial,sans-serif">${text}</a>`;
+}
+
+function applyButton() {
+  const text   = document.getElementById('btn-text').value.trim() || 'Button';
+  const url    = document.getElementById('btn-url').value.trim();
+  const bg     = document.getElementById('btn-bg').value;
+  const color  = document.getElementById('btn-color').value;
+  const radius = document.getElementById('btn-radius').value + 'px';
+  const size   = document.getElementById('btn-size').value + 'px';
+  const align  = document.getElementById('btn-align').value;
+  if (!url) { toast('Nhập URL cho button!', 'err'); return; }
+
+  const html = `<div style="text-align:${align};margin:16px 0">
+  <a href="${url}" target="_blank" style="display:inline-block;padding:12px 28px;background:${bg};color:${color};text-decoration:none;border-radius:${radius};font-size:${size};font-weight:600;font-family:Arial,sans-serif">${text}</a>
+</div>`;
+
+  const doc = getVeDoc();
+  if (doc && doc.designMode === 'on') {
+    doc.body.focus();
+    doc.execCommand('insertHTML', false, html);
+    syncVisualToCode();
+  } else { insertTmplVar(html); }
+  closeModal('modal-button');
 }
 
 function insertTmplVar(v) {
+  const mode = editorMode;
+  if ((mode === 'visual' || mode === 'split') && _veReady) {
+    const doc = getVeDoc();
+    if (doc) { doc.body.focus(); doc.execCommand('insertHTML', false, v); syncVisualToCode(); return; }
+  }
   const ta = document.getElementById('tmpl-code');
   const s = ta.selectionStart;
   ta.value = ta.value.substring(0,s) + v + ta.value.substring(ta.selectionEnd);
   ta.selectionStart = ta.selectionEnd = s+v.length;
-  ta.focus(); updatePreview();
+  ta.focus();
 }
 
 function uploadTemplateFile(e) {
