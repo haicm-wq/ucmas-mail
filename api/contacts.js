@@ -7,8 +7,11 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      const { levelId, search, status } = req.query;
-      ok(res, await makeDB(getDB(req)).getContacts({ levelId, search, status }));
+      const { levelId, search, status, page = 0, per_page = 200 } = req.query;
+      const db     = makeDB(getDB(req));
+      const offset = parseInt(page) * parseInt(per_page);
+      const result = await db.getContactsPaged({ levelId, search, status, offset, limit: parseInt(per_page) });
+      ok(res, result); // { data, total }
     } catch (e) { err(res, e.message, 500); }
 
   } else if (req.method === 'DELETE') {

@@ -728,6 +728,20 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
     </tr></thead>
     <tbody id="contact-tbody"></tbody>
     </table>
+    <!-- Pagination -->
+    <div id="contact-pagination" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface)">
+      <div style="font-family:var(--fm);font-size:11.5px;color:var(--muted)" id="page-info">—</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn" id="btn-prev-page" onclick="changePage(-1)" style="padding:4px 12px;font-size:12px">← Trước</button>
+        <span id="page-num" style="font-family:var(--fm);font-size:12px;color:var(--text);min-width:60px;text-align:center">Trang 1</span>
+        <button class="btn" id="btn-next-page" onclick="changePage(1)" style="padding:4px 12px;font-size:12px">Sau →</button>
+        <select class="fsel" id="per-page-sel" onchange="changePerPage(this.value)" style="padding:4px 8px;font-size:12px;width:auto">
+          <option value="100">100/trang</option>
+          <option value="200" selected>200/trang</option>
+          <option value="500">500/trang</option>
+        </select>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1627,6 +1641,9 @@ let templates = [];
 let activeTemplate = null;
 let selectedLevels = {};
 let currentFilter = 'all';
+let currentPage   = 0;
+let perPage       = 200;
+let totalContacts = 0;
 let editorMode = 'split';
 let selectedColor = '#f5c842';
 let selectedColorQuick = '#f5c842';
@@ -1793,10 +1810,72 @@ function renderFilterChips() {
 
 function setFilter(f) {
   currentFilter = f;
-  renderContactTable(document.querySelector('.tbl-search')?.value || '');
+  currentPage = 0;
   renderFilterChips();
+  const search = document.querySelector('.tbl-search')?.value || '';
+  if (window._backendConnected) loadContactsPage(search);
+  else renderContactTable(search);
 }
-function filterTable(q) { renderContactTable(q); }
+function filterTable(q) {
+  currentPage = 0; // reset về trang 1 khi search
+  if (window._backendConnected) {
+    loadContactsPage(q);
+  } else {
+    renderContactTable(q);
+  }
+}
+
+async function loadContactsPage(search = '') {
+  const levelId = currentFilter === 'all' ? undefined : currentFilter;
+  try {
+    const result = await apiFetch(
+      `/api/contacts?page=${currentPage}&per_page=${perPage}` +
+      (levelId ? `&levelId=${levelId}` : '') +
+      (search ? `&search=${encodeURIComponent(search)}` : '')
+    );
+    const { data, total } = result;
+    totalContacts = total;
+
+    contacts = (data || []).map(c => ({
+      id: c.id, name: c.name, email: c.email,
+      level: c.levels?.name || '', level_id: c.level_id, company: c.company || '',
+      dbStatus: c.status || 'active',
+      last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
+    }));
+
+    renderContactTable();
+    updatePaginationUI(total);
+  } catch (e) {
+    renderContactTable(); // fallback local
+  }
+}
+
+function updatePaginationUI(total) {
+  const start = currentPage * perPage + 1;
+  const end   = Math.min((currentPage + 1) * perPage, total);
+  const pages = Math.ceil(total / perPage);
+
+  document.getElementById('page-info').textContent = `${start}–${end} / ${total} contacts`;
+  document.getElementById('page-num').textContent = `Trang ${currentPage + 1}/${pages}`;
+  document.getElementById('btn-prev-page').disabled = currentPage === 0;
+  document.getElementById('btn-next-page').disabled = currentPage >= pages - 1;
+  document.getElementById('table-count').textContent = total + ' contacts';
+}
+
+function changePage(delta) {
+  currentPage = Math.max(0, currentPage + delta);
+  const search = document.querySelector('.tbl-search')?.value || '';
+  if (window._backendConnected) loadContactsPage(search);
+  else renderContactTable(search);
+}
+
+function changePerPage(val) {
+  perPage = parseInt(val);
+  currentPage = 0;
+  const search = document.querySelector('.tbl-search')?.value || '';
+  if (window._backendConnected) loadContactsPage(search);
+  else renderContactTable(search);
+}
 function selectAll(cb) {
   document.querySelectorAll('#contact-tbody input[type=checkbox]').forEach(c => c.checked = cb.checked);
   updateBulkBar();
@@ -2910,6 +2989,8 @@ function applyData({ levels: lv, contacts: ct, templates: tm, campaigns: ca }) {
   renderContactTable(); renderTemplates(); renderCampaignTargets();
   if (templates.length) selectTemplate(templates[0].id);
   if (ca) { renderHistoryFromApi(ca); renderDashCampaigns(ca); }
+  // Cập nhật pagination UI
+  if (totalContacts > 0) updatePaginationUI(totalContacts);
 }
 
 function showLoading(msg = 'Đang tải dữ liệu...') {
@@ -2954,13 +3035,15 @@ async function fetchFreshData(silent = false) {
     })) : null;
 
     if (!silent) showLoading('Đang tải contacts...');
-    const ctRaw = await apiFetch('/api/contacts');
-    const ct = ctRaw ? ctRaw.map(c => ({
+    // Chỉ load trang đầu (200 contacts) — phần còn lại load qua pagination
+    const ctRaw = await apiFetch(`/api/contacts?page=0&per_page=${perPage}`);
+    const ct = ctRaw?.data ? ctRaw.data.map(c => ({
       id: c.id, name: c.name, email: c.email,
       level: c.levels?.name || '', level_id: c.level_id, company: c.company || '',
-      dbStatus: c.status || 'active',   // active | unsubscribed | bounced
+      dbStatus: c.status || 'active',
       last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
     })) : null;
+    if (ctRaw?.total != null) totalContacts = ctRaw.total;
 
     if (!silent) showLoading('Đang tải templates...');
     const tmRaw = await apiFetch('/api/templates');
