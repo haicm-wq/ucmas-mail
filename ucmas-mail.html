@@ -1753,8 +1753,11 @@ function renderContactTable(query='') {
     const lv = getLevelById(c.level_id); // tìm theo UUID
     const color = lv ? lv.color : '#888';
     const levelName = lv ? lv.name : (c.level || '—'); // hiển thị tên
-    const statusIcon = c.status==='sent'?'s-ok':c.status==='error'?'s-err':'s-pend';
-    const statusLabel = c.status==='sent'?'Sent':c.status==='error'?'Error':'Pending';
+    // Status từ Supabase: active | unsubscribed | bounced
+    const dbStatus   = c.dbStatus || 'active';
+    const hasSent    = c.last && c.last !== '—';
+    const statusIcon  = dbStatus==='unsubscribed'?'s-err':dbStatus==='bounced'?'s-err':hasSent?'s-ok':'s-pend';
+    const statusLabel = dbStatus==='unsubscribed'?'Unsub':dbStatus==='bounced'?'Bounced':hasSent?'Đã gửi':'Active';
     return `<tr data-idx="${i}">
       <td><input type="checkbox" onchange="onRowCheck()"></td>
       <td style="font-weight:500">${c.name}</td>
@@ -2955,7 +2958,7 @@ async function fetchFreshData(silent = false) {
     const ct = ctRaw ? ctRaw.map(c => ({
       id: c.id, name: c.name, email: c.email,
       level: c.levels?.name || '', level_id: c.level_id, company: c.company || '',
-      status: c.status === 'active' ? 'pending' : c.status,
+      dbStatus: c.status || 'active',   // active | unsubscribed | bounced
       last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
     })) : null;
 
