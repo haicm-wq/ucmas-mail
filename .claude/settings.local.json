@@ -8,7 +8,9 @@
       "Bash(npm --version)",
       "Bash(git init *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(export PATH=\"$PATH:/c/Users/ADMIN/bin\")",
+      "Bash(/c/Users/ADMIN/bin/gh.exe auth *)"
     ]
   }
 }

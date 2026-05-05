@@ -342,6 +342,50 @@ tr:hover td{background:var(--surface2)}
 <!-- TOAST -->
 <div class="toast-area" id="toast-area"></div>
 
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal" style="width:520px">
+    <div class="modal-header">
+      <div class="modal-title">⚙ Cấu hình kết nối</div>
+      <button class="modal-close" onclick="closeModal('modal-settings')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box" style="margin-bottom:16px">
+        Nhập thông tin một lần, lưu vào trình duyệt. Không cần cấu hình Vercel dashboard.
+      </div>
+
+      <div style="font-family:var(--fm);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Supabase</div>
+      <div class="fg">
+        <label class="fl">Project URL</label>
+        <input class="fi" id="cfg-sb-url" placeholder="https://xxxxxxxx.supabase.co">
+      </div>
+      <div class="fg">
+        <label class="fl">Service Role Key <span style="color:var(--err);font-size:9px">(giữ bí mật)</span></label>
+        <input class="fi" id="cfg-sb-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIs...">
+      </div>
+
+      <div style="font-family:var(--fm);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:16px 0 10px">Resend (gửi email)</div>
+      <div class="fg">
+        <label class="fl">API Key <span style="color:var(--err);font-size:9px">(giữ bí mật)</span></label>
+        <input class="fi" id="cfg-resend" type="password" placeholder="re_xxxxxxxxxxxxxxxx">
+      </div>
+      <div class="fg">
+        <label class="fl">From Email (email người gửi)</label>
+        <input class="fi" id="cfg-from" type="email" placeholder="noreply@yourdomain.com">
+      </div>
+
+      <div class="info-box warn" style="margin-top:4px;font-size:11.5px">
+        Keys được lưu vào <strong>localStorage</strong> của trình duyệt này. Không dùng trên máy tính công cộng.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="testSettingsConnection()">⚡ Test kết nối</button>
+      <button class="btn" onclick="closeModal('modal-settings')">Huỷ</button>
+      <button class="btn btn-primary" onclick="saveSettings()">💾 Lưu & Áp dụng</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODALS -->
 <div class="modal-overlay" id="modal-level">
   <div class="modal">
@@ -412,8 +456,8 @@ tr:hover td{background:var(--surface2)}
     <button class="nav-tab" onclick="gotoPage('database',this)">⬡ Database</button>
   </nav>
   <div class="spacer"></div>
-  <div class="topbar-info"><div class="status-dot"></div>Resend connected</div>
-  <button class="btn">⚙ Settings</button>
+  <div class="topbar-info" id="conn-status"><div class="status-dot" style="background:var(--muted)"></div>Chưa cấu hình</div>
+  <button class="btn" onclick="openSettings()">⚙ Settings</button>
 </div>
 
 <div class="layout">
@@ -1941,15 +1985,76 @@ function init() {
 init();
 
 // ════════════════════════════════════════
+// SETTINGS — lưu/đọc config từ localStorage
+// ════════════════════════════════════════
+const CFG_KEY = 'ucmas_config';
+
+function getConfig() {
+  try { return JSON.parse(localStorage.getItem(CFG_KEY) || '{}'); } catch { return {}; }
+}
+
+function openSettings() {
+  const cfg = getConfig();
+  document.getElementById('cfg-sb-url').value  = cfg.sbUrl   || '';
+  document.getElementById('cfg-sb-key').value  = cfg.sbKey   || '';
+  document.getElementById('cfg-resend').value  = cfg.resend  || '';
+  document.getElementById('cfg-from').value    = cfg.from    || '';
+  document.getElementById('modal-settings').classList.add('open');
+}
+
+function saveSettings() {
+  const cfg = {
+    sbUrl:  document.getElementById('cfg-sb-url').value.trim(),
+    sbKey:  document.getElementById('cfg-sb-key').value.trim(),
+    resend: document.getElementById('cfg-resend').value.trim(),
+    from:   document.getElementById('cfg-from').value.trim(),
+  };
+  if (!cfg.sbUrl || !cfg.sbKey) { toast('Nhập Supabase URL và Service Role Key!', 'err'); return; }
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  closeModal('modal-settings');
+  toast('Đã lưu cấu hình — đang tải dữ liệu...');
+  loadFromBackend().then(() => { window._backendConnected = true; });
+}
+
+async function testSettingsConnection() {
+  const cfg = {
+    sbUrl:  document.getElementById('cfg-sb-url').value.trim(),
+    sbKey:  document.getElementById('cfg-sb-key').value.trim(),
+    resend: document.getElementById('cfg-resend').value.trim(),
+    from:   document.getElementById('cfg-from').value.trim(),
+  };
+  if (!cfg.sbUrl || !cfg.sbKey) { toast('Nhập Supabase URL và Key trước!', 'err'); return; }
+  try {
+    const res = await fetch('/api/stats', {
+      headers: { 'x-sb-url': cfg.sbUrl, 'x-sb-key': cfg.sbKey },
+      signal: AbortSignal.timeout(5000),
+    });
+    const json = await res.json();
+    if (json.success) toast('✓ Kết nối Supabase thành công!');
+    else toast('Lỗi: ' + json.error, 'err');
+  } catch (e) { toast('Không thể kết nối: ' + e.message, 'err'); }
+}
+
+// ════════════════════════════════════════
 // API LAYER — Vercel Serverless Functions
 // Endpoints: /api/levels /api/contacts /api/templates /api/campaigns /api/stats
 // ════════════════════════════════════════
 const API = ''; // relative URLs — hoạt động trên cả Vercel lẫn localhost
 
+function cfgHeaders() {
+  const cfg = getConfig();
+  const h = {};
+  if (cfg.sbUrl)  h['x-sb-url']      = cfg.sbUrl;
+  if (cfg.sbKey)  h['x-sb-key']      = cfg.sbKey;
+  if (cfg.resend) h['x-resend-key']  = cfg.resend;
+  if (cfg.from)   h['x-from-email']  = cfg.from;
+  return h;
+}
+
 async function apiFetch(path, options = {}) {
   const res = await fetch(API + path, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers: { 'Content-Type': 'application/json', ...cfgHeaders(), ...(options.headers || {}) },
   });
   const json = await res.json();
   if (!json.success) throw new Error(json.error || 'Lỗi API');
@@ -1959,7 +2064,7 @@ async function apiFetch(path, options = {}) {
 // ── Load dữ liệu thật từ backend khi server chạy ──────
 async function loadFromBackend() {
   try {
-    const res = await fetch('/api/stats', { signal: AbortSignal.timeout(3000) });
+    const res = await fetch('/api/stats', { headers: cfgHeaders(), signal: AbortSignal.timeout(3000) });
     if (!res.ok) return; // backend chưa chạy, dùng mock data
 
     const stats = await (res.json());
@@ -2003,11 +2108,16 @@ async function loadFromBackend() {
     renderContactTable(); renderTemplates(); renderCampaignTargets();
     if (templates.length) selectTemplate(templates[0].id);
 
-    // Cập nhật trạng thái kết nối
-    document.querySelector('.topbar-info').innerHTML =
-      '<div class="status-dot"></div>Backend + Resend connected';
+    const cfg = getConfig();
+    const statusEl = document.getElementById('conn-status');
+    statusEl.innerHTML = `<div class="status-dot"></div>Supabase connected`;
 
-    toast('Đã kết nối backend — dữ liệu thật đã được tải', 'ok');
+    // Nếu chưa có config, gợi ý mở Settings
+    if (!cfg.sbUrl) {
+      statusEl.innerHTML = `<div class="status-dot" style="background:var(--warn)"></div><span style="cursor:pointer;text-decoration:underline" onclick="openSettings()">Chưa cấu hình — Click để Setup</span>`;
+    }
+
+    toast('Đã kết nối — dữ liệu thật đã được tải', 'ok');
   } catch (_) {
     // Backend chưa chạy — dùng mock data, không báo lỗi
   }
@@ -2180,7 +2290,7 @@ startSend = async function() {
   try {
     const response = await fetch('/api/campaigns-send', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...cfgHeaders() },
       body: JSON.stringify({
         name, from_name: from, subject,
         body_text: body, target_level_ids: selectedLevelIds,
@@ -2237,8 +2347,18 @@ startSend = async function() {
   }
 };
 
-// Khởi động: thử kết nối backend
-loadFromBackend().then(() => { window._backendConnected = true; }).catch(() => {});
+// Khởi động
+const _initCfg = getConfig();
+if (!_initCfg.sbUrl) {
+  // Chưa có config → gợi ý setup
+  document.getElementById('conn-status').innerHTML =
+    `<div class="status-dot" style="background:var(--warn)"></div><span style="cursor:pointer;text-decoration:underline" onclick="openSettings()">Chưa cấu hình — Click để Setup</span>`;
+  setTimeout(() => {
+    toast('👋 Lần đầu sử dụng? Vào ⚙ Settings để nhập Supabase và Resend key.', 'warn');
+  }, 800);
+} else {
+  loadFromBackend().then(() => { window._backendConnected = true; }).catch(() => {});
+}
 </script>
 </body>
 </html>
