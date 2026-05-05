@@ -1,0 +1,2244 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UCMAS MAIL</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#09090f;--surface:#111319;--surface2:#181c26;--surface3:#1e2230;
+  --border:#1e2338;--border2:#28304a;--text:#e6e8f2;--muted:#5e6585;
+  --accent:#4f6cff;--accent2:#7b93ff;--accent-glow:rgba(79,108,255,.15);
+  --l1:#f5c842;--l1b:rgba(245,200,66,.12);
+  --l2:#3de8a0;--l2b:rgba(61,232,160,.12);
+  --l3:#5ba8ff;--l3b:rgba(91,168,255,.12);
+  --l4:#c97ef5;--l4b:rgba(201,126,245,.12);
+  --ok:#3de87a;--err:#f55c5c;--warn:#f5a623;
+  --fh:'Syne',sans-serif;--fb:'DM Sans',sans-serif;--fm:'DM Mono',monospace;
+  --r:10px;--rl:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--fb);font-size:14px;display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;z-index:200}
+.logo{font-family:var(--fh);font-weight:800;font-size:17px;letter-spacing:-.5px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.logo-badge{background:var(--accent);color:#fff;font-size:9px;font-family:var(--fm);padding:2px 6px;border-radius:4px;letter-spacing:.5px}
+.nav-tabs{display:flex;gap:1px;margin-left:16px}
+.nav-tab{padding:5px 14px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border:none;background:transparent;transition:all .14s;font-family:var(--fb)}
+.nav-tab:hover{color:var(--text);background:var(--surface2)}
+.nav-tab.active{color:var(--text);background:var(--surface2)}
+.spacer{flex:1}
+.topbar-info{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:11px;color:var(--muted)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.btn{padding:6px 14px;border-radius:7px;font-size:12.5px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--surface2);color:var(--text);transition:all .14s;font-family:var(--fb)}
+.btn:hover{border-color:var(--accent2);color:var(--accent2)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:#6080ff;border-color:#6080ff;color:#fff}
+.btn-danger{border-color:rgba(245,92,92,.4);color:var(--err)}
+.btn-danger:hover{background:rgba(245,92,92,.1);border-color:var(--err)}
+
+/* LAYOUT */
+.layout{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:252px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.sidebar-scroll{flex:1;overflow-y:auto;padding:14px 0}
+.sidebar-scroll::-webkit-scrollbar{width:3px}
+.sidebar-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.sb-label{font-family:var(--fm);font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:6px 16px 6px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:7px 14px;border-radius:7px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:400;transition:all .12s;border:none;background:transparent;width:100%;text-align:left;margin:0 4px;width:calc(100% - 8px)}
+.sb-item:hover{background:var(--surface2);color:var(--text)}
+.sb-item.active{background:var(--accent-glow);color:var(--accent2)}
+.sb-badge{margin-left:auto;font-family:var(--fm);font-size:10px;background:var(--surface3);padding:1px 6px;border-radius:10px;color:var(--muted)}
+.sb-div{height:1px;background:var(--border);margin:8px 14px}
+
+/* LEVEL TREE in sidebar */
+.level-tree{padding:0 8px}
+.level-node{border-radius:7px;overflow:hidden;margin-bottom:3px}
+.level-parent{display:flex;align-items:center;gap:8px;padding:7px 8px;cursor:pointer;transition:all .12s;border-radius:7px}
+.level-parent:hover{background:var(--surface2)}
+.level-expand{font-size:9px;color:var(--muted);transition:transform .15s;flex-shrink:0;width:12px}
+.level-expand.open{transform:rotate(90deg)}
+.level-pip{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.level-name-sb{font-size:13px;font-weight:500;flex:1}
+.level-cnt-sb{font-family:var(--fm);font-size:10px}
+.level-children{padding-left:20px;display:none}
+.level-children.open{display:block}
+.level-child-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:12px;transition:all .12s}
+.level-child-item:hover{background:var(--surface2);color:var(--text)}
+.child-pip{width:6px;height:6px;border-radius:2px;flex-shrink:0}
+
+/* MAIN */
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.page{display:none;padding:24px 28px;flex:1}
+.page.active{display:block}
+
+/* PAGE HEADER */
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px}
+.ph-title{font-family:var(--fh);font-size:21px;font-weight:700;letter-spacing:-.5px}
+.ph-sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+.btn-row{display:flex;gap:8px;align-items:center}
+
+/* STAT CARDS */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;position:relative;overflow:hidden;transition:border-color .2s;cursor:default}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-card.l1::after{background:var(--l1)}
+.stat-card.l2::after{background:var(--l2)}
+.stat-card.l3::after{background:var(--l3)}
+.stat-card.l4::after{background:var(--l4)}
+.stat-lbl{font-family:var(--fm);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:5px}
+.stat-val{font-family:var(--fh);font-size:26px;font-weight:700;letter-spacing:-1px;line-height:1}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:5px;font-family:var(--fm)}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:16px}
+.card-header{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-family:var(--fh);font-size:13.5px;font-weight:600}
+.card-body{padding:18px}
+
+/* UPLOAD ZONE */
+.upload-zone{border:1.5px dashed var(--border2);border-radius:var(--rl);padding:36px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px;background:var(--surface)}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-glow)}
+.upload-icon{font-size:32px;margin-bottom:10px;opacity:.7}
+.upload-title{font-family:var(--fh);font-size:15px;font-weight:600;margin-bottom:5px}
+.upload-hint{color:var(--muted);font-size:12.5px;margin-bottom:14px}
+.fmt-chips{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.fmt-chip{font-family:var(--fm);font-size:10px;padding:2px 8px;border-radius:12px;border:1px solid var(--border2);color:var(--muted)}
+#file-input{display:none}
+
+/* TABLE */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:16px}
+.tbl-bar{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tbl-search{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 11px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;width:220px;transition:border-color .14s}
+.tbl-search:focus{border-color:var(--accent)}
+.tbl-search::placeholder{color:var(--muted)}
+.chip-row{display:flex;gap:5px;flex-wrap:wrap}
+.chip{padding:3px 10px;border-radius:12px;font-size:11.5px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:var(--fb);transition:all .13s}
+.chip:hover{color:var(--text)}
+.chip.ca{background:var(--accent-glow);border-color:var(--accent);color:var(--accent2)}
+.chip.cl1{background:var(--l1b);border-color:var(--l1);color:var(--l1)}
+.chip.cl2{background:var(--l2b);border-color:var(--l2);color:var(--l2)}
+.chip.cl3{background:var(--l3b);border-color:var(--l3);color:var(--l3)}
+.chip.cl4{background:var(--l4b);border-color:var(--l4);color:var(--l4)}
+table{width:100%;border-collapse:collapse}
+th{padding:9px 14px;text-align:left;font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-weight:400}
+td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.lt{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:12px;font-family:var(--fm);font-size:11px;font-weight:500}
+.lt1{background:var(--l1b);color:var(--l1);border:1px solid rgba(245,200,66,.2)}
+.lt2{background:var(--l2b);color:var(--l2);border:1px solid rgba(61,232,160,.2)}
+.lt3{background:var(--l3b);color:var(--l3);border:1px solid rgba(91,168,255,.2)}
+.lt4{background:var(--l4b);color:var(--l4);border:1px solid rgba(201,126,245,.2)}
+.sdot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px}
+.s-ok{background:var(--ok)}.s-pend{background:var(--warn)}.s-err{background:var(--err)}
+.col-em{color:var(--muted);font-family:var(--fm);font-size:11.5px}
+.abtn{padding:3px 8px;border-radius:5px;font-size:11px;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:var(--fb);transition:all .12s}
+.abtn:hover{border-color:var(--accent2);color:var(--accent2)}
+.lsel{background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11.5px;font-family:var(--fm);padding:2px 6px;cursor:pointer;outline:none}
+
+/* CAMPAIGN GRID */
+.cg{display:grid;grid-template-columns:1fr 360px;gap:16px}
+
+/* FORM */
+.fg{margin-bottom:16px}
+.fl{display:block;font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.fi,.fta,.fsel{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:var(--fb);font-size:13.5px;outline:none;transition:border-color .14s}
+.fi:focus,.fta:focus,.fsel:focus{border-color:var(--accent)}
+.fta{resize:vertical;min-height:110px;line-height:1.65}
+.fsel option{background:var(--surface2)}
+
+/* LEVEL TARGETS */
+.lts{display:flex;flex-direction:column;gap:8px}
+.ltr{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:9px;border:1px solid var(--border);cursor:pointer;transition:all .14s;position:relative}
+.ltr:hover{border-color:var(--border2)}
+.ltr.sl1{background:var(--l1b);border-color:var(--l1)}
+.ltr.sl2{background:var(--l2b);border-color:var(--l2)}
+.ltr.sl3{background:var(--l3b);border-color:var(--l3)}
+.ltr.sl4{background:var(--l4b);border-color:var(--l4)}
+.lck{width:17px;height:17px;border-radius:4px;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;transition:all .14s}
+.sl1 .lck{background:var(--l1);border-color:var(--l1);color:#000}
+.sl2 .lck{background:var(--l2);border-color:var(--l2);color:#000}
+.sl3 .lck{background:var(--l3);border-color:var(--l3);color:#000}
+.sl4 .lck{background:var(--l4);border-color:var(--l4);color:#000}
+.li{flex:1}
+.ln{font-weight:500;font-size:13px}
+.ld{color:var(--muted);font-size:11.5px;margin-top:1px}
+.lc{font-family:var(--fm);font-size:12px;color:var(--muted)}
+.sl1 .lc{color:var(--l1)}.sl2 .lc{color:var(--l2)}.sl3 .lc{color:var(--l3)}.sl4 .lc{color:var(--l4)}
+
+/* SUMMARY */
+.sum-box{background:var(--surface2);border-radius:9px;padding:13px 15px;display:flex;flex-direction:column;gap:9px;margin-top:4px}
+.sum-row{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.sum-row .sl{color:var(--muted)}.sum-row .sv{font-family:var(--fm);font-weight:500}
+.sum-div{height:1px;background:var(--border)}
+.send-btn{width:100%;padding:11px;background:var(--accent);border:none;border-radius:9px;color:#fff;font-family:var(--fh);font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;margin-top:11px;display:flex;align-items:center;justify-content:center;gap:7px}
+.send-btn:hover{background:#6080ff;transform:translateY(-1px);box-shadow:0 4px 20px rgba(79,108,255,.35)}
+.send-btn:active{transform:translateY(0)}
+
+/* PROGRESS */
+.prog-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rl);padding:18px;margin-bottom:16px;display:none}
+.prog-wrap.active{display:block}
+.prog-hd{display:flex;justify-content:space-between;margin-bottom:10px}
+.prog-lbl{font-family:var(--fh);font-size:13.5px;font-weight:600}
+.prog-pct{font-family:var(--fm);color:var(--accent2)}
+.prog-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .3s ease;width:0%}
+.prog-steps{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.pstep{font-family:var(--fm);font-size:10.5px;padding:2px 8px;border-radius:12px;border:1px solid var(--border);color:var(--muted)}
+.pstep.done{background:rgba(61,232,122,.08);border-color:var(--ok);color:var(--ok)}
+.pstep.run{background:var(--accent-glow);border-color:var(--accent);color:var(--accent2);animation:blink 1s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* HISTORY */
+.h-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)}
+.h-item:last-child{border-bottom:none}
+.h-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.h-icon.ok{background:rgba(61,232,122,.1)}.h-icon.err{background:rgba(245,92,92,.1)}.h-icon.partial{background:rgba(245,166,35,.1)}
+.h-title{font-weight:500;font-size:13px;margin-bottom:3px}
+.h-meta{color:var(--muted);font-size:11.5px;font-family:var(--fm);display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.h-stats{margin-left:auto;text-align:right;flex-shrink:0}
+.h-sent{font-family:var(--fm);font-size:13px;font-weight:500}
+.h-rate{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* ─── DATABASE PAGE ─── */
+.db-setup-grid{display:grid;grid-template-columns:260px 1fr;gap:16px;min-height:calc(100vh - 140px)}
+.db-steps-nav{display:flex;flex-direction:column;gap:4px;position:sticky;top:0}
+.db-step-btn{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;border:none;background:transparent;color:var(--muted);font-size:13px;font-family:var(--fb);text-align:left;width:100%;transition:all .13s}
+.db-step-btn:hover{background:var(--surface2);color:var(--text)}
+.db-step-btn.active{background:var(--accent-glow);color:var(--accent2)}
+.db-step-num{width:22px;height:22px;border-radius:6px;background:var(--surface3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;flex-shrink:0;transition:all .13s}
+.db-step-btn.active .db-step-num{background:var(--accent);border-color:var(--accent);color:#fff}
+.db-step-btn.done .db-step-num{background:rgba(61,232,122,.15);border-color:var(--ok);color:var(--ok)}
+.db-step-btn.done{color:var(--ok)}
+.db-panel{display:none}.db-panel.active{display:block}
+.db-section{margin-bottom:20px}
+.db-section-title{font-family:var(--fh);font-size:15px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.db-section-sub{color:var(--muted);font-size:12.5px;line-height:1.75;margin-bottom:14px}
+.code-block{background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.code-block-header{padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.code-block-lang{font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
+.code-block-copy{padding:3px 10px;border-radius:5px;font-size:10.5px;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:var(--fm);transition:all .12s}
+.code-block-copy:hover{border-color:var(--accent2);color:var(--accent2)}
+.code-block pre{padding:16px;margin:0;font-family:var(--fm);font-size:12px;line-height:1.85;overflow-x:auto;color:var(--text);white-space:pre}
+.code-block pre::-webkit-scrollbar{height:3px}
+.code-block pre::-webkit-scrollbar-thumb{background:var(--border2)}
+.sql-kw{color:#7b93ff}.sql-str{color:#3de8a0}.sql-cm{color:var(--muted)}.sql-type{color:#f5c842}.sql-fn{color:#c97ef5}
+.js-kw{color:#7b93ff}.js-str{color:#3de8a0}.js-cm{color:var(--muted)}.js-fn{color:#f5c842}.js-var{color:#c97ef5}
+.schema-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:8px}
+.schema-table th{padding:7px 12px;text-align:left;font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-weight:400;background:var(--surface3)}
+.schema-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.schema-table tr:last-child td{border-bottom:none}
+.schema-table tr:hover td{background:var(--surface2)}
+.col-type{font-family:var(--fm);font-size:11px;color:var(--l3)}.col-req{color:var(--ok);font-size:11px}.col-note{color:var(--muted);font-size:11.5px}
+.db-conn-status{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.db-conn-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.db-conn-dot.connected{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.db-conn-dot.disconnected{background:var(--err)}
+.db-conn-dot.pending{background:var(--warn);animation:blink 1s ease-in-out infinite}
+.env-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;font-family:var(--fm);font-size:12px}
+.env-key{color:var(--l3);min-width:220px}.env-val{color:var(--muted);flex:1}
+.env-input{flex:1;background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text);font-family:var(--fm);font-size:12px;outline:none}
+.env-input:focus{border-color:var(--accent)}
+.info-box{background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:12px;font-size:12.5px;color:var(--muted);line-height:1.7}
+.info-box.warn{border-left-color:var(--warn)}.info-box.ok{border-left-color:var(--ok)}
+.table-visual{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.table-box{background:var(--surface2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;min-width:200px;flex:1}
+.table-box-header{padding:9px 14px;border-bottom:1px solid var(--border);background:var(--surface3);display:flex;align-items:center;gap:8px}
+.table-box-name{font-family:var(--fh);font-size:13px;font-weight:600}
+.table-box-badge{font-family:var(--fm);font-size:10px;padding:1px 7px;border-radius:10px;background:var(--accent-glow);color:var(--accent2);border:1px solid var(--accent)}
+.table-box-fields{padding:10px 14px}
+.table-field{display:flex;align-items:center;gap:8px;padding:4px 0;font-family:var(--fm);font-size:11.5px}
+.field-pk{color:var(--l1)}.field-fk{color:var(--l4)}.field-name{color:var(--text);flex:1}.field-type{color:var(--muted);font-size:10.5px}
+.rel-arrow{display:flex;align-items:center;font-size:11px;color:var(--muted);font-family:var(--fm);padding-top:30px}
+.db-tab-row{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0}
+.db-tab{padding:7px 16px;border-radius:7px 7px 0 0;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border:none;background:transparent;font-family:var(--fb);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .13s}
+.db-tab:hover{color:var(--text)}.db-tab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+
+.level-manager-grid{display:grid;grid-template-columns:1fr 340px;gap:16px}
+.level-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:12px}
+.level-card-header{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.level-card-body{padding:0}
+.level-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);transition:background .12s}
+.level-row:hover{background:var(--surface2)}
+.level-row:last-child{border-bottom:none}
+.level-row-pip{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.level-row-name{font-weight:500;font-size:13px;flex:1}
+.level-row-parent{font-family:var(--fm);font-size:10.5px;color:var(--muted);padding:1px 7px;border-radius:10px;background:var(--surface3)}
+.level-row-cnt{font-family:var(--fm);font-size:11.5px;color:var(--muted);min-width:50px;text-align:right}
+.level-row-actions{display:flex;gap:5px}
+.new-level-form{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rl);padding:18px;margin-bottom:12px}
+.new-level-title{font-family:var(--fh);font-size:14px;font-weight:600;margin-bottom:14px}
+.color-row{display:flex;gap:6px;flex-wrap:wrap}
+.color-opt{width:24px;height:24px;border-radius:5px;cursor:pointer;border:2px solid transparent;transition:all .14s;flex-shrink:0}
+.color-opt:hover,.color-opt.selected{border-color:#fff;transform:scale(1.15)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.parent-preview{background:var(--surface3);border-radius:8px;padding:12px;margin-top:12px;display:none}
+.parent-preview.visible{display:block}
+.pp-label{font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.pp-tree{display:flex;align-items:center;gap:6px;font-size:12.5px}
+
+/* ─── TEMPLATES PAGE ─── */
+.tmpl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.tmpl-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;cursor:pointer;transition:all .15s}
+.tmpl-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.tmpl-card.active-tmpl{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.tmpl-preview{height:110px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:28px;position:relative;overflow:hidden}
+.tmpl-preview::after{content:'';position:absolute;bottom:0;left:0;right:0;height:30px;background:linear-gradient(transparent,var(--surface2))}
+.tmpl-info{padding:11px 14px}
+.tmpl-name{font-weight:600;font-size:13px;margin-bottom:3px}
+.tmpl-desc{color:var(--muted);font-size:11.5px}
+.tmpl-tags{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+.tmpl-tag{font-family:var(--fm);font-size:10px;padding:1px 7px;border-radius:10px;border:1px solid var(--border2);color:var(--muted)}
+
+/* TEMPLATE EDITOR */
+.tmpl-editor-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:16px}
+.editor-toolbar{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.editor-toolbar-label{font-family:var(--fm);font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.editor-btn{padding:4px 10px;border-radius:5px;font-size:12px;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text);font-family:var(--fb);transition:all .12s}
+.editor-btn:hover{border-color:var(--accent2);color:var(--accent2)}
+.editor-btn.active-mode{background:var(--accent-glow);border-color:var(--accent);color:var(--accent2)}
+.editor-area{display:grid;grid-template-columns:1fr 1fr;min-height:400px}
+.editor-pane{border-right:1px solid var(--border);display:flex;flex-direction:column}
+.editor-pane:last-child{border-right:none}
+.editor-pane-hd{padding:8px 14px;background:var(--surface2);border-bottom:1px solid var(--border);font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
+.editor-textarea{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--fm);font-size:12.5px;line-height:1.8;padding:14px;resize:none;width:100%;min-height:380px}
+.preview-pane{flex:1;padding:16px;overflow-y:auto;font-size:13.5px;line-height:1.75;color:var(--text)}
+.preview-pane h1{font-size:18px;font-weight:700;margin-bottom:10px;font-family:var(--fh)}
+.preview-pane h2{font-size:15px;font-weight:600;margin-bottom:8px;font-family:var(--fh)}
+.preview-pane p{margin-bottom:10px}
+.preview-pane .highlight{background:var(--l1b);color:var(--l1);padding:1px 5px;border-radius:3px;font-family:var(--fm);font-size:12px}
+.var-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.var-pill{padding:3px 10px;border-radius:12px;font-size:11.5px;cursor:pointer;border:1px solid var(--border2);background:var(--surface2);color:var(--accent2);font-family:var(--fm);transition:all .12s}
+.var-pill:hover{border-color:var(--accent);background:var(--accent-glow)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;display:flex;align-items:center;justify-content:center;display:none}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--rl);width:480px;max-width:90vw;overflow:hidden}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-family:var(--fh);font-size:16px;font-weight:700}
+.modal-close{background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:5px;line-height:1}
+.modal-close:hover{color:var(--text);background:var(--surface2)}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+
+/* TOAST */
+.toast-area{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface);border:1px solid var(--border2);border-radius:9px;padding:12px 16px;font-size:13px;min-width:220px;max-width:340px;display:flex;align-items:center;gap:10px;animation:slide-in .22s ease;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+@keyframes slide-in{from{transform:translateX(60px);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast.ok{border-color:rgba(61,232,122,.3)}.toast.err{border-color:rgba(245,92,92,.3)}.toast.warn{border-color:rgba(245,166,35,.3)}
+.toast-icon{font-size:16px}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast-area" id="toast-area"></div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-level">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-level-title">Thêm Level mới</div>
+      <button class="modal-close" onclick="closeModal('modal-level')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label class="fl">Tên Level</label>
+        <input class="fi" id="ml-name" placeholder="VD: L1.1 hoặc L5 hoặc VIP-GOLD">
+      </div>
+      <div class="form-row">
+        <div class="fg">
+          <label class="fl">Level cha (tuỳ chọn)</label>
+          <select class="fsel" id="ml-parent">
+            <option value="">— Không có (Level gốc) —</option>
+            <option value="L1">L1</option>
+            <option value="L2">L2</option>
+            <option value="L3">L3</option>
+            <option value="L4">L4</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="fl">Màu nhận dạng</label>
+          <div class="color-row" id="ml-colors">
+            <div class="color-opt selected" style="background:#f5c842" data-color="#f5c842" onclick="pickColor(this)"></div>
+            <div class="color-opt" style="background:#3de8a0" data-color="#3de8a0" onclick="pickColor(this)"></div>
+            <div class="color-opt" style="background:#5ba8ff" data-color="#5ba8ff" onclick="pickColor(this)"></div>
+            <div class="color-opt" style="background:#c97ef5" data-color="#c97ef5" onclick="pickColor(this)"></div>
+            <div class="color-opt" style="background:#ff7eb3" data-color="#ff7eb3" onclick="pickColor(this)"></div>
+            <div class="color-opt" style="background:#ff9f5b" data-color="#ff9f5b" onclick="pickColor(this)"></div>
+            <div class="color-opt" style="background:#5be8e8" data-color="#5be8e8" onclick="pickColor(this)"></div>
+            <div class="color-opt" style="background:#e8e85b" data-color="#e8e85b" onclick="pickColor(this)"></div>
+          </div>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">Mô tả ngắn (tuỳ chọn)</label>
+        <input class="fi" id="ml-desc" placeholder="VD: Khách hàng vàng, mua từ 10 lần trở lên">
+      </div>
+      <div class="parent-preview" id="ml-preview">
+        <div class="pp-label">Cấu trúc phân cấp</div>
+        <div class="pp-tree" id="ml-tree-preview"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-level')">Huỷ</button>
+      <button class="btn btn-primary" onclick="saveLevel()">Tạo Level</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div style="width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;font-family:var(--fh)">U</div>
+    UCMAS MAIL
+    <span class="logo-badge">BETA</span>
+  </div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="gotoPage('dashboard',this)">Dashboard</button>
+    <button class="nav-tab" onclick="gotoPage('contacts',this)">Contacts</button>
+    <button class="nav-tab" onclick="gotoPage('levels',this)">Levels</button>
+    <button class="nav-tab" onclick="gotoPage('templates',this)">Templates</button>
+    <button class="nav-tab" onclick="gotoPage('campaign',this)">New Campaign</button>
+    <button class="nav-tab" onclick="gotoPage('history',this)">History</button>
+    <button class="nav-tab" onclick="gotoPage('database',this)">⬡ Database</button>
+  </nav>
+  <div class="spacer"></div>
+  <div class="topbar-info"><div class="status-dot"></div>Resend connected</div>
+  <button class="btn">⚙ Settings</button>
+</div>
+
+<div class="layout">
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-scroll">
+    <div class="sb-label">Navigation</div>
+    <button class="sb-item active" onclick="gotoPage('dashboard',null,this)">◈ Dashboard <span class="sb-badge">Live</span></button>
+    <button class="sb-item" onclick="gotoPage('contacts',null,this)">◉ All Contacts <span class="sb-badge" id="sb-cnt-all">284</span></button>
+    <button class="sb-item" onclick="gotoPage('templates',null,this)">▤ Templates <span class="sb-badge">5</span></button>
+    <button class="sb-item" onclick="gotoPage('campaign',null,this)">✉ New Campaign</button>
+    <button class="sb-item" onclick="gotoPage('history',null,this)">◷ History</button>
+    <button class="sb-item" onclick="gotoPage('database',null,this)">⬡ Database</button>
+    <div class="sb-div"></div>
+    <div class="sb-label">Segments</div>
+    <div class="level-tree" id="sidebar-level-tree"></div>
+    <div class="sb-div"></div>
+    <button class="sb-item" onclick="gotoPage('levels',null,this)">⊕ Quản lý Levels</button>
+  </div>
+</aside>
+
+<main class="main">
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div class="ph">
+    <div><div class="ph-title">Dashboard</div><div class="ph-sub">Tổng quan hệ thống UCMAS MAIL</div></div>
+    <button class="btn btn-primary" onclick="gotoPage('campaign')">+ New Campaign</button>
+  </div>
+  <div class="stat-row" id="dash-stats"></div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Recent Campaigns</div><button class="btn" onclick="gotoPage('history')" style="font-size:11.5px">Xem tất cả →</button></div>
+    <div class="card-body" style="padding:0 18px">
+      <div class="h-item">
+        <div class="h-icon ok">✉</div>
+        <div style="flex:1"><div class="h-title">Chương trình UCMAS Tháng 5</div><div class="h-meta"><span class="lt lt1">L1</span> · 22/05/2025</div></div>
+        <div class="h-stats"><div class="h-sent" style="color:var(--ok)">48/48</div><div class="h-rate">100%</div></div>
+      </div>
+      <div class="h-item">
+        <div class="h-icon partial">✉</div>
+        <div style="flex:1"><div class="h-title">Newsletter Q2 2025</div><div class="h-meta"><span class="lt lt1">L1</span> <span class="lt lt2">L2</span> <span class="lt lt3">L3</span> · 15/05/2025</div></div>
+        <div class="h-stats"><div class="h-sent" style="color:var(--warn)">238/246</div><div class="h-rate">96.7%</div></div>
+      </div>
+      <div class="h-item">
+        <div class="h-icon ok">✉</div>
+        <div style="flex:1"><div class="h-title">Welcome Series</div><div class="h-meta"><span class="lt lt4">L4</span> · 10/05/2025</div></div>
+        <div class="h-stats"><div class="h-sent" style="color:var(--ok)">38/38</div><div class="h-rate">100%</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTACTS -->
+<div id="page-contacts" class="page">
+  <div class="ph">
+    <div><div class="ph-title">Contacts</div><div class="ph-sub">Import danh sách và phân cấp theo level</div></div>
+    <div class="btn-row">
+      <label class="btn" style="cursor:pointer" for="file-input">↑ Upload CSV/Excel</label>
+      <input type="file" id="file-input" accept=".csv,.xlsx,.xls" onchange="handleUpload(event)">
+      <button class="btn btn-primary" onclick="gotoPage('campaign')">Tạo Campaign →</button>
+    </div>
+  </div>
+  <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event)">
+    <div class="upload-icon">📤</div>
+    <div class="upload-title">Kéo thả file hoặc click để chọn</div>
+    <div class="upload-hint">Cột bắt buộc: <strong style="color:var(--l2)">name</strong> · <strong style="color:var(--l2)">email</strong> · <strong style="color:var(--l2)">level</strong> &nbsp;·&nbsp; Cột tuỳ chọn: company, phone</div>
+    <div class="fmt-chips"><span class="fmt-chip">.csv</span><span class="fmt-chip">.xlsx</span><span class="fmt-chip">.xls</span><span class="fmt-chip">Google Sheet export</span></div>
+  </div>
+  <div class="tbl-wrap">
+    <div class="tbl-bar">
+      <input class="tbl-search" type="text" placeholder="🔍 Tìm tên, email..." oninput="filterTable(this.value)">
+      <div class="chip-row" id="filter-chips"></div>
+      <div style="margin-left:auto;font-family:var(--fm);font-size:11px;color:var(--muted)" id="table-count">284 contacts</div>
+    </div>
+    <table><thead><tr>
+      <th><input type="checkbox" onchange="selectAll(this)"></th>
+      <th>Name</th><th>Email</th><th>Level</th><th>Status</th><th>Last sent</th><th>Actions</th>
+    </tr></thead>
+    <tbody id="contact-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- LEVELS -->
+<div id="page-levels" class="page">
+  <div class="ph">
+    <div><div class="ph-title">Quản lý Levels</div><div class="ph-sub">Tạo level mới, level con và tuỳ chỉnh phân cấp khách hàng</div></div>
+    <button class="btn btn-primary" onclick="openAddLevel()">⊕ Thêm Level mới</button>
+  </div>
+  <div class="level-manager-grid">
+    <div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Danh sách tất cả Levels</div>
+          <span style="font-family:var(--fm);font-size:11px;color:var(--muted)" id="level-total-count"></span>
+        </div>
+        <div class="card-body" style="padding:0" id="level-list-body"></div>
+      </div>
+    </div>
+    <div>
+      <div class="new-level-form">
+        <div class="new-level-title">⊕ Thêm Level nhanh</div>
+        <div class="fg">
+          <label class="fl">Tên Level</label>
+          <input class="fi" id="ql-name" placeholder="VD: L1.1, L5, VIP-GOLD">
+        </div>
+        <div class="fg">
+          <label class="fl">Level cha</label>
+          <select class="fsel" id="ql-parent" onchange="updateQuickPreview()">
+            <option value="">— Level gốc —</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="fl">Màu</label>
+          <div class="color-row" id="ql-colors">
+            <div class="color-opt selected" style="background:#f5c842" data-color="#f5c842" onclick="pickColorQuick(this)"></div>
+            <div class="color-opt" style="background:#3de8a0" data-color="#3de8a0" onclick="pickColorQuick(this)"></div>
+            <div class="color-opt" style="background:#5ba8ff" data-color="#5ba8ff" onclick="pickColorQuick(this)"></div>
+            <div class="color-opt" style="background:#c97ef5" data-color="#c97ef5" onclick="pickColorQuick(this)"></div>
+            <div class="color-opt" style="background:#ff7eb3" data-color="#ff7eb3" onclick="pickColorQuick(this)"></div>
+            <div class="color-opt" style="background:#ff9f5b" data-color="#ff9f5b" onclick="pickColorQuick(this)"></div>
+            <div class="color-opt" style="background:#5be8e8" data-color="#5be8e8" onclick="pickColorQuick(this)"></div>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl">Mô tả</label>
+          <input class="fi" id="ql-desc" placeholder="Mô tả ngắn...">
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="saveQuickLevel()">Tạo Level</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Hướng dẫn phân cấp</div></div>
+        <div class="card-body" style="font-size:12.5px;color:var(--muted);line-height:1.8">
+          <p style="margin-bottom:8px"><strong style="color:var(--text)">Level gốc:</strong> L1, L2, L3, L4 — 4 cấp chính mặc định</p>
+          <p style="margin-bottom:8px"><strong style="color:var(--text)">Level con:</strong> Chọn "Level cha" → tạo phân cấp nhỏ hơn<br>VD: L1.1, L1.2 thuộc L1</p>
+          <p style="margin-bottom:8px"><strong style="color:var(--text)">Level mới:</strong> Tạo L5, L6... hoặc đặt tên tuỳ ý như VIP-GOLD</p>
+          <p><strong style="color:var(--text)">Lưu ý:</strong> Khi gửi campaign theo L1, toàn bộ L1.1, L1.2... cũng được tính vào</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TEMPLATES -->
+<div id="page-templates" class="page">
+  <div class="ph">
+    <div><div class="ph-title">Email Templates</div><div class="ph-sub">Chọn mẫu, chỉnh sửa nội dung và lưu template</div></div>
+    <div class="btn-row">
+      <button class="btn" onclick="newBlankTemplate()">+ Template trống</button>
+      <button class="btn btn-primary" onclick="saveCurrentTemplate()">💾 Lưu template</button>
+    </div>
+  </div>
+
+  <!-- Template library -->
+  <div style="font-family:var(--fm);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Thư viện mẫu</div>
+  <div class="tmpl-grid" id="template-grid"></div>
+
+  <!-- Editor -->
+  <div class="tmpl-editor-wrap">
+    <div class="editor-toolbar">
+      <span class="editor-toolbar-label">Editor</span>
+      <button class="editor-btn active-mode" id="btn-mode-split" onclick="setEditorMode('split')">Split</button>
+      <button class="editor-btn" id="btn-mode-code" onclick="setEditorMode('code')">Code</button>
+      <button class="editor-btn" id="btn-mode-preview" onclick="setEditorMode('preview')">Preview</button>
+      <div style="width:1px;height:18px;background:var(--border);margin:0 4px"></div>
+      <span class="editor-toolbar-label">Biến:</span>
+      <div class="var-pills" style="margin-top:0">
+        <span class="var-pill" onclick="insertTmplVar('{{name}}')">{{name}}</span>
+        <span class="var-pill" onclick="insertTmplVar('{{email}}')">{{email}}</span>
+        <span class="var-pill" onclick="insertTmplVar('{{level}}')">{{level}}</span>
+        <span class="var-pill" onclick="insertTmplVar('{{company}}')">{{company}}</span>
+        <span class="var-pill" onclick="insertTmplVar('{{date}}')">{{date}}</span>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <input class="fi" style="width:200px;padding:5px 10px;font-size:12px" id="tmpl-name-input" placeholder="Tên template...">
+      </div>
+    </div>
+    <div class="editor-area" id="editor-area">
+      <div class="editor-pane" id="code-pane">
+        <div class="editor-pane-hd">HTML / TEXT</div>
+        <textarea class="editor-textarea" id="tmpl-code" oninput="updatePreview()" spellcheck="false"></textarea>
+      </div>
+      <div class="editor-pane" id="preview-pane-wrap">
+        <div class="editor-pane-hd">Preview (sample data)</div>
+        <div class="preview-pane" id="tmpl-preview-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CAMPAIGN -->
+<div id="page-campaign" class="page">
+  <div class="ph">
+    <div><div class="ph-title">New Campaign</div><div class="ph-sub">Soạn email và chọn phân cấp khách hàng</div></div>
+  </div>
+  <div class="prog-wrap" id="send-progress">
+    <div class="prog-hd"><div class="prog-lbl">Đang gửi campaign...</div><div class="prog-pct" id="prog-pct">0%</div></div>
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+    <div class="prog-steps">
+      <span class="pstep run" id="ps1">Validating list</span>
+      <span class="pstep" id="ps2">Filter by level</span>
+      <span class="pstep" id="ps3">Sending emails</span>
+      <span class="pstep" id="ps4">Logging results</span>
+    </div>
+  </div>
+  <div class="cg">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Email Content</div>
+        <div style="display:flex;gap:6px">
+          <select class="fsel" style="padding:4px 10px;font-size:12px;width:auto" onchange="loadTemplateIntoCampaign(this.value)" id="tmpl-picker">
+            <option value="">— Load template —</option>
+          </select>
+          <button class="btn" style="font-size:11.5px">Preview</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="fg"><label class="fl">Campaign Name</label><input class="fi" id="c-name" placeholder="VD: Newsletter tháng 6 UCMAS"></div>
+        <div class="fg"><label class="fl">From Name</label><input class="fi" id="c-from" value="UCMAS Vietnam"></div>
+        <div class="fg"><label class="fl">Subject — hỗ trợ {{name}}, {{level}}</label><input class="fi" id="c-subject" placeholder="Xin chào {{name}} — Thông báo từ UCMAS"></div>
+        <div class="fg">
+          <label class="fl">Nội dung email</label>
+          <textarea class="fta" style="min-height:160px" id="c-body" placeholder="Xin chào {{name}},&#10;&#10;Nội dung email dành cho khách hàng {{level}}...&#10;&#10;Trân trọng,&#10;UCMAS Vietnam"></textarea>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span style="font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);line-height:28px">Chèn biến:</span>
+          <button class="abtn" onclick="insertCampaignVar('{{name}}')">{{name}}</button>
+          <button class="abtn" onclick="insertCampaignVar('{{email}}')">{{email}}</button>
+          <button class="abtn" onclick="insertCampaignVar('{{level}}')">{{level}}</button>
+          <button class="abtn" onclick="insertCampaignVar('{{company}}')">{{company}}</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Target Segments</div>
+          <span style="font-family:var(--fm);font-size:11px;color:var(--muted)" id="c-total-label">0 recipients</span>
+        </div>
+        <div class="card-body"><div class="lts" id="campaign-level-targets"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Send Summary</div></div>
+        <div class="card-body">
+          <div class="sum-box">
+            <div class="sum-row"><span class="sl">Total recipients</span><span class="sv" id="s-total" style="color:var(--accent2)">0</span></div>
+            <div class="sum-row"><span class="sl">Segments</span><span class="sv" id="s-segs">—</span></div>
+            <div class="sum-div"></div>
+            <div class="sum-row"><span class="sl">Delay / email</span><span class="sv">200ms</span></div>
+            <div class="sum-row"><span class="sl">Est. time</span><span class="sv" id="s-time">—</span></div>
+            <div class="sum-row"><span class="sl">Rate limit</span><span class="sv" style="color:var(--ok)">✓ Safe</span></div>
+          </div>
+          <button class="send-btn" onclick="startSend()">✉ Send Campaign</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="page-history" class="page">
+  <div class="ph">
+    <div><div class="ph-title">Campaign History</div><div class="ph-sub">Lịch sử gửi và log chi tiết</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">All Campaigns</div></div>
+    <div class="card-body" style="padding:0 18px">
+      <div class="h-item">
+        <div class="h-icon ok">✉</div>
+        <div style="flex:1"><div class="h-title">Chương trình UCMAS Tháng 5</div><div class="h-meta"><span class="lt lt1">L1</span> · 22/05/2025 14:32</div></div>
+        <div class="h-stats"><div class="h-sent" style="color:var(--ok)">48/48</div><div class="h-rate">100% · 0 failed</div></div>
+        <button class="abtn" style="margin-left:12px">Export</button>
+      </div>
+      <div class="h-item">
+        <div class="h-icon partial">✉</div>
+        <div style="flex:1"><div class="h-title">Newsletter Q2 2025</div><div class="h-meta"><span class="lt lt1">L1</span><span class="lt lt2">L2</span><span class="lt lt3">L3</span> · 15/05/2025 09:15</div></div>
+        <div class="h-stats"><div class="h-sent" style="color:var(--warn)">238/246</div><div class="h-rate">96.7% · 8 failed</div></div>
+        <button class="abtn" style="margin-left:12px">Export</button>
+      </div>
+      <div class="h-item">
+        <div class="h-icon ok">✉</div>
+        <div style="flex:1"><div class="h-title">Welcome Series</div><div class="h-meta"><span class="lt lt4">L4</span> · 10/05/2025 10:00</div></div>
+        <div class="h-stats"><div class="h-sent" style="color:var(--ok)">38/38</div><div class="h-rate">100% · 0 failed</div></div>
+        <button class="abtn" style="margin-left:12px">Export</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DATABASE -->
+<div id="page-database" class="page">
+  <div class="ph">
+    <div><div class="ph-title">Database — Supabase</div><div class="ph-sub">Setup, schema, SQL scripts và kết nối cho UCMAS MAIL</div></div>
+    <div class="btn-row">
+      <button class="btn" onclick="testDbConnection()">⚡ Test Connection</button>
+      <button class="btn btn-primary" onclick="copyAllSQL()">Copy toàn bộ SQL</button>
+    </div>
+  </div>
+
+  <!-- Connection status bar -->
+  <div class="db-conn-status">
+    <div class="db-conn-dot disconnected" id="db-dot"></div>
+    <div style="flex:1">
+      <div style="font-weight:500;font-size:13px" id="db-status-text">Chưa kết nối — Nhập Supabase URL và Key bên dưới</div>
+      <div style="color:var(--muted);font-size:11.5px;margin-top:2px" id="db-status-sub">Cần điền SUPABASE_URL và SUPABASE_ANON_KEY để kết nối</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="gotoDbPanel('setup')" style="font-size:11.5px">Setup Guide</button>
+      <button class="btn btn-primary" onclick="testDbConnection()" style="font-size:11.5px" id="db-test-btn">Test Connection</button>
+    </div>
+  </div>
+
+  <div class="db-setup-grid">
+    <!-- LEFT: step nav -->
+    <div class="db-steps-nav">
+      <div style="font-family:var(--fm);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);padding:4px 12px 10px">Setup Guide</div>
+      <button class="db-step-btn active" id="dbstep-setup" onclick="gotoDbPanel('setup')">
+        <span class="db-step-num">1</span>Tạo Supabase project
+      </button>
+      <button class="db-step-btn" id="dbstep-schema" onclick="gotoDbPanel('schema')">
+        <span class="db-step-num">2</span>Database Schema
+      </button>
+      <button class="db-step-btn" id="dbstep-sql" onclick="gotoDbPanel('sql')">
+        <span class="db-step-num">3</span>Chạy SQL Scripts
+      </button>
+      <button class="db-step-btn" id="dbstep-connect" onclick="gotoDbPanel('connect')">
+        <span class="db-step-num">4</span>Kết nối App
+      </button>
+      <button class="db-step-btn" id="dbstep-env" onclick="gotoDbPanel('env')">
+        <span class="db-step-num">5</span>Env Variables
+      </button>
+      <button class="db-step-btn" id="dbstep-rls" onclick="gotoDbPanel('rls')">
+        <span class="db-step-num">6</span>Security & RLS
+      </button>
+      <div style="height:1px;background:var(--border);margin:10px 12px"></div>
+      <div style="font-family:var(--fm);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);padding:4px 12px 10px">Tables</div>
+      <button class="db-step-btn" onclick="gotoDbPanel('tbl-contacts')"><span style="width:8px;height:8px;border-radius:2px;background:var(--l2);display:inline-block"></span>contacts</button>
+      <button class="db-step-btn" onclick="gotoDbPanel('tbl-levels')"><span style="width:8px;height:8px;border-radius:2px;background:var(--l1);display:inline-block"></span>levels</button>
+      <button class="db-step-btn" onclick="gotoDbPanel('tbl-campaigns')"><span style="width:8px;height:8px;border-radius:2px;background:var(--l3);display:inline-block"></span>campaigns</button>
+      <button class="db-step-btn" onclick="gotoDbPanel('tbl-send-logs')"><span style="width:8px;height:8px;border-radius:2px;background:var(--l4);display:inline-block"></span>send_logs</button>
+      <button class="db-step-btn" onclick="gotoDbPanel('tbl-templates')"><span style="width:8px;height:8px;border-radius:2px;background:#ff9f5b;display:inline-block"></span>templates</button>
+    </div>
+
+    <!-- RIGHT: panels -->
+    <div>
+
+      <!-- PANEL: setup -->
+      <div class="db-panel active" id="dbpanel-setup">
+        <div class="db-section">
+          <div class="db-section-title">🚀 Tạo Supabase Project</div>
+          <div class="db-section-sub">Supabase là database cloud miễn phí (PostgreSQL), phù hợp hoàn toàn cho UCMAS MAIL. Free tier: <strong style="color:var(--text)">500MB · 50,000 rows · 2GB bandwidth/tháng</strong> — dư dùng.</div>
+          <div class="info-box">Bước 1–4 chỉ cần làm <strong>một lần duy nhất</strong>. Sau đó data tự đồng bộ giữa mọi thiết bị.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+              <div style="font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Bước 1</div>
+              <div style="font-weight:600;font-size:13.5px;margin-bottom:5px">Tạo tài khoản</div>
+              <div style="color:var(--muted);font-size:12.5px;line-height:1.6">Vào <span style="color:var(--accent2);font-family:var(--fm)">supabase.com</span> → Sign up bằng GitHub hoặc email</div>
+            </div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+              <div style="font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Bước 2</div>
+              <div style="font-weight:600;font-size:13.5px;margin-bottom:5px">New Project</div>
+              <div style="color:var(--muted);font-size:12.5px;line-height:1.6">Tạo project mới → Đặt tên <span style="color:var(--l2);font-family:var(--fm)">ucmas-mail</span> → Region: <span style="color:var(--l2);font-family:var(--fm)">Southeast Asia</span></div>
+            </div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+              <div style="font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Bước 3</div>
+              <div style="font-weight:600;font-size:13.5px;margin-bottom:5px">Lấy API Keys</div>
+              <div style="color:var(--muted);font-size:12.5px;line-height:1.6">Settings → API → Copy <span style="color:var(--l1);font-family:var(--fm)">Project URL</span> và <span style="color:var(--l1);font-family:var(--fm)">anon key</span></div>
+            </div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+              <div style="font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Bước 4</div>
+              <div style="font-weight:600;font-size:13.5px;margin-bottom:5px">Chạy SQL</div>
+              <div style="color:var(--muted);font-size:12.5px;line-height:1.6">SQL Editor → paste SQL từ <button class="db-step-btn" onclick="gotoDbPanel('sql')" style="display:inline;padding:0;color:var(--accent2);font-size:12.5px">bước 3</button> → Run</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="gotoDbPanel('schema')">Tiếp theo: Xem Schema →</button>
+        </div>
+      </div>
+
+      <!-- PANEL: schema -->
+      <div class="db-panel" id="dbpanel-schema">
+        <div class="db-section">
+          <div class="db-section-title">🗄 Database Schema — 5 Tables</div>
+          <div class="db-section-sub">Toàn bộ dữ liệu UCMAS MAIL được lưu trong 5 bảng PostgreSQL. Các bảng liên kết với nhau qua foreign keys.</div>
+          <div class="table-visual">
+            <div class="table-box">
+              <div class="table-box-header"><div class="table-box-name">levels</div><span class="table-box-badge">5 cols</span></div>
+              <div class="table-box-fields">
+                <div class="table-field"><span class="field-pk">⬡</span><span class="field-name">id</span><span class="field-type">uuid PK</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">name</span><span class="field-type">text unique</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">color</span><span class="field-type">text</span></div>
+                <div class="table-field"><span class="field-fk">⬡</span><span class="field-name">parent_id</span><span class="field-type">uuid FK→levels</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">description</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">created_at</span><span class="field-type">timestamptz</span></div>
+              </div>
+            </div>
+            <div class="rel-arrow">→</div>
+            <div class="table-box">
+              <div class="table-box-header"><div class="table-box-name">contacts</div><span class="table-box-badge">9 cols</span></div>
+              <div class="table-box-fields">
+                <div class="table-field"><span class="field-pk">⬡</span><span class="field-name">id</span><span class="field-type">uuid PK</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">name</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">email</span><span class="field-type">text unique</span></div>
+                <div class="table-field"><span class="field-fk">⬡</span><span class="field-name">level_id</span><span class="field-type">uuid FK→levels</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">company</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">phone</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">status</span><span class="field-type">enum</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">last_sent_at</span><span class="field-type">timestamptz</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">created_at</span><span class="field-type">timestamptz</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="table-visual">
+            <div class="table-box">
+              <div class="table-box-header"><div class="table-box-name">templates</div><span class="table-box-badge">6 cols</span></div>
+              <div class="table-box-fields">
+                <div class="table-field"><span class="field-pk">⬡</span><span class="field-name">id</span><span class="field-type">uuid PK</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">name</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">icon</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">description</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">body</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">tags</span><span class="field-type">text[]</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">created_at</span><span class="field-type">timestamptz</span></div>
+              </div>
+            </div>
+            <div class="rel-arrow">→</div>
+            <div class="table-box">
+              <div class="table-box-header"><div class="table-box-name">campaigns</div><span class="table-box-badge">11 cols</span></div>
+              <div class="table-box-fields">
+                <div class="table-field"><span class="field-pk">⬡</span><span class="field-name">id</span><span class="field-type">uuid PK</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">name</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">from_name</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">from_email</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">subject</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">body_text</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">target_levels</span><span class="field-type">text[]</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">status</span><span class="field-type">enum</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">sent_count</span><span class="field-type">int4</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">failed_count</span><span class="field-type">int4</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">sent_at</span><span class="field-type">timestamptz</span></div>
+              </div>
+            </div>
+            <div class="rel-arrow">→</div>
+            <div class="table-box">
+              <div class="table-box-header"><div class="table-box-name">send_logs</div><span class="table-box-badge">8 cols</span></div>
+              <div class="table-box-fields">
+                <div class="table-field"><span class="field-pk">⬡</span><span class="field-name">id</span><span class="field-type">uuid PK</span></div>
+                <div class="table-field"><span class="field-fk">⬡</span><span class="field-name">campaign_id</span><span class="field-type">uuid FK</span></div>
+                <div class="table-field"><span class="field-fk">⬡</span><span class="field-name">contact_id</span><span class="field-type">uuid FK</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">email</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">level</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">status</span><span class="field-type">enum</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">resend_id</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">error_msg</span><span class="field-type">text</span></div>
+                <div class="table-field"><span style="color:var(--muted)">·</span><span class="field-name">sent_at</span><span class="field-type">timestamptz</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;font-family:var(--fm);font-size:11.5px;color:var(--muted);margin-bottom:16px">
+            <span><span class="field-pk">⬡</span> Primary Key</span>
+            <span><span class="field-fk">⬡</span> Foreign Key</span>
+          </div>
+          <button class="btn btn-primary" onclick="gotoDbPanel('sql')">Tiếp theo: SQL Scripts →</button>
+        </div>
+      </div>
+
+      <!-- PANEL: sql -->
+      <div class="db-panel" id="dbpanel-sql">
+        <div class="db-section">
+          <div class="db-section-title">📋 SQL Scripts — Chạy trong Supabase SQL Editor</div>
+          <div class="db-section-sub">Copy từng block hoặc copy toàn bộ → vào <span style="color:var(--accent2)">Supabase Dashboard → SQL Editor → New query</span> → Paste → Run (F5)</div>
+          <div class="info-box">Chạy theo thứ tự: <strong>1. Types → 2. Tables → 3. Indexes → 4. RLS → 5. Seed data</strong></div>
+
+          <div class="db-tab-row">
+            <button class="db-tab active" id="sqltab-tables" onclick="switchSqlTab('tables')">Tables</button>
+            <button class="db-tab" id="sqltab-indexes" onclick="switchSqlTab('indexes')">Indexes</button>
+            <button class="db-tab" id="sqltab-rls" onclick="switchSqlTab('rls-sql')">Row Level Security</button>
+            <button class="db-tab" id="sqltab-seed" onclick="switchSqlTab('seed')">Seed Data</button>
+          </div>
+
+          <div id="sql-tables">
+<div class="code-block">
+  <div class="code-block-header"><span class="code-block-lang">SQL — Create all tables</span><button class="code-block-copy" onclick="copyCode('sql-tables-code')">Copy</button></div>
+  <pre id="sql-tables-code"><span class="sql-cm">-- ═══ UCMAS MAIL — Complete Database Schema ═══
+-- Run this in Supabase SQL Editor</span>
+
+<span class="sql-cm">-- 1. Custom ENUM types</span>
+<span class="sql-kw">CREATE TYPE</span> contact_status <span class="sql-kw">AS ENUM</span> (<span class="sql-str">'active'</span>, <span class="sql-str">'unsubscribed'</span>, <span class="sql-str">'bounced'</span>);
+<span class="sql-kw">CREATE TYPE</span> campaign_status <span class="sql-kw">AS ENUM</span> (<span class="sql-str">'draft'</span>, <span class="sql-str">'sending'</span>, <span class="sql-str">'completed'</span>, <span class="sql-str">'failed'</span>);
+<span class="sql-kw">CREATE TYPE</span> send_status    <span class="sql-kw">AS ENUM</span> (<span class="sql-str">'sent'</span>, <span class="sql-str">'failed'</span>, <span class="sql-str">'skipped'</span>);
+
+<span class="sql-cm">-- 2. levels table (self-referencing for sub-levels)</span>
+<span class="sql-kw">CREATE TABLE</span> levels (
+  id          <span class="sql-type">uuid</span>         <span class="sql-kw">DEFAULT</span> <span class="sql-fn">gen_random_uuid</span>() <span class="sql-kw">PRIMARY KEY</span>,
+  name        <span class="sql-type">text</span>         <span class="sql-kw">NOT NULL UNIQUE</span>,
+  color       <span class="sql-type">text</span>         <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-str">'#5ba8ff'</span>,
+  parent_id   <span class="sql-type">uuid</span>         <span class="sql-kw">REFERENCES</span> levels(id) <span class="sql-kw">ON DELETE SET NULL</span>,
+  description <span class="sql-type">text</span>,
+  sort_order  <span class="sql-type">int4</span>         <span class="sql-kw">DEFAULT</span> 0,
+  created_at  <span class="sql-type">timestamptz</span>  <span class="sql-kw">DEFAULT</span> <span class="sql-fn">now</span>()
+);
+
+<span class="sql-cm">-- 3. contacts table</span>
+<span class="sql-kw">CREATE TABLE</span> contacts (
+  id          <span class="sql-type">uuid</span>           <span class="sql-kw">DEFAULT</span> <span class="sql-fn">gen_random_uuid</span>() <span class="sql-kw">PRIMARY KEY</span>,
+  name        <span class="sql-type">text</span>           <span class="sql-kw">NOT NULL</span>,
+  email       <span class="sql-type">text</span>           <span class="sql-kw">NOT NULL UNIQUE</span>,
+  level_id    <span class="sql-type">uuid</span>           <span class="sql-kw">REFERENCES</span> levels(id) <span class="sql-kw">ON DELETE SET NULL</span>,
+  company     <span class="sql-type">text</span>,
+  phone       <span class="sql-type">text</span>,
+  tags        <span class="sql-type">text[]</span>         <span class="sql-kw">DEFAULT</span> <span class="sql-str">'{}'</span>,
+  status      contact_status  <span class="sql-kw">DEFAULT</span> <span class="sql-str">'active'</span>,
+  last_sent_at <span class="sql-type">timestamptz</span>,
+  created_at  <span class="sql-type">timestamptz</span>    <span class="sql-kw">DEFAULT</span> <span class="sql-fn">now</span>()
+);
+
+<span class="sql-cm">-- 4. templates table</span>
+<span class="sql-kw">CREATE TABLE</span> templates (
+  id          <span class="sql-type">uuid</span>         <span class="sql-kw">DEFAULT</span> <span class="sql-fn">gen_random_uuid</span>() <span class="sql-kw">PRIMARY KEY</span>,
+  name        <span class="sql-type">text</span>         <span class="sql-kw">NOT NULL</span>,
+  icon        <span class="sql-type">text</span>         <span class="sql-kw">DEFAULT</span> <span class="sql-str">'📄'</span>,
+  description <span class="sql-type">text</span>,
+  body        <span class="sql-type">text</span>         <span class="sql-kw">NOT NULL</span>,
+  tags        <span class="sql-type">text[]</span>       <span class="sql-kw">DEFAULT</span> <span class="sql-str">'{}'</span>,
+  created_at  <span class="sql-type">timestamptz</span>  <span class="sql-kw">DEFAULT</span> <span class="sql-fn">now</span>(),
+  updated_at  <span class="sql-type">timestamptz</span>  <span class="sql-kw">DEFAULT</span> <span class="sql-fn">now</span>()
+);
+
+<span class="sql-cm">-- 5. campaigns table</span>
+<span class="sql-kw">CREATE TABLE</span> campaigns (
+  id            <span class="sql-type">uuid</span>            <span class="sql-kw">DEFAULT</span> <span class="sql-fn">gen_random_uuid</span>() <span class="sql-kw">PRIMARY KEY</span>,
+  name          <span class="sql-type">text</span>            <span class="sql-kw">NOT NULL</span>,
+  from_name     <span class="sql-type">text</span>            <span class="sql-kw">NOT NULL</span>,
+  from_email    <span class="sql-type">text</span>            <span class="sql-kw">NOT NULL</span>,
+  subject       <span class="sql-type">text</span>            <span class="sql-kw">NOT NULL</span>,
+  body_text     <span class="sql-type">text</span>            <span class="sql-kw">NOT NULL</span>,
+  target_levels <span class="sql-type">text[]</span>          <span class="sql-kw">DEFAULT</span> <span class="sql-str">'{}'</span>,
+  status        campaign_status  <span class="sql-kw">DEFAULT</span> <span class="sql-str">'draft'</span>,
+  sent_count    <span class="sql-type">int4</span>            <span class="sql-kw">DEFAULT</span> 0,
+  failed_count  <span class="sql-type">int4</span>            <span class="sql-kw">DEFAULT</span> 0,
+  created_at    <span class="sql-type">timestamptz</span>     <span class="sql-kw">DEFAULT</span> <span class="sql-fn">now</span>(),
+  sent_at       <span class="sql-type">timestamptz</span>
+);
+
+<span class="sql-cm">-- 6. send_logs table</span>
+<span class="sql-kw">CREATE TABLE</span> send_logs (
+  id           <span class="sql-type">uuid</span>         <span class="sql-kw">DEFAULT</span> <span class="sql-fn">gen_random_uuid</span>() <span class="sql-kw">PRIMARY KEY</span>,
+  campaign_id  <span class="sql-type">uuid</span>         <span class="sql-kw">NOT NULL REFERENCES</span> campaigns(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+  contact_id   <span class="sql-type">uuid</span>         <span class="sql-kw">REFERENCES</span> contacts(id) <span class="sql-kw">ON DELETE SET NULL</span>,
+  email        <span class="sql-type">text</span>         <span class="sql-kw">NOT NULL</span>,
+  level        <span class="sql-type">text</span>,
+  status       send_status  <span class="sql-kw">NOT NULL</span>,
+  resend_id    <span class="sql-type">text</span>,
+  error_msg    <span class="sql-type">text</span>,
+  sent_at      <span class="sql-type">timestamptz</span>  <span class="sql-kw">DEFAULT</span> <span class="sql-fn">now</span>()
+);</pre>
+</div>
+          </div>
+
+          <div id="sql-indexes" style="display:none">
+<div class="code-block">
+  <div class="code-block-header"><span class="code-block-lang">SQL — Indexes (performance)</span><button class="code-block-copy" onclick="copyCode('sql-idx-code')">Copy</button></div>
+  <pre id="sql-idx-code"><span class="sql-cm">-- Indexes giúp query nhanh hơn khi filter theo level, email, campaign</span>
+
+<span class="sql-kw">CREATE INDEX</span> idx_contacts_level    <span class="sql-kw">ON</span> contacts(level_id);
+<span class="sql-kw">CREATE INDEX</span> idx_contacts_email    <span class="sql-kw">ON</span> contacts(email);
+<span class="sql-kw">CREATE INDEX</span> idx_contacts_status   <span class="sql-kw">ON</span> contacts(status);
+<span class="sql-kw">CREATE INDEX</span> idx_levels_parent     <span class="sql-kw">ON</span> levels(parent_id);
+<span class="sql-kw">CREATE INDEX</span> idx_send_logs_camp    <span class="sql-kw">ON</span> send_logs(campaign_id);
+<span class="sql-kw">CREATE INDEX</span> idx_send_logs_contact <span class="sql-kw">ON</span> send_logs(contact_id);
+<span class="sql-kw">CREATE INDEX</span> idx_send_logs_status  <span class="sql-kw">ON</span> send_logs(status);
+<span class="sql-kw">CREATE INDEX</span> idx_campaigns_status  <span class="sql-kw">ON</span> campaigns(status);
+
+<span class="sql-cm">-- Auto-update updated_at cho templates</span>
+<span class="sql-kw">CREATE OR REPLACE FUNCTION</span> <span class="sql-fn">update_updated_at</span>()
+<span class="sql-kw">RETURNS TRIGGER AS</span> $$
+<span class="sql-kw">BEGIN</span>
+  NEW.updated_at = <span class="sql-fn">now</span>();
+  <span class="sql-kw">RETURN</span> NEW;
+<span class="sql-kw">END</span>;
+$$ <span class="sql-kw">LANGUAGE</span> plpgsql;
+
+<span class="sql-kw">CREATE TRIGGER</span> templates_updated_at
+  <span class="sql-kw">BEFORE UPDATE ON</span> templates
+  <span class="sql-kw">FOR EACH ROW EXECUTE FUNCTION</span> <span class="sql-fn">update_updated_at</span>();
+
+<span class="sql-cm">-- View: contacts với level name (JOIN sẵn)</span>
+<span class="sql-kw">CREATE VIEW</span> contacts_with_level <span class="sql-kw">AS</span>
+  <span class="sql-kw">SELECT</span> c.*, l.name <span class="sql-kw">AS</span> level_name, l.color <span class="sql-kw">AS</span> level_color, l.parent_id
+  <span class="sql-kw">FROM</span> contacts c
+  <span class="sql-kw">LEFT JOIN</span> levels l <span class="sql-kw">ON</span> c.level_id = l.id;</pre>
+</div>
+          </div>
+
+          <div id="sql-rls-sql" style="display:none">
+<div class="code-block">
+  <div class="code-block-header"><span class="code-block-lang">SQL — Row Level Security</span><button class="code-block-copy" onclick="copyCode('sql-rls-code')">Copy</button></div>
+  <pre id="sql-rls-code"><span class="sql-cm">-- Bật RLS (Row Level Security) cho mọi bảng
+-- Quan trọng: không bật RLS → data public với anon key!</span>
+
+<span class="sql-kw">ALTER TABLE</span> levels     <span class="sql-kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="sql-kw">ALTER TABLE</span> contacts   <span class="sql-kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="sql-kw">ALTER TABLE</span> templates  <span class="sql-kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="sql-kw">ALTER TABLE</span> campaigns  <span class="sql-kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="sql-kw">ALTER TABLE</span> send_logs  <span class="sql-kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="sql-cm">-- Policy: Chỉ authenticated users được đọc/ghi
+-- (Dùng service_role key từ backend để bypass RLS)</span>
+
+<span class="sql-kw">CREATE POLICY</span> <span class="sql-str">"auth_read_levels"</span>     <span class="sql-kw">ON</span> levels     <span class="sql-kw">FOR SELECT TO</span> authenticated <span class="sql-kw">USING</span> (<span class="sql-kw">true</span>);
+<span class="sql-kw">CREATE POLICY</span> <span class="sql-str">"auth_write_levels"</span>    <span class="sql-kw">ON</span> levels     <span class="sql-kw">FOR ALL    TO</span> authenticated <span class="sql-kw">USING</span> (<span class="sql-kw">true</span>);
+<span class="sql-kw">CREATE POLICY</span> <span class="sql-str">"auth_read_contacts"</span>   <span class="sql-kw">ON</span> contacts   <span class="sql-kw">FOR SELECT TO</span> authenticated <span class="sql-kw">USING</span> (<span class="sql-kw">true</span>);
+<span class="sql-kw">CREATE POLICY</span> <span class="sql-str">"auth_write_contacts"</span>  <span class="sql-kw">ON</span> contacts   <span class="sql-kw">FOR ALL    TO</span> authenticated <span class="sql-kw">USING</span> (<span class="sql-kw">true</span>);
+<span class="sql-kw">CREATE POLICY</span> <span class="sql-str">"auth_read_templates"</span>  <span class="sql-kw">ON</span> templates  <span class="sql-kw">FOR SELECT TO</span> authenticated <span class="sql-kw">USING</span> (<span class="sql-kw">true</span>);
+<span class="sql-kw">CREATE POLICY</span> <span class="sql-str">"auth_write_templates"</span> <span class="sql-kw">ON</span> templates  <span class="sql-kw">FOR ALL    TO</span> authenticated <span class="sql-kw">USING</span> (<span class="sql-kw">true</span>);
+<span class="sql-kw">CREATE POLICY</span> <span class="sql-str">"auth_read_campaigns"</span>  <span class="sql-kw">ON</span> campaigns  <span class="sql-kw">FOR SELECT TO</span> authenticated <span class="sql-kw">USING</span> (<span class="sql-kw">true</span>);
+<span class="sql-kw">CREATE POLICY</span> <span class="sql-str">"auth_write_campaigns"</span> <span class="sql-kw">ON</span> campaigns  <span class="sql-kw">FOR ALL    TO</span> authenticated <span class="sql-kw">USING</span> (<span class="sql-kw">true</span>);
+<span class="sql-kw">CREATE POLICY</span> <span class="sql-str">"auth_read_logs"</span>       <span class="sql-kw">ON</span> send_logs  <span class="sql-kw">FOR SELECT TO</span> authenticated <span class="sql-kw">USING</span> (<span class="sql-kw">true</span>);
+<span class="sql-kw">CREATE POLICY</span> <span class="sql-str">"auth_write_logs"</span>      <span class="sql-kw">ON</span> send_logs  <span class="sql-kw">FOR ALL    TO</span> authenticated <span class="sql-kw">USING</span> (<span class="sql-kw">true</span>);</pre>
+</div>
+          </div>
+
+          <div id="sql-seed" style="display:none">
+<div class="code-block">
+  <div class="code-block-header"><span class="code-block-lang">SQL — Seed data (4 levels mặc định)</span><button class="code-block-copy" onclick="copyCode('sql-seed-code')">Copy</button></div>
+  <pre id="sql-seed-code"><span class="sql-cm">-- Insert 4 levels mặc định L1–L4</span>
+<span class="sql-kw">INSERT INTO</span> levels (name, color, description, sort_order) <span class="sql-kw">VALUES</span>
+  (<span class="sql-str">'L1'</span>, <span class="sql-str">'#f5c842'</span>, <span class="sql-str">'Khách hàng cấp 1'</span>, 1),
+  (<span class="sql-str">'L2'</span>, <span class="sql-str">'#3de8a0'</span>, <span class="sql-str">'Khách hàng cấp 2'</span>, 2),
+  (<span class="sql-str">'L3'</span>, <span class="sql-str">'#5ba8ff'</span>, <span class="sql-str">'Khách hàng cấp 3'</span>, 3),
+  (<span class="sql-str">'L4'</span>, <span class="sql-str">'#c97ef5'</span>, <span class="sql-str">'Khách hàng cấp 4'</span>, 4);
+
+<span class="sql-cm">-- Insert 5 templates mặc định</span>
+<span class="sql-kw">INSERT INTO</span> templates (name, icon, description, body, tags) <span class="sql-kw">VALUES</span>
+  (<span class="sql-str">'Chào mừng thành viên'</span>, <span class="sql-str">'🎉'</span>, <span class="sql-str">'Chào đón khách hàng mới'</span>,
+   <span class="sql-str">'Xin chào {{name}},\n\nChào mừng bạn đến với UCMAS!\n\nTrân trọng,\nUCMAS Vietnam'</span>,
+   <span class="sql-str">'{welcome,l4}'</span>),
+  (<span class="sql-str">'Ưu đãi VIP độc quyền'</span>, <span class="sql-str">'👑'</span>, <span class="sql-str">'Email ưu đãi cho L1, L2'</span>,
+   <span class="sql-str">'Kính gửi {{name}},\n\nVới tư cách khách hàng {{level}}, bạn có ưu đãi đặc biệt.\n\nTrân trọng,\nUCMAS Vietnam'</span>,
+   <span class="sql-str">'{promo,vip,l1,l2}'</span>),
+  (<span class="sql-str">'Newsletter tháng'</span>, <span class="sql-str">'📰'</span>, <span class="sql-str">'Bản tin hàng tháng'</span>,
+   <span class="sql-str">'Xin chào {{name}},\n\nBản tin UCMAS tháng này đã có!\n\nTrân trọng,\nUCMAS Vietnam'</span>,
+   <span class="sql-str">'{newsletter,monthly}'</span>),
+  (<span class="sql-str">'Nhắc nhở gia hạn'</span>, <span class="sql-str">'⏰'</span>, <span class="sql-str">'Thông báo gia hạn học phí'</span>,
+   <span class="sql-str">'Xin chào {{name}},\n\nHọc phí khoá học sắp hết hạn!\n\nTrân trọng,\nUCMAS Vietnam'</span>,
+   <span class="sql-str">'{renewal}'</span>),
+  (<span class="sql-str">'Template trống'</span>, <span class="sql-str">'📄'</span>, <span class="sql-str">'Bắt đầu từ trang trắng'</span>,
+   <span class="sql-str">'Xin chào {{name}},\n\n[Nội dung]\n\nTrân trọng,\nUCMAS Vietnam'</span>,
+   <span class="sql-str">'{blank}'</span>);</pre>
+</div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:8px" onclick="gotoDbPanel('connect')">Tiếp theo: Kết nối App →</button>
+        </div>
+      </div>
+
+      <!-- PANEL: connect -->
+      <div class="db-panel" id="dbpanel-connect">
+        <div class="db-section">
+          <div class="db-section-title">🔌 Kết nối App với Supabase</div>
+          <div class="db-section-sub">Cài Supabase JS client và copy các hàm helper dưới đây vào project của bạn.</div>
+
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">bash — Install</span><button class="code-block-copy" onclick="copyCode('code-install')">Copy</button></div>
+            <pre id="code-install">npm install @supabase/supabase-js</pre>
+          </div>
+
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">JavaScript — lib/supabase.js</span><button class="code-block-copy" onclick="copyCode('code-client')">Copy</button></div>
+            <pre id="code-client"><span class="js-kw">import</span> { createClient } <span class="js-kw">from</span> <span class="js-str">'@supabase/supabase-js'</span>
+
+<span class="js-kw">const</span> supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL
+<span class="js-kw">const</span> supabaseKey  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+<span class="js-kw">export const</span> supabase = <span class="js-fn">createClient</span>(supabaseUrl, supabaseKey)</pre>
+          </div>
+
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">JavaScript — Contacts CRUD</span><button class="code-block-copy" onclick="copyCode('code-contacts')">Copy</button></div>
+            <pre id="code-contacts"><span class="js-cm">// Lấy tất cả contacts kèm level info</span>
+<span class="js-kw">export async function</span> <span class="js-fn">getContacts</span>(levelId = <span class="js-kw">null</span>) {
+  <span class="js-kw">let</span> query = supabase
+    .from(<span class="js-str">'contacts'</span>)
+    .select(<span class="js-str">'*, levels(name, color, parent_id)'</span>)
+    .eq(<span class="js-str">'status'</span>, <span class="js-str">'active'</span>)
+    .order(<span class="js-str">'created_at'</span>, { ascending: <span class="js-kw">false</span> })
+
+  <span class="js-kw">if</span> (levelId) query = query.eq(<span class="js-str">'level_id'</span>, levelId)
+
+  <span class="js-kw">const</span> { data, error } = <span class="js-kw">await</span> query
+  <span class="js-kw">if</span> (error) <span class="js-kw">throw</span> error
+  <span class="js-kw">return</span> data
+}
+
+<span class="js-cm">// Upsert contacts từ CSV (bulk import)</span>
+<span class="js-kw">export async function</span> <span class="js-fn">upsertContacts</span>(contacts) {
+  <span class="js-kw">const</span> { data, error } = <span class="js-kw">await</span> supabase
+    .from(<span class="js-str">'contacts'</span>)
+    .upsert(contacts, { onConflict: <span class="js-str">'email'</span> })
+    .select()
+  <span class="js-kw">if</span> (error) <span class="js-kw">throw</span> error
+  <span class="js-kw">return</span> data
+}
+
+<span class="js-cm">// Cập nhật level cho 1 contact</span>
+<span class="js-kw">export async function</span> <span class="js-fn">updateContactLevel</span>(contactId, levelId) {
+  <span class="js-kw">const</span> { error } = <span class="js-kw">await</span> supabase
+    .from(<span class="js-str">'contacts'</span>)
+    .update({ level_id: levelId })
+    .eq(<span class="js-str">'id'</span>, contactId)
+  <span class="js-kw">if</span> (error) <span class="js-kw">throw</span> error
+}
+
+<span class="js-cm">// Lấy contacts theo nhiều levels (cho campaign)</span>
+<span class="js-kw">export async function</span> <span class="js-fn">getContactsByLevels</span>(levelIds) {
+  <span class="js-kw">const</span> { data, error } = <span class="js-kw">await</span> supabase
+    .from(<span class="js-str">'contacts'</span>)
+    .select(<span class="js-str">'*, levels(name)'</span>)
+    .in(<span class="js-str">'level_id'</span>, levelIds)
+    .eq(<span class="js-str">'status'</span>, <span class="js-str">'active'</span>)
+  <span class="js-kw">if</span> (error) <span class="js-kw">throw</span> error
+  <span class="js-kw">return</span> data
+}</pre>
+          </div>
+
+          <div class="code-block">
+            <div class="code-block-header"><span class="code-block-lang">JavaScript — Campaign & Logs</span><button class="code-block-copy" onclick="copyCode('code-campaign')">Copy</button></div>
+            <pre id="code-campaign"><span class="js-cm">// Tạo campaign mới</span>
+<span class="js-kw">export async function</span> <span class="js-fn">createCampaign</span>(payload) {
+  <span class="js-kw">const</span> { data, error } = <span class="js-kw">await</span> supabase
+    .from(<span class="js-str">'campaigns'</span>)
+    .insert(payload)
+    .select()
+    .single()
+  <span class="js-kw">if</span> (error) <span class="js-kw">throw</span> error
+  <span class="js-kw">return</span> data
+}
+
+<span class="js-cm">// Lưu send log sau mỗi email gửi</span>
+<span class="js-kw">export async function</span> <span class="js-fn">logSend</span>(campaignId, contact, status, resendId, errorMsg) {
+  <span class="js-kw">await</span> supabase.from(<span class="js-str">'send_logs'</span>).insert({
+    campaign_id: campaignId,
+    contact_id:  contact.id,
+    email:       contact.email,
+    level:       contact.levels?.name,
+    status,
+    resend_id:   resendId,
+    error_msg:   errorMsg
+  })
+}
+
+<span class="js-cm">// Cập nhật tổng kết campaign khi xong</span>
+<span class="js-kw">export async function</span> <span class="js-fn">finalizeCampaign</span>(campaignId, sentCount, failedCount) {
+  <span class="js-kw">await</span> supabase
+    .from(<span class="js-str">'campaigns'</span>)
+    .update({
+      status: <span class="js-str">'completed'</span>,
+      sent_count:   sentCount,
+      failed_count: failedCount,
+      sent_at:      <span class="js-kw">new</span> Date().toISOString()
+    })
+    .eq(<span class="js-str">'id'</span>, campaignId)
+}
+
+<span class="js-cm">// Lấy send logs của 1 campaign (để export)</span>
+<span class="js-kw">export async function</span> <span class="js-fn">getCampaignLogs</span>(campaignId) {
+  <span class="js-kw">const</span> { data, error } = <span class="js-kw">await</span> supabase
+    .from(<span class="js-str">'send_logs'</span>)
+    .select(<span class="js-str">'*'</span>)
+    .eq(<span class="js-str">'campaign_id'</span>, campaignId)
+    .order(<span class="js-str">'sent_at'</span>)
+  <span class="js-kw">if</span> (error) <span class="js-kw">throw</span> error
+  <span class="js-kw">return</span> data
+}</pre>
+          </div>
+          <button class="btn btn-primary" onclick="gotoDbPanel('env')">Tiếp theo: Env Variables →</button>
+        </div>
+      </div>
+
+      <!-- PANEL: env -->
+      <div class="db-panel" id="dbpanel-env">
+        <div class="db-section">
+          <div class="db-section-title">⚙ Environment Variables</div>
+          <div class="db-section-sub">Điền các giá trị bên dưới — được lưu trong trình duyệt để tiện tham chiếu. Trong app thật, lưu vào file <span style="font-family:var(--fm);color:var(--l2)">.env.local</span></div>
+          <div class="info-box warn">Không bao giờ commit .env.local lên GitHub! Thêm vào .gitignore ngay.</div>
+          <div class="env-row"><span class="env-key">NEXT_PUBLIC_SUPABASE_URL</span><input class="env-input" id="env-sb-url" placeholder="https://xxxxxxxx.supabase.co" oninput="saveEnv()"></div>
+          <div class="env-row"><span class="env-key">NEXT_PUBLIC_SUPABASE_ANON_KEY</span><input class="env-input" id="env-sb-anon" placeholder="eyJhbGciOiJIUzI1NiIs..." oninput="saveEnv()"></div>
+          <div class="env-row"><span class="env-key">SUPABASE_SERVICE_ROLE_KEY</span><input class="env-input" id="env-sb-service" placeholder="eyJhbGciOiJIUzI1NiIs..." oninput="saveEnv()"></div>
+          <div class="env-row"><span class="env-key">RESEND_API_KEY</span><input class="env-input" id="env-resend" placeholder="re_xxxxxxxx" oninput="saveEnv()"></div>
+          <div class="env-row"><span class="env-key">FROM_EMAIL</span><input class="env-input" id="env-from" placeholder="noreply@yourdomain.com" oninput="saveEnv()"></div>
+
+          <div style="margin-top:16px">
+<div class="code-block">
+  <div class="code-block-header"><span class="code-block-lang">.env.local — Copy to project</span><button class="code-block-copy" onclick="copyEnvFile()">Copy</button></div>
+  <pre id="env-preview-block"><span class="js-cm"># Supabase</span>
+NEXT_PUBLIC_SUPABASE_URL=<span id="ep-url" style="color:var(--l2)">https://xxxxxxxx.supabase.co</span>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<span id="ep-anon" style="color:var(--l2)">eyJ...</span>
+SUPABASE_SERVICE_ROLE_KEY=<span id="ep-service" style="color:var(--l2)">eyJ...</span>
+
+<span class="js-cm"># Resend</span>
+RESEND_API_KEY=<span id="ep-resend" style="color:var(--l2)">re_xxxxxxxx</span>
+FROM_EMAIL=<span id="ep-from" style="color:var(--l2)">noreply@yourdomain.com</span>
+
+<span class="js-cm"># App</span>
+NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
+</div>
+          </div>
+          <button class="btn btn-primary" onclick="testDbConnection()">⚡ Test Connection ngay</button>
+        </div>
+      </div>
+
+      <!-- PANEL: rls -->
+      <div class="db-panel" id="dbpanel-rls">
+        <div class="db-section">
+          <div class="db-section-title">🔐 Security & Row Level Security</div>
+          <div class="db-section-sub">RLS đảm bảo chỉ người dùng đã xác thực mới đọc/ghi được data. Đây là lớp bảo mật quan trọng nhất của Supabase.</div>
+          <div class="info-box ok">SQL script RLS đã có ở tab <strong>Step 3 → Row Level Security</strong>. Chạy script đó sau khi tạo xong tables.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px">
+              <div style="font-weight:600;margin-bottom:6px;font-size:13px">anon key</div>
+              <div style="color:var(--muted);font-size:12.5px;line-height:1.7">Dùng ở frontend (public). Bị giới hạn bởi RLS policies. Chỉ đọc được data nếu có policy cho phép.</div>
+            </div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px">
+              <div style="font-weight:600;margin-bottom:6px;font-size:13px">service_role key</div>
+              <div style="color:var(--muted);font-size:12.5px;line-height:1.7">Bypass hoàn toàn RLS. Chỉ dùng ở backend/server. <strong style="color:var(--err)">Không bao giờ expose ra frontend!</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE DETAIL PANELS -->
+      <div class="db-panel" id="dbpanel-tbl-contacts">
+        <div class="db-section-title">Table: contacts</div>
+        <table class="schema-table"><thead><tr><th>Column</th><th>Type</th><th>Required</th><th>Notes</th></tr></thead><tbody>
+          <tr><td><strong>id</strong></td><td class="col-type">uuid PK</td><td class="col-req">✓</td><td class="col-note">Auto-generated</td></tr>
+          <tr><td>name</td><td class="col-type">text</td><td class="col-req">✓</td><td class="col-note">Tên khách hàng</td></tr>
+          <tr><td>email</td><td class="col-type">text UNIQUE</td><td class="col-req">✓</td><td class="col-note">Dùng để upsert khi import</td></tr>
+          <tr><td>level_id</td><td class="col-type">uuid FK</td><td></td><td class="col-note">→ levels.id</td></tr>
+          <tr><td>company</td><td class="col-type">text</td><td></td><td class="col-note">Tổ chức / trung tâm</td></tr>
+          <tr><td>phone</td><td class="col-type">text</td><td></td><td class="col-note">Số điện thoại</td></tr>
+          <tr><td>tags</td><td class="col-type">text[]</td><td></td><td class="col-note">Nhãn tuỳ chọn</td></tr>
+          <tr><td>status</td><td class="col-type">enum</td><td></td><td class="col-note">active / unsubscribed / bounced</td></tr>
+          <tr><td>last_sent_at</td><td class="col-type">timestamptz</td><td></td><td class="col-note">Lần gửi cuối</td></tr>
+          <tr><td>created_at</td><td class="col-type">timestamptz</td><td></td><td class="col-note">Auto-set</td></tr>
+        </tbody></table>
+      </div>
+      <div class="db-panel" id="dbpanel-tbl-levels">
+        <div class="db-section-title">Table: levels</div>
+        <table class="schema-table"><thead><tr><th>Column</th><th>Type</th><th>Required</th><th>Notes</th></tr></thead><tbody>
+          <tr><td><strong>id</strong></td><td class="col-type">uuid PK</td><td class="col-req">✓</td><td class="col-note">Auto-generated</td></tr>
+          <tr><td>name</td><td class="col-type">text UNIQUE</td><td class="col-req">✓</td><td class="col-note">L1, L2, L1.1, VIP-GOLD...</td></tr>
+          <tr><td>color</td><td class="col-type">text</td><td></td><td class="col-note">Hex color #rrggbb</td></tr>
+          <tr><td>parent_id</td><td class="col-type">uuid FK</td><td></td><td class="col-note">→ levels.id (self-ref, cho sub-levels)</td></tr>
+          <tr><td>description</td><td class="col-type">text</td><td></td><td class="col-note">Mô tả level</td></tr>
+          <tr><td>sort_order</td><td class="col-type">int4</td><td></td><td class="col-note">Thứ tự hiển thị</td></tr>
+          <tr><td>created_at</td><td class="col-type">timestamptz</td><td></td><td class="col-note">Auto-set</td></tr>
+        </tbody></table>
+      </div>
+      <div class="db-panel" id="dbpanel-tbl-campaigns">
+        <div class="db-section-title">Table: campaigns</div>
+        <table class="schema-table"><thead><tr><th>Column</th><th>Type</th><th>Required</th><th>Notes</th></tr></thead><tbody>
+          <tr><td><strong>id</strong></td><td class="col-type">uuid PK</td><td class="col-req">✓</td><td class="col-note">Auto-generated</td></tr>
+          <tr><td>name</td><td class="col-type">text</td><td class="col-req">✓</td><td class="col-note">Tên campaign</td></tr>
+          <tr><td>from_name</td><td class="col-type">text</td><td class="col-req">✓</td><td class="col-note">Tên người gửi</td></tr>
+          <tr><td>from_email</td><td class="col-type">text</td><td class="col-req">✓</td><td class="col-note">Domain verified trên Resend</td></tr>
+          <tr><td>subject</td><td class="col-type">text</td><td class="col-req">✓</td><td class="col-note">Hỗ trợ {{name}}, {{level}}</td></tr>
+          <tr><td>body_text</td><td class="col-type">text</td><td class="col-req">✓</td><td class="col-note">Nội dung email</td></tr>
+          <tr><td>target_levels</td><td class="col-type">text[]</td><td></td><td class="col-note">Mảng level names được chọn</td></tr>
+          <tr><td>status</td><td class="col-type">enum</td><td></td><td class="col-note">draft/sending/completed/failed</td></tr>
+          <tr><td>sent_count</td><td class="col-type">int4</td><td></td><td class="col-note">Số email gửi thành công</td></tr>
+          <tr><td>failed_count</td><td class="col-type">int4</td><td></td><td class="col-note">Số email gửi thất bại</td></tr>
+          <tr><td>sent_at</td><td class="col-type">timestamptz</td><td></td><td class="col-note">Thời điểm bắt đầu gửi</td></tr>
+        </tbody></table>
+      </div>
+      <div class="db-panel" id="dbpanel-tbl-send-logs">
+        <div class="db-section-title">Table: send_logs</div>
+        <table class="schema-table"><thead><tr><th>Column</th><th>Type</th><th>Required</th><th>Notes</th></tr></thead><tbody>
+          <tr><td><strong>id</strong></td><td class="col-type">uuid PK</td><td class="col-req">✓</td><td class="col-note">Auto-generated</td></div></tr>
+          <tr><td>campaign_id</td><td class="col-type">uuid FK</td><td class="col-req">✓</td><td class="col-note">→ campaigns.id CASCADE DELETE</td></tr>
+          <tr><td>contact_id</td><td class="col-type">uuid FK</td><td></td><td class="col-note">→ contacts.id SET NULL</td></tr>
+          <tr><td>email</td><td class="col-type">text</td><td class="col-req">✓</td><td class="col-note">Lưu lại email tại thời điểm gửi</td></tr>
+          <tr><td>level</td><td class="col-type">text</td><td></td><td class="col-note">Tên level tại thời điểm gửi</td></tr>
+          <tr><td>status</td><td class="col-type">enum</td><td class="col-req">✓</td><td class="col-note">sent / failed / skipped</td></tr>
+          <tr><td>resend_id</td><td class="col-type">text</td><td></td><td class="col-note">ID email từ Resend API response</td></tr>
+          <tr><td>error_msg</td><td class="col-type">text</td><td></td><td class="col-note">Nội dung lỗi nếu failed</td></tr>
+          <tr><td>sent_at</td><td class="col-type">timestamptz</td><td></td><td class="col-note">Auto-set</td></tr>
+        </tbody></table>
+      </div>
+      <div class="db-panel" id="dbpanel-tbl-templates">
+        <div class="db-section-title">Table: templates</div>
+        <table class="schema-table"><thead><tr><th>Column</th><th>Type</th><th>Required</th><th>Notes</th></tr></thead><tbody>
+          <tr><td><strong>id</strong></td><td class="col-type">uuid PK</td><td class="col-req">✓</td><td class="col-note">Auto-generated</td></tr>
+          <tr><td>name</td><td class="col-type">text</td><td class="col-req">✓</td><td class="col-note">Tên template</td></tr>
+          <tr><td>icon</td><td class="col-type">text</td><td></td><td class="col-note">Emoji icon</td></tr>
+          <tr><td>description</td><td class="col-type">text</td><td></td><td class="col-note">Mô tả ngắn</td></tr>
+          <tr><td>body</td><td class="col-type">text</td><td class="col-req">✓</td><td class="col-note">Nội dung email, hỗ trợ {{vars}}</td></tr>
+          <tr><td>tags</td><td class="col-type">text[]</td><td></td><td class="col-note">Nhãn phân loại</td></tr>
+          <tr><td>created_at</td><td class="col-type">timestamptz</td><td></td><td class="col-note">Auto-set</td></tr>
+          <tr><td>updated_at</td><td class="col-type">timestamptz</td><td></td><td class="col-note">Auto-update trigger</td></tr>
+        </tbody></table>
+      </div>
+
+    </div><!-- end right panels -->
+  </div><!-- end grid -->
+</div>
+</main>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// DATA STORE
+// ════════════════════════════════════════
+let levels = [
+  {id:'L1', name:'L1', color:'#f5c842', parent:null, desc:'', count:48},
+  {id:'L2', name:'L2', color:'#3de8a0', parent:null, desc:'', count:112},
+  {id:'L3', name:'L3', color:'#5ba8ff', parent:null, desc:'', count:86},
+  {id:'L4', name:'L4', color:'#c97ef5', parent:null, desc:'', count:38},
+];
+
+let contacts = [
+  {name:'Nguyễn Thị Lan',  email:'lan.nguyen@email.com',   level:'L1', status:'sent',    last:'22/05/2025'},
+  {name:'Trần Minh Đức',   email:'duc.tran@company.vn',    level:'L1', status:'sent',    last:'22/05/2025'},
+  {name:'Lê Quang Hải',    email:'hai.le@gmail.com',        level:'L2', status:'pending', last:'—'},
+  {name:'Phạm Thu Hương',  email:'huong.pham@work.com',    level:'L2', status:'sent',    last:'15/05/2025'},
+  {name:'Hoàng Văn Nam',   email:'nam.hoang@mail.vn',       level:'L3', status:'error',   last:'15/05/2025'},
+  {name:'Vũ Thị Mai',      email:'mai.vu@personal.com',    level:'L3', status:'pending', last:'—'},
+  {name:'Đặng Thị Hoa',    email:'hoa.dang@newcustomer.vn',level:'L4', status:'sent',    last:'10/05/2025'},
+  {name:'Bùi Trọng Khoa',  email:'khoa.bui@ucmas.vn',      level:'L4', status:'pending', last:'—'},
+];
+
+let templates = [
+  {id:'t1', name:'Chào mừng thành viên', icon:'🎉', desc:'Chào đón khách hàng mới, giới thiệu chương trình', tags:['welcome','l4'], body:`Xin chào {{name}},\n\nChào mừng bạn đến với cộng đồng UCMAS! Chúng tôi rất vui khi có bạn trong danh sách {{level}}.\n\nĐể bắt đầu, hãy khám phá các chương trình của chúng tôi tại website.\n\nTrân trọng,\nUCMAS Vietnam`},
+  {id:'t2', name:'Ưu đãi VIP độc quyền',  icon:'👑', desc:'Email ưu đãi đặc biệt dành riêng cho L1, L2', tags:['promo','vip','l1','l2'], body:`Kính gửi {{name}},\n\nVới tư cách là khách hàng {{level}} đặc biệt của UCMAS, bạn được hưởng ưu đãi độc quyền tháng này.\n\n⭐ Giảm 20% học phí khoá tiếp theo\n⭐ Tặng tài liệu học tập cao cấp\n⭐ Ưu tiên đăng ký lớp mới\n\nƯu đãi có hiệu lực đến 30/06/2025.\n\nTrân trọng,\nUCMAS Vietnam`},
+  {id:'t3', name:'Nhắc nhở gia hạn',      icon:'⏰', desc:'Thông báo gia hạn học phí, khuyến khích tiếp tục', tags:['renewal','all'], body:`Xin chào {{name}},\n\nHọc phí khoá học của bạn sắp hết hạn. Đừng để gián đoạn quá trình phát triển của bé!\n\nGia hạn ngay trong tuần này để nhận thêm 1 tháng học miễn phí.\n\nLiên hệ: 1800-UCMAS\n\nTrân trọng,\nUCMAS Vietnam`},
+  {id:'t4', name:'Newsletter tháng',      icon:'📰', desc:'Bản tin định kỳ hàng tháng cho tất cả thành viên', tags:['newsletter','monthly'], body:`Xin chào {{name}},\n\nBản tin UCMAS tháng 6 đã có! Cùng điểm qua những điểm nổi bật:\n\n📌 Khai giảng khoá mới ngày 1/6\n📌 Học sinh UCMAS đạt giải quốc tế\n📌 Tips luyện tập abacus tại nhà\n\nĐọc đầy đủ tại website ucmas.vn\n\nTrân trọng,\nUCMAS Vietnam`},
+  {id:'t5', name:'Template trống',        icon:'📄', desc:'Bắt đầu từ trang trắng, tự thiết kế nội dung', tags:['blank'], body:`Xin chào {{name}},\n\n[Nội dung email của bạn]\n\nTrân trọng,\nUCMAS Vietnam`},
+];
+
+let activeTemplate = null;
+let selectedLevels = {};
+let currentFilter = 'all';
+let editorMode = 'split';
+let selectedColor = '#f5c842';
+let selectedColorQuick = '#f5c842';
+
+// ════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════
+function gotoPage(id, tabEl, sbEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(s => s.classList.remove('active'));
+  const pg = document.getElementById('page-'+id);
+  if (pg) pg.classList.add('active');
+  if (tabEl) tabEl.classList.add('active');
+  if (sbEl) sbEl.classList.add('active');
+  document.querySelector('.main').scrollTop = 0;
+  if (id === 'levels') renderLevelPage();
+  if (id === 'campaign') renderCampaignTargets();
+  if (id === 'templates') renderTemplates();
+  if (id === 'contacts') renderContactTable();
+  if (id === 'database') gotoDbPanel('setup');
+}
+
+// ════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════
+function toast(msg, type='ok') {
+  const icons = {ok:'✅', err:'❌', warn:'⚠️'};
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${msg}</span>`;
+  document.getElementById('toast-area').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// ════════════════════════════════════════
+// LEVEL HELPERS
+// ════════════════════════════════════════
+function getLevelById(id) { return levels.find(l => l.id === id); }
+function getRootLevels() { return levels.filter(l => !l.parent); }
+function getChildren(pid) { return levels.filter(l => l.parent === pid); }
+function getLevelColor(id) { const l = getLevelById(id); return l ? l.color : '#888'; }
+function hexToRgba(hex, a) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ════════════════════════════════════════
+// SIDEBAR RENDER
+// ════════════════════════════════════════
+function renderSidebar() {
+  const tree = document.getElementById('sidebar-level-tree');
+  const roots = getRootLevels();
+  tree.innerHTML = roots.map(r => {
+    const children = getChildren(r.id);
+    const hasChildren = children.length > 0;
+    return `<div class="level-node">
+      <div class="level-parent" onclick="sbClickLevel('${r.id}', ${hasChildren})">
+        ${hasChildren ? `<span class="level-expand" id="sb-exp-${r.id}">▶</span>` : '<span style="width:12px;display:inline-block"></span>'}
+        <div class="level-pip" style="background:${r.color}"></div>
+        <span class="level-name-sb">${r.name}</span>
+        <span class="level-cnt-sb" style="color:${r.color}">${r.count}</span>
+      </div>
+      ${hasChildren ? `<div class="level-children" id="sb-ch-${r.id}">
+        ${children.map(c => `<div class="level-child-item" onclick="filterLevel('${c.id}')">
+          <div class="child-pip" style="background:${c.color}"></div>
+          <span>${c.name}</span>
+          <span style="margin-left:auto;font-family:var(--fm);font-size:10px;color:var(--muted)">${c.count}</span>
+        </div>`).join('')}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+  // update all contacts badge
+  document.getElementById('sb-cnt-all').textContent = levels.reduce((s,l)=>s+l.count,0);
+}
+
+function sbClickLevel(id, hasChildren) {
+  if (hasChildren) {
+    const ch = document.getElementById('sb-ch-'+id);
+    const exp = document.getElementById('sb-exp-'+id);
+    ch.classList.toggle('open');
+    exp.classList.toggle('open');
+  }
+  filterLevel(id);
+}
+
+function filterLevel(levelId) {
+  gotoPage('contacts');
+  currentFilter = levelId;
+  renderContactTable();
+  renderFilterChips();
+}
+
+// ════════════════════════════════════════
+// DASHBOARD STATS
+// ════════════════════════════════════════
+function renderDashStats() {
+  const roots = getRootLevels().slice(0,4);
+  const classes = ['l1','l2','l3','l4'];
+  const container = document.getElementById('dash-stats');
+  container.innerHTML = roots.map((r,i) => `
+    <div class="stat-card ${classes[i]||'l1'}">
+      <div class="stat-lbl"><div style="width:8px;height:8px;border-radius:2px;background:${r.color};flex-shrink:0"></div>${r.name}</div>
+      <div class="stat-val" style="color:${r.color}">${r.count}</div>
+      <div class="stat-sub">contacts · ${getChildren(r.id).length} sub-levels</div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════
+// CONTACTS
+// ════════════════════════════════════════
+function renderContactTable(query='') {
+  const tbody = document.getElementById('contact-tbody');
+  let rows = contacts.filter(c => {
+    const levelMatch = currentFilter === 'all' || c.level === currentFilter || isChildOf(c.level, currentFilter);
+    const q = query.toLowerCase();
+    const textMatch = !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
+    return levelMatch && textMatch;
+  });
+  tbody.innerHTML = rows.map((c,i) => {
+    const lv = getLevelById(c.level);
+    const color = lv ? lv.color : '#888';
+    const statusIcon = c.status==='sent'?'s-ok':c.status==='error'?'s-err':'s-pend';
+    const statusLabel = c.status==='sent'?'Sent':c.status==='error'?'Error':'Pending';
+    return `<tr data-level="${c.level}">
+      <td><input type="checkbox"></td>
+      <td style="font-weight:500">${c.name}</td>
+      <td class="col-em">${c.email}</td>
+      <td><span class="lt" style="background:${hexToRgba(color,.12)};color:${color};border:1px solid ${hexToRgba(color,.25)}">● ${c.level}</span></td>
+      <td><span class="sdot ${statusIcon}"></span>${statusLabel}</td>
+      <td style="color:var(--muted);font-size:12px">${c.last}</td>
+      <td>
+        <select class="lsel" onchange="changeContactLevel(${i}, this.value)">
+          ${levels.map(l=>`<option value="${l.id}"${l.id===c.level?' selected':''}>${l.name}</option>`).join('')}
+        </select>
+        <button class="abtn" onclick="removeContact(${i})" style="margin-left:4px;color:var(--err)">✕</button>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted)">Không có contact nào</td></tr>`;
+  document.getElementById('table-count').textContent = rows.length + ' contacts';
+}
+
+function isChildOf(levelId, parentId) {
+  const lv = getLevelById(levelId);
+  if (!lv) return false;
+  if (lv.parent === parentId) return true;
+  if (lv.parent) return isChildOf(lv.parent, parentId);
+  return false;
+}
+
+function renderFilterChips() {
+  const container = document.getElementById('filter-chips');
+  const roots = getRootLevels();
+  container.innerHTML = `<button class="chip ${currentFilter==='all'?'ca':''}" onclick="setFilter('all')">Tất cả</button>` +
+    roots.map(r => `<button class="chip ${currentFilter===r.id?'ca':''}" style="${currentFilter===r.id?`background:${hexToRgba(r.color,.12)};border-color:${r.color};color:${r.color}`:''}" onclick="setFilter('${r.id}')">${r.name}</button>`).join('');
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  renderContactTable(document.querySelector('.tbl-search')?.value || '');
+  renderFilterChips();
+}
+function filterTable(q) { renderContactTable(q); }
+function selectAll(cb) { document.querySelectorAll('#contact-tbody input[type=checkbox]').forEach(c => c.checked=cb.checked); }
+function changeContactLevel(i, v) { contacts[i].level = v; renderContactTable(); toast(`Đã cập nhật level → ${v}`); }
+function removeContact(i) { contacts.splice(i,1); renderContactTable(); toast('Đã xoá contact','warn'); }
+
+// ════════════════════════════════════════
+// LEVEL MANAGEMENT
+// ════════════════════════════════════════
+function renderLevelPage() {
+  const body = document.getElementById('level-list-body');
+  const roots = getRootLevels();
+  let html = '';
+  roots.forEach(r => {
+    html += levelRow(r, false);
+    getChildren(r.id).forEach(c => { html += levelRow(c, true); });
+  });
+  body.innerHTML = html || '<div style="padding:20px;color:var(--muted);text-align:center">Chưa có level nào</div>';
+  document.getElementById('level-total-count').textContent = levels.length + ' levels';
+  // update quick form parent select
+  const qlp = document.getElementById('ql-parent');
+  qlp.innerHTML = '<option value="">— Level gốc —</option>' + levels.map(l=>`<option value="${l.id}">${l.name}</option>`).join('');
+}
+
+function levelRow(lv, isChild) {
+  const parentLv = lv.parent ? getLevelById(lv.parent) : null;
+  return `<div class="level-row">
+    ${isChild?'<div style="width:20px;height:1px;background:var(--border2);margin-left:8px;flex-shrink:0"></div>':''}
+    <div class="level-row-pip" style="background:${lv.color}${isChild?';width:7px;height:7px':''}"></div>
+    <span class="level-row-name">${lv.name}</span>
+    ${parentLv?`<span class="level-row-parent">sub: ${parentLv.name}</span>`:''}
+    <span style="color:var(--muted);font-size:12px;flex:1;margin-left:8px">${lv.desc||''}</span>
+    <span class="level-row-cnt">${lv.count} contacts</span>
+    <div class="level-row-actions">
+      <button class="abtn" onclick="editLevel('${lv.id}')">Edit</button>
+      ${lv.id!=='L1'&&lv.id!=='L2'&&lv.id!=='L3'&&lv.id!=='L4'?`<button class="abtn btn-danger" onclick="deleteLevel('${lv.id}')">✕</button>`:''}
+    </div>
+  </div>`;
+}
+
+function deleteLevel(id) {
+  if (!confirm(`Xoá level "${id}"? Contacts thuộc level này sẽ không bị xoá.`)) return;
+  levels = levels.filter(l => l.id !== id && l.parent !== id);
+  renderLevelPage(); renderSidebar(); renderDashStats(); toast(`Đã xoá level ${id}`,'warn');
+}
+function editLevel(id) { toast('Tính năng edit level sẽ có trong bản tiếp theo','warn'); }
+
+// modal add level
+function openAddLevel(parentId='') {
+  document.getElementById('ml-name').value='';
+  document.getElementById('ml-desc').value='';
+  document.getElementById('ml-parent').value=parentId;
+  updateModalPreview();
+  document.getElementById('modal-level').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function pickColor(el) {
+  document.querySelectorAll('#ml-colors .color-opt').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected'); selectedColor=el.dataset.color;
+}
+function pickColorQuick(el) {
+  document.querySelectorAll('#ql-colors .color-opt').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected'); selectedColorQuick=el.dataset.color;
+}
+function updateModalPreview() {
+  const parent = document.getElementById('ml-parent').value;
+  const preview = document.getElementById('ml-preview');
+  const tree = document.getElementById('ml-tree-preview');
+  if (parent) {
+    const pLv = getLevelById(parent);
+    preview.classList.add('visible');
+    tree.innerHTML = `<div style="background:${hexToRgba(pLv.color,.12)};color:${pLv.color};padding:2px 8px;border-radius:8px;font-size:12px">${pLv.name}</div>
+      <span style="color:var(--muted)">→</span>
+      <div style="background:${hexToRgba(selectedColor,.12)};color:${selectedColor};padding:2px 8px;border-radius:8px;font-size:12px">${document.getElementById('ml-name').value||'New Level'}</div>`;
+  } else { preview.classList.remove('visible'); }
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('ml-parent').addEventListener('change', updateModalPreview);
+  document.getElementById('ml-name').addEventListener('input', updateModalPreview);
+});
+
+function saveLevel() {
+  const name = document.getElementById('ml-name').value.trim();
+  if (!name) { toast('Nhập tên level!','err'); return; }
+  if (levels.find(l=>l.id===name||l.name===name)) { toast('Level đã tồn tại!','err'); return; }
+  const parent = document.getElementById('ml-parent').value||null;
+  const desc = document.getElementById('ml-desc').value.trim();
+  levels.push({id:name, name, color:selectedColor, parent, desc, count:0});
+  closeModal('modal-level');
+  renderSidebar(); renderDashStats(); renderLevelPage();
+  toast(`Đã tạo level "${name}"`);
+}
+
+function saveQuickLevel() {
+  const name = document.getElementById('ql-name').value.trim();
+  if (!name) { toast('Nhập tên level!','err'); return; }
+  if (levels.find(l=>l.id===name||l.name===name)) { toast('Level đã tồn tại!','err'); return; }
+  const parent = document.getElementById('ql-parent').value||null;
+  const desc = document.getElementById('ql-desc').value.trim();
+  levels.push({id:name, name, color:selectedColorQuick, parent, desc, count:0});
+  document.getElementById('ql-name').value='';
+  document.getElementById('ql-desc').value='';
+  renderSidebar(); renderDashStats(); renderLevelPage(); renderCampaignTargets();
+  toast(`Đã tạo level "${name}"`);
+}
+function updateQuickPreview() {} // placeholder
+
+// ════════════════════════════════════════
+// TEMPLATES
+// ════════════════════════════════════════
+function renderTemplates() {
+  const grid = document.getElementById('template-grid');
+  grid.innerHTML = templates.map(t => `
+    <div class="tmpl-card ${activeTemplate===t.id?'active-tmpl':''}" onclick="selectTemplate('${t.id}')">
+      <div class="tmpl-preview" style="font-size:36px">${t.icon}</div>
+      <div class="tmpl-info">
+        <div class="tmpl-name">${t.name}</div>
+        <div class="tmpl-desc">${t.desc}</div>
+        <div class="tmpl-tags">${t.tags.map(tg=>`<span class="tmpl-tag">${tg}</span>`).join('')}</div>
+      </div>
+    </div>`).join('');
+  // update campaign template picker
+  const picker = document.getElementById('tmpl-picker');
+  if (picker) picker.innerHTML = '<option value="">— Load template —</option>' + templates.map(t=>`<option value="${t.id}">${t.icon} ${t.name}</option>`).join('');
+}
+
+function selectTemplate(id) {
+  activeTemplate = id;
+  const t = templates.find(x=>x.id===id);
+  if (!t) return;
+  document.getElementById('tmpl-code').value = t.body;
+  document.getElementById('tmpl-name-input').value = t.name;
+  updatePreview();
+  renderTemplates();
+  toast(`Đã tải template: ${t.name}`);
+}
+
+function updatePreview() {
+  const code = document.getElementById('tmpl-code').value;
+  const sample = {name:'Nguyễn Văn A', email:'sample@ucmas.vn', level:'L1', company:'UCMAS', date:'22/05/2025'};
+  let rendered = code;
+  Object.entries(sample).forEach(([k,v]) => { rendered = rendered.replaceAll('{{'+k+'}}', `<span class="highlight">{{${k}}} → ${v}</span>`); });
+  rendered = rendered.replace(/\n/g,'<br>');
+  document.getElementById('tmpl-preview-content').innerHTML = rendered;
+}
+
+function setEditorMode(mode) {
+  editorMode = mode;
+  document.querySelectorAll('#editor-area .editor-pane').forEach(p=>p.style.display='');
+  document.querySelectorAll('.editor-btn').forEach(b=>b.classList.remove('active-mode'));
+  document.getElementById('btn-mode-'+mode).classList.add('active-mode');
+  const area = document.getElementById('editor-area');
+  const codePane = document.getElementById('code-pane');
+  const previewPane = document.getElementById('preview-pane-wrap');
+  if (mode==='split') { area.style.gridTemplateColumns='1fr 1fr'; codePane.style.display=''; previewPane.style.display=''; }
+  if (mode==='code')  { area.style.gridTemplateColumns='1fr'; codePane.style.display=''; previewPane.style.display='none'; }
+  if (mode==='preview') { area.style.gridTemplateColumns='1fr'; codePane.style.display='none'; previewPane.style.display=''; }
+}
+
+function insertTmplVar(v) {
+  const ta = document.getElementById('tmpl-code');
+  const s = ta.selectionStart;
+  ta.value = ta.value.substring(0,s) + v + ta.value.substring(ta.selectionEnd);
+  ta.selectionStart = ta.selectionEnd = s+v.length;
+  ta.focus(); updatePreview();
+}
+
+function newBlankTemplate() {
+  activeTemplate = null;
+  document.getElementById('tmpl-code').value = 'Xin chào {{name}},\n\n[Nội dung của bạn]\n\nTrân trọng,\nUCMAS Vietnam';
+  document.getElementById('tmpl-name-input').value = 'Template mới';
+  updatePreview(); renderTemplates();
+}
+
+function saveCurrentTemplate() {
+  const name = document.getElementById('tmpl-name-input').value.trim() || 'Template mới';
+  const body = document.getElementById('tmpl-code').value;
+  if (activeTemplate) {
+    const t = templates.find(x=>x.id===activeTemplate);
+    if (t) { t.name=name; t.body=body; toast(`Đã lưu: ${name}`); }
+  } else {
+    const id = 't'+(Date.now());
+    templates.push({id, name, icon:'📄', desc:'Template tuỳ chỉnh', tags:['custom'], body});
+    activeTemplate = id; toast(`Đã lưu template mới: ${name}`);
+  }
+  renderTemplates();
+}
+
+function loadTemplateIntoCampaign(id) {
+  if (!id) return;
+  const t = templates.find(x=>x.id===id);
+  if (!t) return;
+  document.getElementById('c-body').value = t.body;
+  document.getElementById('c-name').placeholder = t.name;
+  toast(`Đã tải: ${t.name}`);
+}
+
+// ════════════════════════════════════════
+// CAMPAIGN
+// ════════════════════════════════════════
+function renderCampaignTargets() {
+  const container = document.getElementById('campaign-level-targets');
+  if (!container) return;
+  const roots = getRootLevels();
+  container.innerHTML = roots.map(r => {
+    const children = getChildren(r.id);
+    const sel = selectedLevels[r.id];
+    const cls = sel ? `sl${levels.indexOf(r)%4+1}` : '';
+    return `<div class="ltr ${cls}" id="ct-${r.id}" onclick="toggleCampaignLevel('${r.id}')">
+      <div class="lck" style="${sel?`background:${r.color};border-color:${r.color};color:#000`:''}">✓</div>
+      <div class="li">
+        <div class="ln">${r.name}</div>
+        <div class="ld">${r.desc||'Phân cấp khách hàng'} ${children.length>0?`<span style="color:var(--muted);font-size:10.5px">+ ${children.length} sub</span>`:''}</div>
+      </div>
+      <div class="lc" style="${sel?`color:${r.color}`:''}">
+        ${r.count + children.reduce((s,c)=>s+c.count,0)}
+      </div>
+    </div>`;
+  }).join('');
+  updateCampaignSummary();
+  // also render template picker
+  renderTemplates();
+}
+
+function toggleCampaignLevel(id) {
+  selectedLevels[id] = !selectedLevels[id];
+  renderCampaignTargets();
+}
+
+function updateCampaignSummary() {
+  let total = 0;
+  const segs = [];
+  getRootLevels().forEach(r => {
+    if (selectedLevels[r.id]) {
+      total += r.count + getChildren(r.id).reduce((s,c)=>s+c.count,0);
+      segs.push(r.name);
+    }
+  });
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-segs').textContent = segs.join(', ')||'—';
+  document.getElementById('c-total-label').textContent = total + ' recipients';
+  document.getElementById('s-time').textContent = total ? '~'+Math.ceil(total*0.2)+'s' : '—';
+}
+
+function insertCampaignVar(v) {
+  const ta = document.getElementById('c-body');
+  const s = ta.selectionStart;
+  ta.value = ta.value.substring(0,s)+v+ta.value.substring(ta.selectionEnd);
+  ta.selectionStart = ta.selectionEnd = s+v.length; ta.focus();
+}
+
+// ════════════════════════════════════════
+// SEND
+// ════════════════════════════════════════
+function startSend() {
+  const segs = Object.entries(selectedLevels).filter(([k,v])=>v);
+  if (!segs.length) { toast('Chọn ít nhất 1 level!','err'); return; }
+  const prog = document.getElementById('send-progress');
+  prog.classList.add('active');
+  prog.scrollIntoView({behavior:'smooth',block:'nearest'});
+  const steps = ['ps1','ps2','ps3','ps4'];
+  let i=0;
+  function next() {
+    if (i>0) document.getElementById(steps[i-1]).className='pstep done';
+    if (i<steps.length) {
+      document.getElementById(steps[i]).className='pstep run'; i++;
+      const pct=Math.round((i/(steps.length+1))*100);
+      document.getElementById('prog-fill').style.width=pct+'%';
+      document.getElementById('prog-pct').textContent=pct+'%';
+      setTimeout(next, 850+Math.random()*350);
+    } else {
+      document.getElementById('prog-fill').style.width='100%';
+      document.getElementById('prog-pct').textContent='100%';
+      steps.forEach(s=>document.getElementById(s).className='pstep done');
+      setTimeout(()=>{ prog.classList.remove('active'); toast('Campaign đã gửi thành công!'); gotoPage('history'); },600);
+    }
+  }
+  next();
+}
+
+// ════════════════════════════════════════
+// FILE UPLOAD
+// ════════════════════════════════════════
+function handleUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  toast(`File "${file.name}" đã được chọn — đang parse...`);
+  setTimeout(()=>toast('Import thành công: 12 contacts mới, 3 đã cập nhật'),1200);
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleUpload({target:{files:[file]}});
+}
+
+// ════════════════════════════════════════
+// DATABASE PAGE
+// ════════════════════════════════════════
+function gotoDbPanel(panel) {
+  document.querySelectorAll('.db-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.db-step-btn').forEach(b => b.classList.remove('active'));
+  const p = document.getElementById('dbpanel-'+panel);
+  if (p) p.classList.add('active');
+  const b = document.getElementById('dbstep-'+panel);
+  if (b) b.classList.add('active');
+}
+
+function switchSqlTab(tab) {
+  ['tables','indexes','rls-sql','seed'].forEach(t => {
+    const el = document.getElementById('sql-'+t);
+    const btn = document.getElementById('sqltab-'+t.replace('-sql',''));
+    if (el) el.style.display = (t===tab)?'':'none';
+    if (btn) btn.classList.toggle('active', t===tab);
+  });
+  // fix tab button IDs that differ
+  document.querySelectorAll('.db-tab').forEach(b => b.classList.remove('active'));
+  const mapping = {tables:'sqltab-tables',indexes:'sqltab-indexes','rls-sql':'sqltab-rls',seed:'sqltab-seed'};
+  const activebtn = document.getElementById(mapping[tab]);
+  if (activebtn) activebtn.classList.add('active');
+}
+
+function copyCode(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const btn = el.closest('.code-block')?.querySelector('.code-block-copy');
+    if (btn) { btn.textContent='✓ Copied!'; btn.style.color='var(--ok)'; setTimeout(()=>{btn.textContent='Copy';btn.style.color=''},2000); }
+  });
+}
+
+function copyAllSQL() {
+  const ids = ['sql-tables-code','sql-idx-code','sql-rls-code','sql-seed-code'];
+  const all = ids.map(id => { const e = document.getElementById(id); return e ? e.textContent : ''; }).join('\n\n');
+  navigator.clipboard.writeText(all).then(() => toast('Đã copy toàn bộ SQL script!'));
+}
+
+function saveEnv() {
+  const fields = {url:'env-sb-url',anon:'env-sb-anon',service:'env-sb-service',resend:'env-resend',from:'env-from'};
+  Object.entries(fields).forEach(([k,id]) => {
+    const val = document.getElementById(id)?.value || '';
+    const preview = document.getElementById('ep-'+k);
+    if (preview && val) preview.textContent = val;
+  });
+}
+
+function copyEnvFile() {
+  const get = id => document.getElementById(id)?.value || document.getElementById(id.replace('env-','ep-'))?.textContent || '';
+  const content = `# Supabase
+NEXT_PUBLIC_SUPABASE_URL=${get('env-sb-url')}
+NEXT_PUBLIC_SUPABASE_ANON_KEY=${get('env-sb-anon')}
+SUPABASE_SERVICE_ROLE_KEY=${get('env-sb-service')}
+
+# Resend
+RESEND_API_KEY=${get('env-resend')}
+FROM_EMAIL=${get('env-from')}
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000`;
+  navigator.clipboard.writeText(content).then(() => toast('Đã copy .env.local!'));
+}
+
+function testDbConnection() {
+  const url = document.getElementById('env-sb-url')?.value.trim();
+  const key = document.getElementById('env-sb-anon')?.value.trim();
+  const dot = document.getElementById('db-dot');
+  const txt = document.getElementById('db-status-text');
+  const sub = document.getElementById('db-status-sub');
+  const btn = document.getElementById('db-test-btn');
+
+  if (!url || !key) {
+    dot.className='db-conn-dot disconnected';
+    txt.textContent='Thiếu thông tin kết nối';
+    sub.textContent='Vào Step 5 (Env Variables) → điền Supabase URL và Anon Key';
+    toast('Nhập Supabase URL và Anon Key ở bước 5 trước!','err');
+    gotoDbPanel('env');
+    return;
+  }
+
+  dot.className='db-conn-dot pending';
+  txt.textContent='Đang kết nối...';
+  sub.textContent='Kiểm tra Supabase...';
+  btn.textContent='Đang kiểm tra...';
+  btn.disabled=true;
+
+  fetch(`${url}/rest/v1/levels?select=id&limit=1`, {
+    headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+  }).then(r => {
+    btn.textContent='Test Connection'; btn.disabled=false;
+    if (r.ok) {
+      dot.className='db-conn-dot connected';
+      txt.textContent='✓ Kết nối thành công!';
+      sub.textContent=`Supabase: ${url}`;
+      toast('Supabase kết nối thành công!');
+      document.getElementById('dbstep-setup').classList.add('done');
+      document.getElementById('dbstep-schema').classList.add('done');
+      document.getElementById('dbstep-sql').classList.add('done');
+      document.getElementById('dbstep-connect').classList.add('done');
+      document.getElementById('dbstep-env').classList.add('done');
+    } else {
+      dot.className='db-conn-dot disconnected';
+      txt.textContent=`Lỗi kết nối (HTTP ${r.status})`;
+      sub.textContent=r.status===404?'Table "levels" chưa tồn tại — chạy SQL script ở Step 3':'Kiểm tra lại URL và API Key';
+      toast(`Kết nối thất bại: HTTP ${r.status}`,'err');
+    }
+  }).catch(e => {
+    btn.textContent='Test Connection'; btn.disabled=false;
+    dot.className='db-conn-dot disconnected';
+    txt.textContent='Không thể kết nối';
+    sub.textContent='Kiểm tra URL Supabase hoặc kết nối internet';
+    toast('Lỗi mạng — kiểm tra URL và internet','err');
+  });
+}
+
+
+function init() {
+  renderSidebar();
+  renderDashStats();
+  renderFilterChips();
+  renderContactTable();
+  renderTemplates();
+  renderCampaignTargets();
+  selectTemplate('t1');
+}
+init();
+
+// ════════════════════════════════════════
+// API LAYER — Vercel Serverless Functions
+// Endpoints: /api/levels /api/contacts /api/templates /api/campaigns /api/stats
+// ════════════════════════════════════════
+const API = ''; // relative URLs — hoạt động trên cả Vercel lẫn localhost
+
+async function apiFetch(path, options = {}) {
+  const res = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || 'Lỗi API');
+  return json.data;
+}
+
+// ── Load dữ liệu thật từ backend khi server chạy ──────
+async function loadFromBackend() {
+  try {
+    const res = await fetch('/api/stats', { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) return; // backend chưa chạy, dùng mock data
+
+    const stats = await (res.json());
+    if (!stats.success) return;
+
+    // Load levels
+    const lvData = await apiFetch('/api/levels');
+    if (lvData?.length) {
+      levels = lvData.map(l => ({
+        id: l.id, name: l.name, color: l.color,
+        parent: l.parent_id || null,
+        desc: l.description || '',
+        count: l.count || 0,
+      }));
+    }
+
+    const ctData = await apiFetch('/api/contacts');
+    if (ctData) {
+      contacts = ctData.map(c => ({
+        id: c.id, name: c.name, email: c.email,
+        level: c.levels?.name || '', level_id: c.level_id,
+        company: c.company || '',
+        status: c.status === 'active' ? 'pending' : c.status,
+        last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
+      }));
+    }
+
+    const tmData = await apiFetch('/api/templates');
+    if (tmData?.length) {
+      templates = tmData.map(t => ({
+        id: t.id, name: t.name, icon: t.icon || '📄',
+        desc: t.description || '', tags: t.tags || [], body: t.body,
+      }));
+    }
+
+    const campData = await apiFetch('/api/campaigns');
+    if (campData) renderHistoryFromApi(campData);
+
+    // Re-render tất cả với data thật
+    renderSidebar(); renderDashStats(); renderFilterChips();
+    renderContactTable(); renderTemplates(); renderCampaignTargets();
+    if (templates.length) selectTemplate(templates[0].id);
+
+    // Cập nhật trạng thái kết nối
+    document.querySelector('.topbar-info').innerHTML =
+      '<div class="status-dot"></div>Backend + Resend connected';
+
+    toast('Đã kết nối backend — dữ liệu thật đã được tải', 'ok');
+  } catch (_) {
+    // Backend chưa chạy — dùng mock data, không báo lỗi
+  }
+}
+
+function renderHistoryFromApi(campaigns) {
+  const body = document.querySelector('#page-history .card-body');
+  if (!body || !campaigns.length) return;
+  const statusIcon = s => s === 'completed' ? 'ok' : s === 'failed' ? 'err' : 'partial';
+  body.innerHTML = campaigns.map(c => {
+    const pct = c.sent_count + c.failed_count > 0
+      ? Math.round(c.sent_count / (c.sent_count + c.failed_count) * 100) : 0;
+    return `<div class="h-item">
+      <div class="h-icon ${statusIcon(c.status)}">✉</div>
+      <div style="flex:1">
+        <div class="h-title">${c.name}</div>
+        <div class="h-meta">
+          ${(c.target_levels||[]).map((l,i)=>`<span class="lt lt${(i%4)+1}">${l}</span>`).join('')}
+          · ${c.sent_at ? new Date(c.sent_at).toLocaleDateString('vi-VN') : 'Chưa gửi'}
+        </div>
+      </div>
+      <div class="h-stats">
+        <div class="h-sent" style="color:var(--${c.status==='completed'?'ok':'warn'})">${c.sent_count}/${c.sent_count+c.failed_count}</div>
+        <div class="h-rate">${pct}% · ${c.failed_count} failed</div>
+      </div>
+      <button class="abtn" style="margin-left:12px" onclick="exportCampaignLogs('${c.id}')">Export</button>
+    </div>`;
+  }).join('') || '<div style="padding:20px;color:var(--muted);text-align:center">Chưa có campaign nào</div>';
+}
+
+async function exportCampaignLogs(campaignId) {
+  try {
+    const logs = await apiFetch(`/api/campaigns?logs=${campaignId}`);
+    const csv = ['email,level,status,resend_id,error_msg,sent_at',
+      ...logs.map(l => [l.email, l.level, l.status, l.resend_id||'', l.error_msg||'', l.sent_at].join(','))
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `campaign-${campaignId}.csv`;
+    a.click();
+    toast('Đã xuất log CSV');
+  } catch (e) { toast('Lỗi export: ' + e.message, 'err'); }
+}
+
+// ── Override: Upload CSV thật ──────────────────────────
+async function handleUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  toast(`Đang import "${file.name}"...`);
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res = await fetch('/api/contacts-import', { method: 'POST', body: fd });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error);
+    const d = json.data;
+    toast(`Import xong: ${d.imported} contacts, ${d.skipped} bỏ qua`);
+    if (d.parseErrors?.length) d.parseErrors.forEach(e => toast(e, 'warn'));
+    // Reload contacts
+    const ctData = await apiFetch('/api/contacts');
+    if (ctData) contacts = ctData.map(c => ({
+      id: c.id, name: c.name, email: c.email,
+      level: c.levels?.name || '', level_id: c.level_id,
+      company: c.company || '',
+      status: c.status === 'active' ? 'pending' : c.status,
+      last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
+    }));
+    renderContactTable(); renderSidebar(); renderDashStats();
+  } catch (err) { toast('Lỗi import: ' + err.message, 'err'); }
+}
+
+// ── Override: Tạo Level thật ──────────────────────────
+const _saveLevel = saveLevel;
+saveLevel = async function() {
+  if (!window._backendConnected) { _saveLevel(); return; }
+  const name = document.getElementById('ml-name').value.trim();
+  if (!name) { toast('Nhập tên level!', 'err'); return; }
+  try {
+    await apiFetch('/api/levels', { method: 'POST', body: JSON.stringify({
+      name, color: selectedColor,
+      parent_id: document.getElementById('ml-parent').value || null,
+      description: document.getElementById('ml-desc').value.trim(),
+    }) });
+    closeModal('modal-level');
+    const lvData = await apiFetch('/api/levels');
+    levels = lvData.map(l => ({ id:l.id, name:l.name, color:l.color, parent:l.parent_id||null, desc:l.description||'', count:l.count||0 }));
+    renderSidebar(); renderDashStats(); renderLevelPage();
+    toast(`Đã tạo level "${name}"`);
+  } catch (e) { toast('Lỗi: ' + e.message, 'err'); }
+};
+
+const _saveQuickLevel = saveQuickLevel;
+saveQuickLevel = async function() {
+  if (!window._backendConnected) { _saveQuickLevel(); return; }
+  const name = document.getElementById('ql-name').value.trim();
+  if (!name) { toast('Nhập tên level!', 'err'); return; }
+  try {
+    await apiFetch('/api/levels', {
+      method: 'POST',
+      body: JSON.stringify({
+        name, color: selectedColorQuick,
+        parent_id: document.getElementById('ql-parent').value || null,
+        description: document.getElementById('ql-desc').value.trim(),
+      }),
+    });
+    document.getElementById('ql-name').value = '';
+    document.getElementById('ql-desc').value = '';
+    const lvData = await apiFetch('/api/levels');
+    levels = lvData.map(l => ({ id:l.id, name:l.name, color:l.color, parent:l.parent_id||null, desc:l.description||'', count:l.count||0 }));
+    renderSidebar(); renderDashStats(); renderLevelPage(); renderCampaignTargets();
+    toast(`Đã tạo level "${name}"`);
+  } catch (e) { toast('Lỗi: ' + e.message, 'err'); }
+};
+
+// ── Override: Lưu template thật ───────────────────────
+const _saveCurrentTemplate = saveCurrentTemplate;
+saveCurrentTemplate = async function() {
+  if (!window._backendConnected) { _saveCurrentTemplate(); return; }
+  const name = document.getElementById('tmpl-name-input').value.trim() || 'Template mới';
+  const body = document.getElementById('tmpl-code').value;
+  try {
+    if (activeTemplate && templates.find(t => t.id === activeTemplate)) {
+      await apiFetch(`/api/templates/${activeTemplate}`, {
+        method: 'PUT', body: JSON.stringify({ name, body }),
+      });
+    } else {
+      const t = await apiFetch('/api/templates', {
+        method: 'POST', body: JSON.stringify({ name, body, icon: '📄', description: 'Template tuỳ chỉnh', tags: ['custom'] }),
+      });
+      activeTemplate = t.id;
+    }
+    const tmData = await apiFetch('/api/templates');
+    templates = tmData.map(t => ({ id:t.id, name:t.name, icon:t.icon||'📄', desc:t.description||'', tags:t.tags||[], body:t.body }));
+    renderTemplates();
+    toast(`Đã lưu: ${name}`);
+  } catch (e) { toast('Lỗi lưu template: ' + e.message, 'err'); }
+};
+
+// ── Override: Gửi Campaign thật (SSE) ─────────────────
+const _startSend = startSend;
+startSend = async function() {
+  if (!window._backendConnected) { _startSend(); return; }
+
+  const segs = Object.entries(selectedLevels).filter(([,v]) => v);
+  if (!segs.length) { toast('Chọn ít nhất 1 level!', 'err'); return; }
+
+  const name    = document.getElementById('c-name').value.trim();
+  const subject = document.getElementById('c-subject').value.trim();
+  const body    = document.getElementById('c-body').value.trim();
+  const from    = document.getElementById('c-from').value.trim();
+
+  if (!name || !subject || !body) { toast('Điền đầy đủ Campaign Name, Subject và Nội dung!', 'err'); return; }
+
+  // Lấy level uuid từ tên level đã chọn
+  const selectedLevelIds = segs.map(([id]) => {
+    const lv = getLevelById(id);
+    return lv ? lv.id : id;
+  }).filter(Boolean);
+
+  const prog = document.getElementById('send-progress');
+  prog.classList.add('active');
+  prog.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  document.getElementById('ps1').className = 'pstep run';
+  document.getElementById('ps2').className = 'pstep';
+  document.getElementById('ps3').className = 'pstep';
+  document.getElementById('ps4').className = 'pstep';
+
+  try {
+    const response = await fetch('/api/campaigns-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name, from_name: from, subject,
+        body_text: body, target_level_ids: selectedLevelIds,
+      }),
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\n\n');
+      buffer = events.pop();
+
+      for (const event of events) {
+        if (!event.startsWith('data: ')) continue;
+        const data = JSON.parse(event.slice(6));
+
+        if (data.type === 'start') {
+          document.getElementById('ps1').className = 'pstep done';
+          document.getElementById('ps2').className = 'pstep run';
+        }
+        if (data.type === 'progress') {
+          const pct = Math.round((data.sent + data.failed) / data.total * 100);
+          document.getElementById('prog-fill').style.width = pct + '%';
+          document.getElementById('prog-pct').textContent = pct + '%';
+          if (document.getElementById('ps2').className.includes('run')) {
+            document.getElementById('ps2').className = 'pstep done';
+            document.getElementById('ps3').className = 'pstep run';
+          }
+        }
+        if (data.type === 'done') {
+          ['ps1','ps2','ps3','ps4'].forEach(s => document.getElementById(s).className = 'pstep done');
+          document.getElementById('prog-fill').style.width = '100%';
+          document.getElementById('prog-pct').textContent = '100%';
+          setTimeout(() => {
+            prog.classList.remove('active');
+            toast(`Đã gửi xong! ${data.sent}/${data.total} thành công.`);
+            gotoPage('history');
+          }, 600);
+        }
+        if (data.type === 'error') {
+          prog.classList.remove('active');
+          toast('Gửi thất bại: ' + data.error, 'err');
+        }
+      }
+    }
+  } catch (e) {
+    prog.classList.remove('active');
+    toast('Lỗi kết nối: ' + e.message, 'err');
+  }
+};
+
+// Khởi động: thử kết nối backend
+loadFromBackend().then(() => { window._backendConnected = true; }).catch(() => {});
+</script>
+</body>
+</html>
