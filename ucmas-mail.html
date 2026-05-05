@@ -336,6 +336,18 @@ tr:hover td{background:var(--surface2)}
 .modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
 
 
+/* SKELETON LOADING */
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.dash-skeleton{height:54px;border-radius:8px;background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);background-size:800px 100%;animation:shimmer 1.4s infinite;margin:8px 0}
+.stat-skeleton{border-radius:var(--rl);background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);background-size:800px 100%;animation:shimmer 1.4s infinite;height:90px}
+
+/* LOADING OVERLAY */
+.page-loading{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;gap:12px}
+.page-loading.hidden{display:none}
+.loading-spinner{width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:var(--muted);font-size:13px;font-family:var(--fm)}
+
 /* TOAST */
 .toast-area{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px}
 .toast{background:var(--surface);border:1px solid var(--border2);border-radius:9px;padding:12px 16px;font-size:13px;min-width:220px;max-width:340px;display:flex;align-items:center;gap:10px;animation:slide-in .22s ease;box-shadow:0 8px 30px rgba(0,0,0,.4)}
@@ -646,7 +658,11 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
   </div>
 </aside>
 
-<main class="main">
+<main class="main" style="position:relative">
+<div class="page-loading" id="global-loading">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">Đang kết nối Supabase...</div>
+</div>
 
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page active">
@@ -657,22 +673,11 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
   <div class="stat-row" id="dash-stats"></div>
   <div class="card">
     <div class="card-header"><div class="card-title">Recent Campaigns</div><button class="btn" onclick="gotoPage('history')" style="font-size:11.5px">Xem tất cả →</button></div>
-    <div class="card-body" style="padding:0 18px">
-      <div class="h-item">
-        <div class="h-icon ok">✉</div>
-        <div style="flex:1"><div class="h-title">Chương trình UCMAS Tháng 5</div><div class="h-meta"><span class="lt lt1">L1</span> · 22/05/2025</div></div>
-        <div class="h-stats"><div class="h-sent" style="color:var(--ok)">48/48</div><div class="h-rate">100%</div></div>
-      </div>
-      <div class="h-item">
-        <div class="h-icon partial">✉</div>
-        <div style="flex:1"><div class="h-title">Newsletter Q2 2025</div><div class="h-meta"><span class="lt lt1">L1</span> <span class="lt lt2">L2</span> <span class="lt lt3">L3</span> · 15/05/2025</div></div>
-        <div class="h-stats"><div class="h-sent" style="color:var(--warn)">238/246</div><div class="h-rate">96.7%</div></div>
-      </div>
-      <div class="h-item">
-        <div class="h-icon ok">✉</div>
-        <div style="flex:1"><div class="h-title">Welcome Series</div><div class="h-meta"><span class="lt lt4">L4</span> · 10/05/2025</div></div>
-        <div class="h-stats"><div class="h-sent" style="color:var(--ok)">38/38</div><div class="h-rate">100%</div></div>
-      </div>
+    <div class="card-body" style="padding:0 18px" id="dash-campaigns">
+      <!-- Skeleton loading -->
+      <div class="dash-skeleton"></div>
+      <div class="dash-skeleton"></div>
+      <div class="dash-skeleton"></div>
     </div>
   </div>
 </div>
@@ -2779,58 +2784,136 @@ async function apiFetch(path, options = {}) {
 }
 
 // ── Load dữ liệu thật từ backend khi server chạy ──────
-async function loadFromBackend() {
+const CACHE_KEY = 'ucmas_data_cache';
+
+function saveCache(data) {
+  try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), ...data })); } catch(_) {}
+}
+function loadCache() {
   try {
-    const res = await fetch('/api/stats', { headers: cfgHeaders(), signal: AbortSignal.timeout(3000) });
-    if (!res.ok) return; // backend chưa chạy, dùng mock data
+    const c = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
+    if (!c) return null;
+    if (Date.now() - c.ts > 10 * 60 * 1000) return null; // cache 10 phút
+    return c;
+  } catch(_) { return null; }
+}
 
-    const stats = await (res.json());
-    if (!stats.success) return;
+function applyData({ levels: lv, contacts: ct, templates: tm, campaigns: ca }) {
+  if (lv?.length) levels = lv;
+  if (ct) contacts = ct;
+  if (tm?.length) templates = tm;
+  renderSidebar(); renderDashStats(); renderFilterChips();
+  renderContactTable(); renderTemplates(); renderCampaignTargets();
+  if (templates.length) selectTemplate(templates[0].id);
+  if (ca) { renderHistoryFromApi(ca); renderDashCampaigns(ca); }
+}
 
-    // Load levels
-    const lvData = await apiFetch('/api/levels');
-    if (lvData?.length) {
-      levels = lvData.map(l => ({
-        id: l.id, name: l.name, color: l.color,
-        parent: l.parent_id || null,
-        desc: l.description || '',
-        count: l.count || 0,
-      }));
-    }
+function showLoading(msg = 'Đang tải dữ liệu...') {
+  const el = document.getElementById('global-loading');
+  const txt = document.getElementById('loading-text');
+  if (el) el.classList.remove('hidden');
+  if (txt) txt.textContent = msg;
+}
+function hideLoading() {
+  const el = document.getElementById('global-loading');
+  if (el) el.classList.add('hidden');
+}
 
-    const ctData = await apiFetch('/api/contacts');
-    if (ctData) {
-      contacts = ctData.map(c => ({
-        id: c.id, name: c.name, email: c.email,
-        level: c.levels?.name || '', level_id: c.level_id,
-        company: c.company || '',
-        status: c.status === 'active' ? 'pending' : c.status,
-        last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
-      }));
-    }
-
-    const tmData = await apiFetch('/api/templates');
-    if (tmData?.length) {
-      templates = tmData.map(t => ({
-        id: t.id, name: t.name, icon: t.icon || '📄',
-        desc: t.description || '', tags: t.tags || [], body: t.body,
-      }));
-    }
-
-    const campData = await apiFetch('/api/campaigns');
-    if (campData) renderHistoryFromApi(campData);
-
-    // Render với data thật từ Supabase
-    renderSidebar(); renderDashStats(); renderFilterChips();
-    renderContactTable(); renderTemplates(); renderCampaignTargets();
-    if (templates.length) selectTemplate(templates[0].id);
-
-    document.getElementById('conn-status').innerHTML =
-      `<div class="status-dot"></div>Supabase connected`;
-    toast('Đã kết nối — dữ liệu đã được tải', 'ok');
-  } catch (_) {
-    // Backend chưa chạy — dùng mock data, không báo lỗi
+async function loadFromBackend() {
+  // 1. Hiện cache ngay lập tức nếu có
+  const cached = loadCache();
+  if (cached) {
+    applyData(cached);
+    hideLoading();
+    // Refresh ngầm không block UI
+    fetchFreshData(true);
+    return;
   }
+
+  // 2. Không có cache — hiện loading và fetch
+  showLoading('Đang kết nối Supabase...');
+  await fetchFreshData(false);
+}
+
+async function fetchFreshData(silent = false) {
+  try {
+    const res = await fetch('/api/stats', { headers: cfgHeaders(), signal: AbortSignal.timeout(5000) });
+    if (!res.ok) { hideLoading(); return; }
+    const stats = await res.json();
+    if (!stats.success) { hideLoading(); return; }
+
+    if (!silent) showLoading('Đang tải levels...');
+    const lvRaw = await apiFetch('/api/levels');
+    const lv = lvRaw?.length ? lvRaw.map(l => ({
+      id: l.id, name: l.name, color: l.color,
+      parent: l.parent_id || null, desc: l.description || '', count: l.count || 0,
+    })) : null;
+
+    if (!silent) showLoading('Đang tải contacts...');
+    const ctRaw = await apiFetch('/api/contacts');
+    const ct = ctRaw ? ctRaw.map(c => ({
+      id: c.id, name: c.name, email: c.email,
+      level: c.levels?.name || '', level_id: c.level_id, company: c.company || '',
+      status: c.status === 'active' ? 'pending' : c.status,
+      last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
+    })) : null;
+
+    if (!silent) showLoading('Đang tải templates...');
+    const tmRaw = await apiFetch('/api/templates');
+    const tm = tmRaw?.length ? tmRaw.map(t => ({
+      id: t.id, name: t.name, icon: t.icon || '📄',
+      desc: t.description || '', tags: t.tags || [], body: t.body,
+    })) : null;
+
+    if (!silent) showLoading('Đang tải campaigns...');
+    const ca = await apiFetch('/api/campaigns');
+
+    // Lưu cache
+    saveCache({ levels: lv, contacts: ct, templates: tm, campaigns: ca });
+
+    // Apply vào UI
+    applyData({ levels: lv, contacts: ct, templates: tm, campaigns: ca });
+    hideLoading();
+
+    document.getElementById('conn-status').innerHTML = `<div class="status-dot"></div>Supabase connected`;
+    if (!silent) toast('Đã tải xong dữ liệu', 'ok');
+
+  } catch (e) {
+    hideLoading();
+    if (!silent) toast('Lỗi kết nối: ' + e.message, 'err');
+  }
+}
+
+function renderDashCampaigns(campaigns) {
+  const body = document.getElementById('dash-campaigns');
+  if (!body) return;
+  const recent = (campaigns || []).slice(0, 5);
+  if (!recent.length) {
+    body.innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Chưa có campaign nào. <span style="color:var(--accent2);cursor:pointer" onclick="gotoPage('campaign')">Tạo ngay →</span></div>`;
+    return;
+  }
+  const statusColor = s => s === 'completed' ? 'var(--ok)' : s === 'failed' ? 'var(--err)' : 'var(--warn)';
+  const statusIcon  = s => s === 'completed' ? 'ok' : s === 'failed' ? 'err' : 'partial';
+  body.innerHTML = recent.map(c => {
+    const total = (c.sent_count || 0) + (c.failed_count || 0);
+    const pct   = total > 0 ? Math.round(c.sent_count / total * 100) : 0;
+    const date  = c.sent_at ? new Date(c.sent_at).toLocaleDateString('vi-VN') : '—';
+    const lvls  = (c.target_levels || []).slice(0, 3);
+    return `<div class="h-item">
+      <div class="h-icon ${statusIcon(c.status)}">✉</div>
+      <div style="flex:1">
+        <div class="h-title">${c.name}</div>
+        <div class="h-meta">
+          ${lvls.map((l,i) => `<span class="lt lt${(i%4)+1}">${l}</span>`).join('')}
+          ${date !== '—' ? `· ${date}` : ''}
+        </div>
+      </div>
+      <div class="h-stats">
+        <div class="h-sent" style="color:${statusColor(c.status)}">${c.sent_count}/${total||'?'}</div>
+        <div class="h-rate">${total > 0 ? pct+'%' : c.status}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderHistoryFromApi(campaigns) {
