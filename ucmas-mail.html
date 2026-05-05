@@ -1563,26 +1563,30 @@ function renderDashStats() {
 function renderContactTable(query='') {
   const tbody = document.getElementById('contact-tbody');
   let rows = contacts.filter(c => {
-    const levelMatch = currentFilter === 'all' || c.level === currentFilter || isChildOf(c.level, currentFilter);
+    // So sánh bằng level_id (UUID) — currentFilter cũng là UUID
+    const levelMatch = currentFilter === 'all'
+      || c.level_id === currentFilter
+      || isChildOf(c.level_id, currentFilter);
     const q = query.toLowerCase();
     const textMatch = !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
     return levelMatch && textMatch;
   });
   tbody.innerHTML = rows.map((c,i) => {
-    const lv = getLevelById(c.level);
+    const lv = getLevelById(c.level_id); // tìm theo UUID
     const color = lv ? lv.color : '#888';
+    const levelName = lv ? lv.name : (c.level || '—'); // hiển thị tên
     const statusIcon = c.status==='sent'?'s-ok':c.status==='error'?'s-err':'s-pend';
     const statusLabel = c.status==='sent'?'Sent':c.status==='error'?'Error':'Pending';
-    return `<tr data-level="${c.level}">
+    return `<tr>
       <td><input type="checkbox"></td>
       <td style="font-weight:500">${c.name}</td>
       <td class="col-em">${c.email}</td>
-      <td><span class="lt" style="background:${hexToRgba(color,.12)};color:${color};border:1px solid ${hexToRgba(color,.25)}">● ${c.level}</span></td>
+      <td><span class="lt" style="background:${hexToRgba(color,.12)};color:${color};border:1px solid ${hexToRgba(color,.25)}">● ${levelName}</span></td>
       <td><span class="sdot ${statusIcon}"></span>${statusLabel}</td>
       <td style="color:var(--muted);font-size:12px">${c.last}</td>
       <td>
         <select class="lsel" onchange="changeContactLevel(${i}, this.value)">
-          ${levels.map(l=>`<option value="${l.id}"${l.id===c.level?' selected':''}>${l.name}</option>`).join('')}
+          ${levels.map(l=>`<option value="${l.id}"${l.id===c.level_id?' selected':''}>${l.name}</option>`).join('')}
         </select>
         <button class="abtn" onclick="removeContact(${i})" style="margin-left:4px;color:var(--err)">✕</button>
       </td>
@@ -1613,7 +1617,17 @@ function setFilter(f) {
 }
 function filterTable(q) { renderContactTable(q); }
 function selectAll(cb) { document.querySelectorAll('#contact-tbody input[type=checkbox]').forEach(c => c.checked=cb.checked); }
-function changeContactLevel(i, v) { contacts[i].level = v; renderContactTable(); toast(`Đã cập nhật level → ${v}`); }
+async function changeContactLevel(i, levelId) {
+  const lv = getLevelById(levelId);
+  contacts[i].level_id = levelId;
+  contacts[i].level = lv ? lv.name : '';
+  renderContactTable();
+  toast(`Đã cập nhật level → ${lv ? lv.name : levelId}`);
+  if (window._backendConnected && contacts[i].id) {
+    try { await apiFetch('/api/contacts-level', { method: 'PATCH', body: JSON.stringify({ id: contacts[i].id, levelId }) }); }
+    catch (e) { toast('Lỗi lưu level: ' + e.message, 'err'); }
+  }
+}
 function removeContact(i) { contacts.splice(i,1); renderContactTable(); toast('Đã xoá contact','warn'); }
 
 // ════════════════════════════════════════
