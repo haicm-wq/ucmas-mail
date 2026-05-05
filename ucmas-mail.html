@@ -704,14 +704,26 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
     <div class="upload-hint">Cột bắt buộc: <strong style="color:var(--l2)">name</strong> · <strong style="color:var(--l2)">email</strong> · <strong style="color:var(--l2)">level</strong> &nbsp;·&nbsp; Cột tuỳ chọn: company, phone</div>
     <div class="fmt-chips"><span class="fmt-chip">.csv</span><span class="fmt-chip">.xlsx</span><span class="fmt-chip">.xls</span><span class="fmt-chip">Google Sheet</span></div>
   </div>
+  <!-- Bulk action bar (hiện khi có contact được chọn) -->
+  <div id="bulk-bar" style="display:none;align-items:center;gap:10px;padding:10px 14px;background:var(--accent-glow);border:1px solid var(--accent);border-radius:9px;margin-bottom:10px">
+    <span style="font-family:var(--fm);font-size:12px;color:var(--accent2)" id="bulk-count">0 đã chọn</span>
+    <div style="flex:1"></div>
+    <select class="fsel" id="bulk-level-sel" style="width:160px;padding:5px 10px;font-size:12px">
+      <option value="">Đổi level → chọn level</option>
+    </select>
+    <button class="btn" onclick="bulkChangeLevel()">✓ Đổi level</button>
+    <button class="btn btn-danger" onclick="bulkDelete()">✕ Xoá đã chọn</button>
+    <button class="btn" onclick="clearSelection()" style="font-size:11px">Bỏ chọn</button>
+  </div>
+
   <div class="tbl-wrap">
     <div class="tbl-bar">
       <input class="tbl-search" type="text" placeholder="🔍 Tìm tên, email..." oninput="filterTable(this.value)">
       <div class="chip-row" id="filter-chips"></div>
-      <div style="margin-left:auto;font-family:var(--fm);font-size:11px;color:var(--muted)" id="table-count">284 contacts</div>
+      <div style="margin-left:auto;font-family:var(--fm);font-size:11px;color:var(--muted)" id="table-count">0 contacts</div>
     </div>
     <table><thead><tr>
-      <th><input type="checkbox" onchange="selectAll(this)"></th>
+      <th><input type="checkbox" id="chk-all" onchange="selectAll(this)"></th>
       <th>Name</th><th>Email</th><th>Level</th><th>Status</th><th>Last sent</th><th>Actions</th>
     </tr></thead>
     <tbody id="contact-tbody"></tbody>
@@ -1743,8 +1755,8 @@ function renderContactTable(query='') {
     const levelName = lv ? lv.name : (c.level || '—'); // hiển thị tên
     const statusIcon = c.status==='sent'?'s-ok':c.status==='error'?'s-err':'s-pend';
     const statusLabel = c.status==='sent'?'Sent':c.status==='error'?'Error':'Pending';
-    return `<tr>
-      <td><input type="checkbox"></td>
+    return `<tr data-idx="${i}">
+      <td><input type="checkbox" onchange="onRowCheck()"></td>
       <td style="font-weight:500">${c.name}</td>
       <td class="col-em">${c.email}</td>
       <td><span class="lt" style="background:${hexToRgba(color,.12)};color:${color};border:1px solid ${hexToRgba(color,.25)}">● ${levelName}</span></td>
@@ -1782,7 +1794,96 @@ function setFilter(f) {
   renderFilterChips();
 }
 function filterTable(q) { renderContactTable(q); }
-function selectAll(cb) { document.querySelectorAll('#contact-tbody input[type=checkbox]').forEach(c => c.checked=cb.checked); }
+function selectAll(cb) {
+  document.querySelectorAll('#contact-tbody input[type=checkbox]').forEach(c => c.checked = cb.checked);
+  updateBulkBar();
+}
+
+function onRowCheck() { updateBulkBar(); }
+
+function updateBulkBar() {
+  const checked = getCheckedIndices();
+  const bar = document.getElementById('bulk-bar');
+  const countEl = document.getElementById('bulk-count');
+  const chkAll = document.getElementById('chk-all');
+  const total = document.querySelectorAll('#contact-tbody input[type=checkbox]').length;
+
+  if (checked.length > 0) {
+    bar.style.display = 'flex';
+    countEl.textContent = `${checked.length} đã chọn`;
+    // Điền level options vào bulk select
+    const sel = document.getElementById('bulk-level-sel');
+    sel.innerHTML = '<option value="">Đổi level → chọn level</option>' +
+      levels.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+  } else {
+    bar.style.display = 'none';
+  }
+  if (chkAll) chkAll.indeterminate = checked.length > 0 && checked.length < total;
+  if (chkAll) chkAll.checked = total > 0 && checked.length === total;
+}
+
+function getCheckedIndices() {
+  const rows = document.querySelectorAll('#contact-tbody tr');
+  const result = [];
+  rows.forEach((tr, i) => {
+    const cb = tr.querySelector('input[type=checkbox]');
+    if (cb?.checked) result.push(parseInt(tr.dataset.idx));
+  });
+  return result.filter(i => !isNaN(i));
+}
+
+function clearSelection() {
+  document.querySelectorAll('#contact-tbody input[type=checkbox]').forEach(c => c.checked = false);
+  updateBulkBar();
+}
+
+async function bulkDelete() {
+  const idxs = getCheckedIndices();
+  if (!idxs.length) return;
+  if (!confirm(`Xoá ${idxs.length} contacts đã chọn?`)) return;
+
+  const toDelete = idxs.map(i => contacts[i]).filter(Boolean);
+  const ids = toDelete.map(c => c.id).filter(Boolean);
+
+  // Xoá optimistic trước
+  const toDeleteSet = new Set(idxs);
+  contacts = contacts.filter((_, i) => !toDeleteSet.has(i));
+  renderContactTable(); renderSidebar(); renderDashStats();
+  updateBulkBar();
+  toast(`Đã xoá ${toDelete.length} contacts`, 'warn');
+
+  // Xoá trên Supabase
+  if (window._backendConnected && ids.length) {
+    for (const id of ids) {
+      try { await apiFetch('/api/contacts?id=' + id, { method: 'DELETE' }); } catch (_) {}
+    }
+  }
+}
+
+async function bulkChangeLevel() {
+  const idxs = getCheckedIndices();
+  const levelId = document.getElementById('bulk-level-sel').value;
+  if (!idxs.length) return;
+  if (!levelId) { toast('Chọn level muốn đổi!', 'err'); return; }
+
+  const lv = getLevelById(levelId);
+  idxs.forEach(i => {
+    if (contacts[i]) { contacts[i].level_id = levelId; contacts[i].level = lv?.name || ''; }
+  });
+  renderContactTable(); renderSidebar(); renderDashStats();
+  toast(`Đã đổi level ${idxs.length} contacts → ${lv?.name}`);
+
+  // Cập nhật trên Supabase
+  if (window._backendConnected) {
+    for (const i of idxs) {
+      const c = contacts[i];
+      if (c?.id) {
+        try { await apiFetch('/api/contacts-level', { method: 'PATCH', body: JSON.stringify({ id: c.id, levelId }) }); }
+        catch (_) {}
+      }
+    }
+  }
+}
 async function changeContactLevel(i, levelId) {
   const lv = getLevelById(levelId);
   contacts[i].level_id = levelId;
