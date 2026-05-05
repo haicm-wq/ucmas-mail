@@ -451,7 +451,6 @@ tr:hover td{background:var(--surface2)}
     <button class="nav-tab" onclick="gotoPage('templates',this)">Templates</button>
     <button class="nav-tab" onclick="gotoPage('campaign',this)">New Campaign</button>
     <button class="nav-tab" onclick="gotoPage('history',this)">History</button>
-    <button class="nav-tab" onclick="gotoPage('database',this)">⬡ Database</button>
   </nav>
   <div class="spacer"></div>
   <div class="topbar-info" id="conn-status"><div class="status-dot" style="background:var(--muted)"></div>Chưa kết nối</div>
@@ -468,7 +467,6 @@ tr:hover td{background:var(--surface2)}
     <button class="sb-item" onclick="gotoPage('templates',null,this)">▤ Templates <span class="sb-badge">5</span></button>
     <button class="sb-item" onclick="gotoPage('campaign',null,this)">✉ New Campaign</button>
     <button class="sb-item" onclick="gotoPage('history',null,this)">◷ History</button>
-    <button class="sb-item" onclick="gotoPage('database',null,this)">⬡ Database</button>
     <div class="sb-div"></div>
     <div class="sb-label">Segments</div>
     <div class="level-tree" id="sidebar-level-tree"></div>
@@ -605,6 +603,10 @@ tr:hover td{background:var(--surface2)}
     <div><div class="ph-title">Email Templates</div><div class="ph-sub">Chọn mẫu, chỉnh sửa nội dung và lưu template</div></div>
     <div class="btn-row">
       <button class="btn" onclick="newBlankTemplate()">+ Template trống</button>
+      <label class="btn" style="cursor:pointer" title="Upload file .html hoặc .txt">
+        ↑ Upload file
+        <input type="file" accept=".html,.htm,.txt" style="display:none" onchange="uploadTemplateFile(event)">
+      </label>
       <button class="btn btn-primary" onclick="saveCurrentTemplate()">💾 Lưu template</button>
     </div>
   </div>
@@ -745,8 +747,8 @@ tr:hover td{background:var(--surface2)}
   </div>
 </div>
 
-<!-- DATABASE -->
-<div id="page-database" class="page">
+<!-- DATABASE (removed) -->
+<div id="page-database" class="page" style="display:none!important">
   <div class="ph">
     <div><div class="ph-title">Database — Supabase</div><div class="ph-sub">Setup, schema, SQL scripts và kết nối cho UCMAS MAIL</div></div>
     <div class="btn-row">
@@ -1730,6 +1732,24 @@ function insertTmplVar(v) {
   ta.value = ta.value.substring(0,s) + v + ta.value.substring(ta.selectionEnd);
   ta.selectionStart = ta.selectionEnd = s+v.length;
   ta.focus(); updatePreview();
+}
+
+function uploadTemplateFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const content = ev.target.result;
+    const name = file.name.replace(/\.(html?|txt)$/i, '');
+    document.getElementById('tmpl-code').value = content;
+    document.getElementById('tmpl-name-input').value = name;
+    activeTemplate = null;
+    updatePreview();
+    renderTemplates();
+    toast(`Đã tải file: ${file.name}`);
+  };
+  reader.readAsText(file, 'utf-8');
+  e.target.value = ''; // reset để upload lại cùng file được
 }
 
 function newBlankTemplate() {
