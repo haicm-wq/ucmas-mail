@@ -344,6 +344,65 @@ tr:hover td{background:var(--surface2)}
 <!-- TOAST -->
 <div class="toast-area" id="toast-area"></div>
 
+<!-- GOOGLE SHEETS MODAL -->
+<div class="modal-overlay" id="modal-sheets">
+  <div class="modal" style="width:540px">
+    <div class="modal-header">
+      <div class="modal-title">Google Sheets</div>
+      <button class="modal-close" onclick="closeModal('modal-sheets')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- TAB: Import contacts -->
+      <div style="font-family:var(--fm);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">↓ Import contacts từ Google Sheet</div>
+      <div class="fg">
+        <label class="fl">URL Google Sheet (đã publish)</label>
+        <input class="fi" id="gs-import-url" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv">
+      </div>
+      <div class="info-box" style="font-size:12px;margin-bottom:12px;line-height:1.8">
+        <strong>Cách lấy URL:</strong> Mở Google Sheet → <strong>File → Share → Publish to web</strong> → Chọn sheet → Format: <strong>CSV</strong> → Publish → Copy link
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:20px">
+        <button class="btn btn-primary" style="flex:1" onclick="importFromSheets()">↓ Đồng bộ ngay</button>
+        <button class="btn" onclick="toggleAutoSync()" id="btn-autosync">⟳ Tự động (tắt)</button>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin-bottom:16px"></div>
+
+      <!-- TAB: Ghi lại lịch sử gửi -->
+      <div style="font-family:var(--fm);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">↑ Ghi lịch sử gửi về Google Sheet</div>
+      <div class="fg">
+        <label class="fl">Google Apps Script Webhook URL</label>
+        <input class="fi" id="gs-webhook-url" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
+      <div class="info-box warn" style="font-size:12px;margin-bottom:10px;line-height:1.8">
+        <strong>Cách setup:</strong> Mở Google Sheet → <strong>Extensions → Apps Script</strong> → Paste code bên dưới → Deploy → Copy Webhook URL
+      </div>
+      <div class="code-block" style="margin-bottom:0">
+        <div class="code-block-header">
+          <span class="code-block-lang">Google Apps Script</span>
+          <button class="code-block-copy" onclick="copyAppsScript()">Copy</button>
+        </div>
+        <pre id="apps-script-code" style="padding:12px;font-family:monospace;font-size:11.5px;color:var(--text);overflow-x:auto;line-height:1.7;white-space:pre">function doPost(e) {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const data  = JSON.parse(e.postData.contents);
+  data.forEach(row => {
+    sheet.appendRow([
+      row.email, row.name, row.level,
+      row.status, row.campaign, row.sent_at
+    ]);
+  });
+  return ContentService.createTextOutput('ok');
+}</pre>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-sheets')">Đóng</button>
+      <button class="btn btn-primary" onclick="saveSheetSettings()">💾 Lưu cài đặt</button>
+    </div>
+  </div>
+</div>
+
 <!-- SETTINGS MODAL -->
 <div class="modal-overlay" id="modal-settings">
   <div class="modal" style="width:520px">
@@ -511,6 +570,11 @@ tr:hover td{background:var(--surface2)}
   <div class="ph">
     <div><div class="ph-title">Contacts</div><div class="ph-sub">Import danh sách và phân cấp theo level</div></div>
     <div class="btn-row">
+      <button class="btn" onclick="downloadSampleCSV()">↓ Tải file mẫu</button>
+      <button class="btn" onclick="openSheetsModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+        Google Sheets
+      </button>
       <label class="btn" style="cursor:pointer" for="file-input">↑ Upload CSV/Excel</label>
       <input type="file" id="file-input" accept=".csv,.xlsx,.xls" onchange="handleUpload(event)">
       <button class="btn btn-primary" onclick="gotoPage('campaign')">Tạo Campaign →</button>
@@ -520,7 +584,7 @@ tr:hover td{background:var(--surface2)}
     <div class="upload-icon">📤</div>
     <div class="upload-title">Kéo thả file hoặc click để chọn</div>
     <div class="upload-hint">Cột bắt buộc: <strong style="color:var(--l2)">name</strong> · <strong style="color:var(--l2)">email</strong> · <strong style="color:var(--l2)">level</strong> &nbsp;·&nbsp; Cột tuỳ chọn: company, phone</div>
-    <div class="fmt-chips"><span class="fmt-chip">.csv</span><span class="fmt-chip">.xlsx</span><span class="fmt-chip">.xls</span><span class="fmt-chip">Google Sheet export</span></div>
+    <div class="fmt-chips"><span class="fmt-chip">.csv</span><span class="fmt-chip">.xlsx</span><span class="fmt-chip">.xls</span><span class="fmt-chip">Google Sheet</span></div>
   </div>
   <div class="tbl-wrap">
     <div class="tbl-bar">
@@ -2010,6 +2074,156 @@ function init() {
   selectTemplate('t1');
 }
 init();
+
+// ════════════════════════════════════════
+// GOOGLE SHEETS
+// ════════════════════════════════════════
+const SHEETS_KEY = 'ucmas_sheets';
+let _autoSyncTimer = null;
+
+function getSheetsConfig() {
+  try { return JSON.parse(localStorage.getItem(SHEETS_KEY) || '{}'); } catch { return {}; }
+}
+
+function openSheetsModal() {
+  const cfg = getSheetsConfig();
+  document.getElementById('gs-import-url').value  = cfg.importUrl  || '';
+  document.getElementById('gs-webhook-url').value = cfg.webhookUrl || '';
+  updateAutoSyncBtn();
+  document.getElementById('modal-sheets').classList.add('open');
+}
+
+function saveSheetSettings() {
+  const cfg = {
+    importUrl:  document.getElementById('gs-import-url').value.trim(),
+    webhookUrl: document.getElementById('gs-webhook-url').value.trim(),
+    autoSync:   getSheetsConfig().autoSync || false,
+  };
+  localStorage.setItem(SHEETS_KEY, JSON.stringify(cfg));
+  closeModal('modal-sheets');
+  toast('Đã lưu cài đặt Google Sheets');
+}
+
+// ── Import contacts từ Google Sheet ────
+async function importFromSheets() {
+  const url = document.getElementById('gs-import-url').value.trim() || getSheetsConfig().importUrl;
+  if (!url) { toast('Nhập URL Google Sheet trước!', 'err'); return; }
+
+  const btn = document.querySelector('#modal-sheets .btn-primary');
+  if (btn) { btn.textContent = 'Đang đồng bộ...'; btn.disabled = true; }
+
+  try {
+    // Dùng api proxy để tránh CORS
+    const res = await fetch('/api/sheets-proxy?url=' + encodeURIComponent(url), {
+      headers: cfgHeaders(), signal: AbortSignal.timeout(15000),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error);
+
+    toast(`Đồng bộ xong: ${json.data.imported} contacts, ${json.data.skipped} bỏ qua`);
+
+    // Reload contacts
+    const ctData = await apiFetch('/api/contacts');
+    if (ctData) {
+      contacts = ctData.map(c => ({
+        id: c.id, name: c.name, email: c.email,
+        level: c.levels?.name || '', level_id: c.level_id,
+        company: c.company || '',
+        status: c.status === 'active' ? 'pending' : c.status,
+        last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
+      }));
+    }
+    renderContactTable(); renderSidebar(); renderDashStats();
+
+    // Lưu URL
+    const cfg = getSheetsConfig();
+    cfg.importUrl = url;
+    cfg.lastSync = new Date().toLocaleString('vi-VN');
+    localStorage.setItem(SHEETS_KEY, JSON.stringify(cfg));
+
+  } catch (e) { toast('Lỗi đồng bộ: ' + e.message, 'err'); }
+  finally {
+    if (btn) { btn.textContent = '↓ Đồng bộ ngay'; btn.disabled = false; }
+  }
+}
+
+// ── Auto-sync ───────────────────────────
+function toggleAutoSync() {
+  const cfg = getSheetsConfig();
+  cfg.autoSync = !cfg.autoSync;
+  localStorage.setItem(SHEETS_KEY, JSON.stringify(cfg));
+  updateAutoSyncBtn();
+  if (cfg.autoSync) {
+    startAutoSync();
+    toast('Tự động đồng bộ mỗi 5 phút');
+  } else {
+    if (_autoSyncTimer) clearInterval(_autoSyncTimer);
+    toast('Đã tắt tự động đồng bộ', 'warn');
+  }
+}
+
+function updateAutoSyncBtn() {
+  const cfg = getSheetsConfig();
+  const btn = document.getElementById('btn-autosync');
+  if (!btn) return;
+  btn.textContent = cfg.autoSync ? '⟳ Tự động (bật)' : '⟳ Tự động (tắt)';
+  btn.style.color = cfg.autoSync ? 'var(--ok)' : '';
+  btn.style.borderColor = cfg.autoSync ? 'var(--ok)' : '';
+}
+
+function startAutoSync() {
+  if (_autoSyncTimer) clearInterval(_autoSyncTimer);
+  _autoSyncTimer = setInterval(() => {
+    const cfg = getSheetsConfig();
+    if (cfg.autoSync && cfg.importUrl) importFromSheets();
+  }, 5 * 60 * 1000); // 5 phút
+}
+
+// ── Ghi lịch sử gửi về Google Sheet ────
+async function syncLogsToSheet(campaignId, campaignName, results) {
+  const cfg = getSheetsConfig();
+  if (!cfg.webhookUrl || !results?.length) return;
+  try {
+    const rows = results.map(r => ({
+      email:    r.email,
+      name:     contacts.find(c => c.email === r.email)?.name || '',
+      level:    r.level,
+      status:   r.status,
+      campaign: campaignName,
+      sent_at:  new Date().toLocaleString('vi-VN'),
+    }));
+    await fetch(cfg.webhookUrl, {
+      method: 'POST',
+      body: JSON.stringify(rows),
+      mode: 'no-cors',
+    });
+    toast('✓ Đã ghi lịch sử về Google Sheet');
+  } catch (_) {}
+}
+
+// ── Download file mẫu CSV ───────────────
+function downloadSampleCSV() {
+  const csv = [
+    'name,email,level,company,phone',
+    'Nguyễn Văn A,nguyenvana@email.com,L1,UCMAS Hà Nội,0901234567',
+    'Trần Thị B,tranthib@email.com,L2,UCMAS HCM,0907654321',
+    'Lê Văn C,levanc@email.com,L3,,',
+    'Phạm Thị D,phamthid@email.com,L4,UCMAS Đà Nẵng,',
+  ].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }); // BOM cho Excel đọc được tiếng Việt
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ucmas-contacts-mau.csv';
+  a.click();
+}
+
+function copyAppsScript() {
+  const code = document.getElementById('apps-script-code').textContent;
+  navigator.clipboard.writeText(code).then(() => toast('Đã copy Apps Script code!'));
+}
+
+// Khởi động auto-sync nếu đã bật từ trước
+if (getSheetsConfig().autoSync) startAutoSync();
 
 // ════════════════════════════════════════
 // SETTINGS — localStorage, không cần auth
