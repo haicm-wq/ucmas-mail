@@ -1441,31 +1441,10 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
 // ════════════════════════════════════════
 // DATA STORE
 // ════════════════════════════════════════
-let levels = [
-  {id:'L1', name:'L1', color:'#f5c842', parent:null, desc:'', count:48},
-  {id:'L2', name:'L2', color:'#3de8a0', parent:null, desc:'', count:112},
-  {id:'L3', name:'L3', color:'#5ba8ff', parent:null, desc:'', count:86},
-  {id:'L4', name:'L4', color:'#c97ef5', parent:null, desc:'', count:38},
-];
-
-let contacts = [
-  {name:'Nguyễn Thị Lan',  email:'lan.nguyen@email.com',   level:'L1', status:'sent',    last:'22/05/2025'},
-  {name:'Trần Minh Đức',   email:'duc.tran@company.vn',    level:'L1', status:'sent',    last:'22/05/2025'},
-  {name:'Lê Quang Hải',    email:'hai.le@gmail.com',        level:'L2', status:'pending', last:'—'},
-  {name:'Phạm Thu Hương',  email:'huong.pham@work.com',    level:'L2', status:'sent',    last:'15/05/2025'},
-  {name:'Hoàng Văn Nam',   email:'nam.hoang@mail.vn',       level:'L3', status:'error',   last:'15/05/2025'},
-  {name:'Vũ Thị Mai',      email:'mai.vu@personal.com',    level:'L3', status:'pending', last:'—'},
-  {name:'Đặng Thị Hoa',    email:'hoa.dang@newcustomer.vn',level:'L4', status:'sent',    last:'10/05/2025'},
-  {name:'Bùi Trọng Khoa',  email:'khoa.bui@ucmas.vn',      level:'L4', status:'pending', last:'—'},
-];
-
-let templates = [
-  {id:'t1', name:'Chào mừng thành viên', icon:'🎉', desc:'Chào đón khách hàng mới, giới thiệu chương trình', tags:['welcome','l4'], body:`Xin chào {{name}},\n\nChào mừng bạn đến với cộng đồng UCMAS! Chúng tôi rất vui khi có bạn trong danh sách {{level}}.\n\nĐể bắt đầu, hãy khám phá các chương trình của chúng tôi tại website.\n\nTrân trọng,\nUCMAS Vietnam`},
-  {id:'t2', name:'Ưu đãi VIP độc quyền',  icon:'👑', desc:'Email ưu đãi đặc biệt dành riêng cho L1, L2', tags:['promo','vip','l1','l2'], body:`Kính gửi {{name}},\n\nVới tư cách là khách hàng {{level}} đặc biệt của UCMAS, bạn được hưởng ưu đãi độc quyền tháng này.\n\n⭐ Giảm 20% học phí khoá tiếp theo\n⭐ Tặng tài liệu học tập cao cấp\n⭐ Ưu tiên đăng ký lớp mới\n\nƯu đãi có hiệu lực đến 30/06/2025.\n\nTrân trọng,\nUCMAS Vietnam`},
-  {id:'t3', name:'Nhắc nhở gia hạn',      icon:'⏰', desc:'Thông báo gia hạn học phí, khuyến khích tiếp tục', tags:['renewal','all'], body:`Xin chào {{name}},\n\nHọc phí khoá học của bạn sắp hết hạn. Đừng để gián đoạn quá trình phát triển của bé!\n\nGia hạn ngay trong tuần này để nhận thêm 1 tháng học miễn phí.\n\nLiên hệ: 1800-UCMAS\n\nTrân trọng,\nUCMAS Vietnam`},
-  {id:'t4', name:'Newsletter tháng',      icon:'📰', desc:'Bản tin định kỳ hàng tháng cho tất cả thành viên', tags:['newsletter','monthly'], body:`Xin chào {{name}},\n\nBản tin UCMAS tháng 6 đã có! Cùng điểm qua những điểm nổi bật:\n\n📌 Khai giảng khoá mới ngày 1/6\n📌 Học sinh UCMAS đạt giải quốc tế\n📌 Tips luyện tập abacus tại nhà\n\nĐọc đầy đủ tại website ucmas.vn\n\nTrân trọng,\nUCMAS Vietnam`},
-  {id:'t5', name:'Template trống',        icon:'📄', desc:'Bắt đầu từ trang trắng, tự thiết kế nội dung', tags:['blank'], body:`Xin chào {{name}},\n\n[Nội dung email của bạn]\n\nTrân trọng,\nUCMAS Vietnam`},
-];
+// Khởi tạo rỗng — dữ liệu thật load từ Supabase sau
+let levels    = [];
+let contacts  = [];
+let templates = [];
 
 let activeTemplate = null;
 let selectedLevels = {};
@@ -2065,15 +2044,15 @@ function testDbConnection() {
 
 
 function init() {
+  // Chỉ render skeleton UI, không render data — tránh flash mock data
   renderSidebar();
   renderDashStats();
   renderFilterChips();
   renderContactTable();
   renderTemplates();
   renderCampaignTargets();
-  selectTemplate('t1');
 }
-init();
+// KHÔNG gọi init() ở đây — gọi sau khi load data thật từ backend
 
 // ════════════════════════════════════════
 // GOOGLE SHEETS
@@ -2342,7 +2321,7 @@ async function loadFromBackend() {
     const campData = await apiFetch('/api/campaigns');
     if (campData) renderHistoryFromApi(campData);
 
-    // Re-render tất cả với data thật
+    // Render với data thật từ Supabase
     renderSidebar(); renderDashStats(); renderFilterChips();
     renderContactTable(); renderTemplates(); renderCampaignTargets();
     if (templates.length) selectTemplate(templates[0].id);
@@ -2579,7 +2558,9 @@ startSend = async function() {
   }
 };
 
-// Khởi động
+// Khởi động — render UI rỗng trước, rồi load data thật
+init();
+
 const _cfg = getConfig();
 if (!_cfg.sbUrl || !_cfg.sbKey) {
   setTimeout(() => {
