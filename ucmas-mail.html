@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>UCMAS MAIL</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -329,6 +330,21 @@ tr:hover td{background:var(--surface2)}
 .modal-body{padding:20px}
 .modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
 
+/* AUTH OVERLAY */
+.auth-overlay{position:fixed;inset:0;background:var(--bg);z-index:9000;display:flex;align-items:center;justify-content:center}
+.auth-overlay.hidden{display:none}
+.auth-box{background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:400px;max-width:92vw;overflow:hidden}
+.auth-box-header{padding:28px 28px 0;text-align:center}
+.auth-logo{width:44px;height:44px;background:var(--accent);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#fff;font-family:var(--fh);margin:0 auto 14px}
+.auth-title{font-family:var(--fh);font-size:20px;font-weight:700;margin-bottom:5px}
+.auth-sub{color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:24px}
+.auth-body{padding:0 28px 28px;display:flex;flex-direction:column;gap:12px}
+.auth-tab-row{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:4px}
+.auth-tab{flex:1;padding:8px;text-align:center;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--fb);transition:all .13s}
+.auth-tab.active{background:var(--accent);color:#fff}
+.auth-err{background:rgba(245,92,92,.1);border:1px solid rgba(245,92,92,.3);border-radius:8px;padding:10px 14px;font-size:12.5px;color:var(--err);display:none}
+.auth-err.show{display:block}
+
 /* TOAST */
 .toast-area{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px}
 .toast{background:var(--surface);border:1px solid var(--border2);border-radius:9px;padding:12px 16px;font-size:13px;min-width:220px;max-width:340px;display:flex;align-items:center;gap:10px;animation:slide-in .22s ease;box-shadow:0 8px 30px rgba(0,0,0,.4)}
@@ -338,6 +354,59 @@ tr:hover td{background:var(--surface2)}
 </style>
 </head>
 <body>
+
+<!-- AUTH OVERLAY -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-box-header">
+      <div class="auth-logo">U</div>
+      <div class="auth-title">UCMAS MAIL</div>
+      <div class="auth-sub" id="auth-sub">Đăng nhập để tiếp tục</div>
+    </div>
+
+    <!-- VIEW: Bootstrap (lần đầu, nhập URL + anon key) -->
+    <div class="auth-body" id="view-bootstrap" style="display:none">
+      <div class="info-box" style="font-size:12.5px">Nhập thông tin Supabase của bạn một lần duy nhất. Các lần sau chỉ cần đăng nhập.</div>
+      <div class="fg" style="margin-bottom:0">
+        <label class="fl">Supabase Project URL</label>
+        <input class="fi" id="bs-url" placeholder="https://xxxxxxxx.supabase.co">
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <label class="fl">Supabase Anon Key <span style="color:var(--muted);font-size:9px">(public, an toàn)</span></label>
+        <input class="fi" id="bs-anon" placeholder="eyJhbGciOiJIUzI1NiIs...">
+      </div>
+      <div class="auth-err" id="bs-err"></div>
+      <button class="btn btn-primary" style="width:100%;padding:11px" onclick="submitBootstrap()">Tiếp tục →</button>
+    </div>
+
+    <!-- VIEW: Login -->
+    <div class="auth-body" id="view-login" style="display:none">
+      <div class="auth-tab-row">
+        <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Đăng nhập</button>
+        <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Tạo tài khoản</button>
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <label class="fl">Email</label>
+        <input class="fi" id="auth-email" type="email" placeholder="admin@ucmas.vn" onkeydown="if(event.key==='Enter')submitLogin()">
+      </div>
+      <div class="fg" style="margin-bottom:0">
+        <label class="fl">Mật khẩu</label>
+        <input class="fi" id="auth-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitLogin()">
+      </div>
+      <div class="auth-err" id="login-err"></div>
+      <button class="btn btn-primary" style="width:100%;padding:11px" id="auth-submit-btn" onclick="submitLogin()">Đăng nhập</button>
+      <div style="text-align:center;font-size:11.5px;color:var(--muted)">
+        <span style="cursor:pointer;color:var(--accent2)" onclick="showBootstrap()">← Đổi Supabase project</span>
+      </div>
+    </div>
+
+    <!-- VIEW: Loading -->
+    <div class="auth-body" id="view-loading" style="text-align:center;padding:32px">
+      <div style="font-size:24px;margin-bottom:12px;animation:blink 1s ease-in-out infinite">⟳</div>
+      <div style="color:var(--muted);font-size:13px" id="loading-msg">Đang tải cấu hình...</div>
+    </div>
+  </div>
+</div>
 
 <!-- TOAST -->
 <div class="toast-area" id="toast-area"></div>
@@ -360,13 +429,17 @@ tr:hover td{background:var(--surface2)}
         <input class="fi" id="cfg-sb-url" placeholder="https://xxxxxxxx.supabase.co">
       </div>
       <div class="fg">
-        <label class="fl">Service Role Key <span style="color:var(--err);font-size:9px">(giữ bí mật)</span></label>
+        <label class="fl">Anon Key <span style="color:var(--muted);font-size:9px">(public key, an toàn)</span></label>
+        <input class="fi" id="cfg-sb-anon" placeholder="eyJhbGciOiJIUzI1NiIs...">
+      </div>
+      <div class="fg">
+        <label class="fl">Service Role Key <span style="color:var(--err);font-size:9px">(bí mật — lưu lên Supabase)</span></label>
         <input class="fi" id="cfg-sb-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIs...">
       </div>
 
       <div style="font-family:var(--fm);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:16px 0 10px">Resend (gửi email)</div>
       <div class="fg">
-        <label class="fl">API Key <span style="color:var(--err);font-size:9px">(giữ bí mật)</span></label>
+        <label class="fl">API Key <span style="color:var(--err);font-size:9px">(bí mật — lưu lên Supabase)</span></label>
         <input class="fi" id="cfg-resend" type="password" placeholder="re_xxxxxxxxxxxxxxxx">
       </div>
       <div class="fg">
@@ -374,14 +447,14 @@ tr:hover td{background:var(--surface2)}
         <input class="fi" id="cfg-from" type="email" placeholder="noreply@yourdomain.com">
       </div>
 
-      <div class="info-box warn" style="margin-top:4px;font-size:11.5px">
-        Keys được lưu vào <strong>localStorage</strong> của trình duyệt này. Không dùng trên máy tính công cộng.
+      <div class="info-box ok" style="margin-top:4px;font-size:11.5px">
+        URL + Anon Key lưu vào <strong>localStorage</strong>. Service Key + Resend Key lưu lên <strong>Supabase</strong> — đăng nhập lần sau tự fetch về, không cần nhập lại.
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn" onclick="testSettingsConnection()">⚡ Test kết nối</button>
+      <button class="btn" onclick="testSettingsConnection()">⚡ Test</button>
       <button class="btn" onclick="closeModal('modal-settings')">Huỷ</button>
-      <button class="btn btn-primary" onclick="saveSettings()">💾 Lưu & Áp dụng</button>
+      <button class="btn btn-primary" onclick="saveSettings()">💾 Lưu lên Supabase</button>
     </div>
   </div>
 </div>
@@ -456,8 +529,9 @@ tr:hover td{background:var(--surface2)}
     <button class="nav-tab" onclick="gotoPage('database',this)">⬡ Database</button>
   </nav>
   <div class="spacer"></div>
-  <div class="topbar-info" id="conn-status"><div class="status-dot" style="background:var(--muted)"></div>Chưa cấu hình</div>
+  <div class="topbar-info" id="conn-status"><div class="status-dot" style="background:var(--muted)"></div>Đang tải...</div>
   <button class="btn" onclick="openSettings()">⚙ Settings</button>
+  <button class="btn btn-danger" onclick="logoutApp()" id="btn-logout" style="display:none">↩ Đăng xuất</button>
 </div>
 
 <div class="layout">
@@ -1042,6 +1116,15 @@ $$ <span class="sql-kw">LANGUAGE</span> plpgsql;
 <span class="sql-kw">CREATE TRIGGER</span> templates_updated_at
   <span class="sql-kw">BEFORE UPDATE ON</span> templates
   <span class="sql-kw">FOR EACH ROW EXECUTE FUNCTION</span> <span class="sql-fn">update_updated_at</span>();
+
+<span class="sql-cm">-- Bảng lưu config app (Resend key, FROM_EMAIL, service key)</span>
+<span class="sql-kw">CREATE TABLE</span> app_config (
+  key        <span class="sql-type">text</span>         <span class="sql-kw">PRIMARY KEY</span>,
+  value      <span class="sql-type">text</span>         <span class="sql-kw">NOT NULL</span>,
+  updated_at <span class="sql-type">timestamptz</span>  <span class="sql-kw">DEFAULT</span> <span class="sql-fn">now</span>()
+);
+<span class="sql-kw">ALTER TABLE</span> app_config <span class="sql-kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="sql-kw">CREATE POLICY</span> <span class="sql-str">"auth_config"</span> <span class="sql-kw">ON</span> app_config <span class="sql-kw">FOR ALL TO</span> authenticated <span class="sql-kw">USING</span> (<span class="sql-kw">true</span>);
 
 <span class="sql-cm">-- View: contacts với level name (JOIN sẵn)</span>
 <span class="sql-kw">CREATE VIEW</span> contacts_with_level <span class="sql-kw">AS</span>
@@ -1985,48 +2068,223 @@ function init() {
 init();
 
 // ════════════════════════════════════════
-// SETTINGS — lưu/đọc config từ localStorage
+// AUTH & CONFIG — Supabase Auth + app_config
 // ════════════════════════════════════════
-const CFG_KEY = 'ucmas_config';
+const CFG_KEY      = 'ucmas_config';
+const BOOTSTRAP_KEY = 'ucmas_bootstrap'; // chỉ lưu URL + anon key
+let _authClient = null; // supabase auth client (anon key)
 
 function getConfig() {
   try { return JSON.parse(localStorage.getItem(CFG_KEY) || '{}'); } catch { return {}; }
 }
+function getBootstrap() {
+  try { return JSON.parse(localStorage.getItem(BOOTSTRAP_KEY) || '{}'); } catch { return {}; }
+}
+function saveBootstrap(url, anonKey) {
+  localStorage.setItem(BOOTSTRAP_KEY, JSON.stringify({ url, anonKey }));
+}
 
+function getAuthClient() {
+  if (_authClient) return _authClient;
+  const bs = getBootstrap();
+  if (!bs.url || !bs.anonKey) return null;
+  _authClient = window.supabase.createClient(bs.url, bs.anonKey);
+  return _authClient;
+}
+
+// ── Auth overlay views ──────────────────
+function showAuthView(name) {
+  ['bootstrap','login','loading'].forEach(v => {
+    document.getElementById('view-'+v).style.display = v === name ? '' : 'none';
+  });
+  const subs = { bootstrap:'Thiết lập lần đầu', login:'Đăng nhập để tiếp tục', loading:'Đang xác thực...' };
+  document.getElementById('auth-sub').textContent = subs[name] || '';
+}
+
+function showBootstrap() { showAuthView('bootstrap'); }
+
+function switchAuthTab(tab) {
+  ['login','register'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t === tab);
+  });
+  const btn = document.getElementById('auth-submit-btn');
+  btn.textContent = tab === 'login' ? 'Đăng nhập' : 'Tạo tài khoản';
+  btn.onclick = tab === 'login' ? submitLogin : submitRegister;
+  document.getElementById('login-err').classList.remove('show');
+}
+
+async function submitBootstrap() {
+  const url  = document.getElementById('bs-url').value.trim();
+  const anon = document.getElementById('bs-anon').value.trim();
+  const errEl = document.getElementById('bs-err');
+  errEl.classList.remove('show');
+  if (!url || !anon) { errEl.textContent = 'Vui lòng nhập đầy đủ URL và Anon Key'; errEl.classList.add('show'); return; }
+  try {
+    const client = window.supabase.createClient(url, anon);
+    const { error } = await client.from('levels').select('id').limit(1);
+    if (error && error.code !== 'PGRST116') throw new Error(error.message);
+    _authClient = client;
+    saveBootstrap(url, anon);
+    showAuthView('login');
+  } catch (e) { errEl.textContent = 'Không thể kết nối: ' + e.message; errEl.classList.add('show'); }
+}
+
+async function submitLogin() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-pass').value;
+  const errEl = document.getElementById('login-err');
+  errEl.classList.remove('show');
+  if (!email || !pass) { errEl.textContent = 'Nhập email và mật khẩu'; errEl.classList.add('show'); return; }
+  const btn = document.getElementById('auth-submit-btn');
+  btn.textContent = 'Đang đăng nhập...'; btn.disabled = true;
+  try {
+    const { error } = await getAuthClient().auth.signInWithPassword({ email, password: pass });
+    if (error) throw error;
+    await afterLogin();
+  } catch (e) {
+    errEl.textContent = e.message; errEl.classList.add('show');
+    btn.textContent = 'Đăng nhập'; btn.disabled = false;
+  }
+}
+
+async function submitRegister() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-pass').value;
+  const errEl = document.getElementById('login-err');
+  errEl.classList.remove('show');
+  if (!email || !pass) { errEl.textContent = 'Nhập email và mật khẩu'; errEl.classList.add('show'); return; }
+  if (pass.length < 6) { errEl.textContent = 'Mật khẩu tối thiểu 6 ký tự'; errEl.classList.add('show'); return; }
+  const btn = document.getElementById('auth-submit-btn');
+  btn.textContent = 'Đang tạo...'; btn.disabled = true;
+  try {
+    const { error } = await getAuthClient().auth.signUp({ email, password: pass });
+    if (error) throw error;
+    errEl.textContent = '✓ Tạo tài khoản thành công! Kiểm tra email xác nhận rồi đăng nhập.';
+    errEl.style.color = 'var(--ok)'; errEl.classList.add('show');
+    switchAuthTab('login');
+  } catch (e) {
+    errEl.textContent = e.message; errEl.classList.add('show');
+  }
+  btn.textContent = 'Tạo tài khoản'; btn.disabled = false;
+}
+
+async function afterLogin() {
+  showAuthView('loading');
+  document.getElementById('loading-msg').textContent = 'Đang tải cấu hình từ Supabase...';
+  try {
+    const sb = getAuthClient();
+    const { data } = await sb.from('app_config').select('*');
+    if (data?.length) {
+      const map = {};
+      data.forEach(r => { map[r.key] = r.value; });
+      const bs = getBootstrap();
+      const cfg = {
+        sbUrl:  bs.url,
+        sbAnon: bs.anonKey,
+        sbKey:  map.sb_service_key || '',
+        resend: map.resend_key     || '',
+        from:   map.from_email     || '',
+      };
+      localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    }
+  } catch (_) {}
+  hideAuthOverlay();
+  await loadFromBackend();
+  window._backendConnected = true;
+}
+
+function hideAuthOverlay() {
+  document.getElementById('auth-overlay').classList.add('hidden');
+  document.getElementById('btn-logout').style.display = '';
+}
+
+async function logoutApp() {
+  const sb = getAuthClient();
+  if (sb) await sb.auth.signOut();
+  localStorage.removeItem(CFG_KEY);
+  document.getElementById('auth-overlay').classList.remove('hidden');
+  document.getElementById('btn-logout').style.display = 'none';
+  showAuthView('login');
+  toast('Đã đăng xuất', 'warn');
+}
+
+// ── Khởi động Auth ──────────────────────
+async function initAuth() {
+  const bs = getBootstrap();
+  if (!bs.url || !bs.anonKey) { showAuthView('bootstrap'); return; }
+
+  showAuthView('loading');
+  const sb = getAuthClient();
+  const { data: { session } } = await sb.auth.getSession();
+
+  if (session) {
+    await afterLogin();
+  } else {
+    showAuthView('login');
+  }
+}
+
+// ── Settings modal (cập nhật config + lưu lên Supabase) ──
 function openSettings() {
   const cfg = getConfig();
-  document.getElementById('cfg-sb-url').value  = cfg.sbUrl   || '';
+  const bs  = getBootstrap();
+  document.getElementById('cfg-sb-url').value  = bs.url      || cfg.sbUrl  || '';
+  document.getElementById('cfg-sb-anon').value = bs.anonKey  || cfg.sbAnon || '';
   document.getElementById('cfg-sb-key').value  = cfg.sbKey   || '';
   document.getElementById('cfg-resend').value  = cfg.resend  || '';
   document.getElementById('cfg-from').value    = cfg.from    || '';
   document.getElementById('modal-settings').classList.add('open');
 }
 
-function saveSettings() {
-  const cfg = {
-    sbUrl:  document.getElementById('cfg-sb-url').value.trim(),
-    sbKey:  document.getElementById('cfg-sb-key').value.trim(),
-    resend: document.getElementById('cfg-resend').value.trim(),
-    from:   document.getElementById('cfg-from').value.trim(),
-  };
-  if (!cfg.sbUrl || !cfg.sbKey) { toast('Nhập Supabase URL và Service Role Key!', 'err'); return; }
-  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+async function saveSettings() {
+  const url   = document.getElementById('cfg-sb-url').value.trim();
+  const anon  = document.getElementById('cfg-sb-anon').value.trim();
+  const sbKey = document.getElementById('cfg-sb-key').value.trim();
+  const resend= document.getElementById('cfg-resend').value.trim();
+  const from  = document.getElementById('cfg-from').value.trim();
+
+  if (!url || !anon) { toast('Nhập Supabase URL và Anon Key!', 'err'); return; }
+  if (!sbKey) { toast('Nhập Service Role Key!', 'err'); return; }
+
+  // Lưu bootstrap vào localStorage
+  saveBootstrap(url, anon);
+  _authClient = null; // reset để tạo lại
+
+  // Lưu full config vào localStorage (dùng cho API headers)
+  localStorage.setItem(CFG_KEY, JSON.stringify({ sbUrl: url, sbAnon: anon, sbKey, resend, from }));
+
+  // Lưu các key nhạy cảm lên Supabase app_config
+  const sb = getAuthClient();
+  if (sb) {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      try {
+        const rows = [
+          { key: 'sb_service_key', value: sbKey },
+          { key: 'resend_key',     value: resend },
+          { key: 'from_email',     value: from },
+        ].filter(r => r.value);
+        await sb.from('app_config').upsert(rows, { onConflict: 'key' });
+        toast('✓ Đã lưu config lên Supabase — lần sau đăng nhập là dùng được ngay!');
+      } catch (e) { toast('Lưu Supabase thất bại: ' + e.message, 'warn'); }
+    } else {
+      toast('Đã lưu vào trình duyệt (chưa đăng nhập nên chưa lưu được lên Supabase)');
+    }
+  }
+
   closeModal('modal-settings');
-  toast('Đã lưu cấu hình — đang tải dữ liệu...');
-  loadFromBackend().then(() => { window._backendConnected = true; });
+  await loadFromBackend();
+  window._backendConnected = true;
 }
 
 async function testSettingsConnection() {
-  const cfg = {
-    sbUrl:  document.getElementById('cfg-sb-url').value.trim(),
-    sbKey:  document.getElementById('cfg-sb-key').value.trim(),
-    resend: document.getElementById('cfg-resend').value.trim(),
-    from:   document.getElementById('cfg-from').value.trim(),
-  };
-  if (!cfg.sbUrl || !cfg.sbKey) { toast('Nhập Supabase URL và Key trước!', 'err'); return; }
+  const url  = document.getElementById('cfg-sb-url').value.trim();
+  const key  = document.getElementById('cfg-sb-key').value.trim();
+  const anon = document.getElementById('cfg-sb-anon').value.trim();
+  if (!url || (!key && !anon)) { toast('Nhập Supabase URL và ít nhất 1 key!', 'err'); return; }
   try {
     const res = await fetch('/api/stats', {
-      headers: { 'x-sb-url': cfg.sbUrl, 'x-sb-key': cfg.sbKey },
+      headers: { 'x-sb-url': url, 'x-sb-key': key || anon },
       signal: AbortSignal.timeout(5000),
     });
     const json = await res.json();
@@ -2108,16 +2366,11 @@ async function loadFromBackend() {
     renderContactTable(); renderTemplates(); renderCampaignTargets();
     if (templates.length) selectTemplate(templates[0].id);
 
-    const cfg = getConfig();
-    const statusEl = document.getElementById('conn-status');
-    statusEl.innerHTML = `<div class="status-dot"></div>Supabase connected`;
-
-    // Nếu chưa có config, gợi ý mở Settings
-    if (!cfg.sbUrl) {
-      statusEl.innerHTML = `<div class="status-dot" style="background:var(--warn)"></div><span style="cursor:pointer;text-decoration:underline" onclick="openSettings()">Chưa cấu hình — Click để Setup</span>`;
-    }
-
-    toast('Đã kết nối — dữ liệu thật đã được tải', 'ok');
+    const bs = getBootstrap();
+    const userEmail = (await getAuthClient()?.auth.getUser())?.data?.user?.email || '';
+    document.getElementById('conn-status').innerHTML =
+      `<div class="status-dot"></div>${userEmail || 'Supabase connected'}`;
+    toast('Đã kết nối — dữ liệu đã được tải', 'ok');
   } catch (_) {
     // Backend chưa chạy — dùng mock data, không báo lỗi
   }
@@ -2347,18 +2600,8 @@ startSend = async function() {
   }
 };
 
-// Khởi động
-const _initCfg = getConfig();
-if (!_initCfg.sbUrl) {
-  // Chưa có config → gợi ý setup
-  document.getElementById('conn-status').innerHTML =
-    `<div class="status-dot" style="background:var(--warn)"></div><span style="cursor:pointer;text-decoration:underline" onclick="openSettings()">Chưa cấu hình — Click để Setup</span>`;
-  setTimeout(() => {
-    toast('👋 Lần đầu sử dụng? Vào ⚙ Settings để nhập Supabase và Resend key.', 'warn');
-  }, 800);
-} else {
-  loadFromBackend().then(() => { window._backendConnected = true; }).catch(() => {});
-}
+// Khởi động Auth (thay thế loadFromBackend trực tiếp)
+initAuth();
 </script>
 </body>
 </html>
