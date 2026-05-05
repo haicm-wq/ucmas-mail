@@ -344,6 +344,43 @@ tr:hover td{background:var(--surface2)}
 <!-- TOAST -->
 <div class="toast-area" id="toast-area"></div>
 
+<!-- QUICK ADD CONTACTS MODAL -->
+<div class="modal-overlay" id="modal-quick-add">
+  <div class="modal" style="width:500px">
+    <div class="modal-header">
+      <div class="modal-title">+ Thêm nhanh contacts</div>
+      <button class="modal-close" onclick="closeModal('modal-quick-add')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label class="fl">Danh sách email — mỗi dòng 1 email (hoặc: email, tên)</label>
+        <textarea class="fta" id="qa-emails" style="min-height:140px;font-family:var(--fm);font-size:13px"
+          placeholder="nguyenvana@gmail.com
+tranthib@gmail.com, Trần Thị B
+levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
+      </div>
+      <div class="fg">
+        <label class="fl">Chọn Level cho tất cả email trên</label>
+        <select class="fsel" id="qa-level">
+          <option value="">— Chọn level —</option>
+        </select>
+      </div>
+      <div class="info-box" style="font-size:12px">
+        Định dạng mỗi dòng: <span style="color:var(--l2);font-family:var(--fm)">email</span> hoặc <span style="color:var(--l2);font-family:var(--fm)">email, tên</span> hoặc <span style="color:var(--l2);font-family:var(--fm)">email, tên, công ty</span>
+      </div>
+      <div id="qa-preview" style="display:none;margin-top:8px">
+        <div style="font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Preview</div>
+        <div id="qa-preview-list" style="display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="previewQuickAdd()">👁 Preview</button>
+      <button class="btn" onclick="closeModal('modal-quick-add')">Huỷ</button>
+      <button class="btn btn-primary" onclick="submitQuickAdd()">✓ Thêm vào Contacts</button>
+    </div>
+  </div>
+</div>
+
 <!-- GOOGLE SHEETS MODAL -->
 <div class="modal-overlay" id="modal-sheets">
   <div class="modal" style="width:540px">
@@ -570,6 +607,7 @@ tr:hover td{background:var(--surface2)}
   <div class="ph">
     <div><div class="ph-title">Contacts</div><div class="ph-sub">Import danh sách và phân cấp theo level</div></div>
     <div class="btn-row">
+      <button class="btn btn-primary" style="background:var(--surface2);color:var(--accent2);border-color:var(--accent)" onclick="openQuickAdd()">+ Thêm nhanh</button>
       <button class="btn" onclick="downloadSampleCSV()">↓ Tải file mẫu</button>
       <button class="btn" onclick="openSheetsModal()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
@@ -2067,6 +2105,87 @@ function init() {
   renderCampaignTargets();
 }
 // KHÔNG gọi init() ở đây — gọi sau khi load data thật từ backend
+
+// ════════════════════════════════════════
+// QUICK ADD CONTACTS
+// ════════════════════════════════════════
+function openQuickAdd() {
+  // Điền level options
+  const sel = document.getElementById('qa-level');
+  sel.innerHTML = '<option value="">— Chọn level —</option>' +
+    levels.map(l => `<option value="${l.id}">${l.name}${l.parent ? ' (sub)' : ''}</option>`).join('');
+  document.getElementById('qa-emails').value = '';
+  document.getElementById('qa-preview').style.display = 'none';
+  document.getElementById('modal-quick-add').classList.add('open');
+}
+
+function parseQuickAddLines() {
+  const raw = document.getElementById('qa-emails').value.trim();
+  if (!raw) return [];
+  return raw.split('\n')
+    .map(line => line.trim())
+    .filter(line => line)
+    .map(line => {
+      const parts = line.split(',').map(p => p.trim());
+      const email   = parts[0] || '';
+      const name    = parts[1] || email.split('@')[0]; // fallback tên = phần trước @
+      const company = parts[2] || '';
+      return { email: email.toLowerCase(), name, company };
+    })
+    .filter(r => r.email.includes('@'));
+}
+
+function previewQuickAdd() {
+  const rows = parseQuickAddLines();
+  const levelId = document.getElementById('qa-level').value;
+  const lv = getLevelById(levelId);
+
+  if (!rows.length) { toast('Chưa nhập email nào hợp lệ!', 'err'); return; }
+
+  const previewEl = document.getElementById('qa-preview');
+  const listEl = document.getElementById('qa-preview-list');
+  previewEl.style.display = '';
+  listEl.innerHTML = rows.map(r => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--surface2);border-radius:7px;font-size:12.5px">
+      <span style="flex:1;font-family:var(--fm)">${r.email}</span>
+      <span style="color:var(--muted)">${r.name !== r.email.split('@')[0] ? r.name : ''}</span>
+      ${lv ? `<span style="background:${hexToRgba(lv.color,.12)};color:${lv.color};padding:1px 8px;border-radius:10px;font-size:11px">${lv.name}</span>` : ''}
+    </div>`).join('');
+}
+
+async function submitQuickAdd() {
+  const rows = parseQuickAddLines();
+  const levelId = document.getElementById('qa-level').value;
+
+  if (!rows.length) { toast('Chưa nhập email nào hợp lệ!', 'err'); return; }
+  if (!levelId)     { toast('Chọn level trước!', 'err'); return; }
+
+  const lv = getLevelById(levelId);
+  const toUpsert = rows.map(r => ({
+    name: r.name, email: r.email, company: r.company,
+    level_id: levelId, status: 'active',
+  }));
+
+  try {
+    const result = await apiFetch('/api/contacts-bulk', {
+      method: 'POST',
+      body: JSON.stringify({ contacts: toUpsert }),
+    });
+    toast(`✓ Đã thêm ${result.imported} contacts vào level ${lv?.name || ''}`);
+    closeModal('modal-quick-add');
+
+    // Reload contacts
+    const ctData = await apiFetch('/api/contacts');
+    if (ctData) contacts = ctData.map(c => ({
+      id: c.id, name: c.name, email: c.email,
+      level: c.levels?.name || '', level_id: c.level_id,
+      company: c.company || '',
+      status: c.status === 'active' ? 'pending' : c.status,
+      last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
+    }));
+    renderContactTable(); renderSidebar(); renderDashStats();
+  } catch (e) { toast('Lỗi: ' + e.message, 'err'); }
+}
 
 // ════════════════════════════════════════
 // GOOGLE SHEETS
