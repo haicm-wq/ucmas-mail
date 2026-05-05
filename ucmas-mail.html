@@ -2906,6 +2906,13 @@ function openSettings() {
   document.getElementById('cfg-sb-key').value = cfg.sbKey  || '';
   document.getElementById('cfg-resend').value = cfg.resend || '';
   document.getElementById('cfg-from').value   = cfg.from   || '';
+
+  // Nếu server đã configured, hiện thông báo cho biết
+  const infoBox = document.querySelector('#modal-settings .info-box');
+  if (infoBox && _serverConfigured) {
+    infoBox.className = 'info-box ok';
+    infoBox.innerHTML = '✓ App đang dùng <strong>Vercel Environment Variables</strong>. Mọi người truy cập link đều dùng chung dữ liệu này.';
+  }
   document.getElementById('modal-settings').classList.add('open');
 }
 
@@ -2946,7 +2953,10 @@ async function testSettingsConnection() {
 // ════════════════════════════════════════
 const API = ''; // relative URLs — hoạt động trên cả Vercel lẫn localhost
 
+let _serverConfigured = false; // true khi Vercel env vars đã được set
+
 function cfgHeaders() {
+  if (_serverConfigured) return {}; // backend tự dùng env vars, không cần headers
   const cfg = getConfig();
   const h = {};
   if (cfg.sbUrl)  h['x-sb-url']      = cfg.sbUrl;
@@ -3327,18 +3337,39 @@ startSend = async function() {
   }
 };
 
-// Khởi động — render UI rỗng trước, rồi load data thật
+// Khởi động — check server config trước, rồi mới quyết định hiện setup hay load thẳng
 init();
 
-const _cfg = getConfig();
-if (!_cfg.sbUrl || !_cfg.sbKey) {
-  setTimeout(() => {
-    toast('👋 Lần đầu sử dụng? Bấm ⚙ Settings để nhập Supabase và Resend key.', 'warn');
-    openSettings();
-  }, 500);
-} else {
-  loadFromBackend().then(() => { window._backendConnected = true; }).catch(() => {});
+async function startup() {
+  try {
+    // Kiểm tra xem Vercel env vars đã được set chưa
+    const cfgRes = await fetch('/api/config', { signal: AbortSignal.timeout(4000) });
+    const cfgJson = await cfgRes.json();
+
+    if (cfgJson.configured) {
+      // ✅ Server đã có config (Vercel env vars) → load thẳng, không cần localStorage
+      _serverConfigured = true;
+      window._backendConnected = true;
+      await loadFromBackend();
+      return;
+    }
+  } catch (_) {}
+
+  // ❌ Server chưa config → dùng localStorage (chế độ cá nhân)
+  const _cfg = getConfig();
+  if (!_cfg.sbUrl || !_cfg.sbKey) {
+    hideLoading();
+    setTimeout(() => {
+      toast('👋 Lần đầu sử dụng? Bấm ⚙ Settings để nhập Supabase và Resend key.', 'warn');
+      openSettings();
+    }, 500);
+  } else {
+    await loadFromBackend();
+    window._backendConnected = true;
+  }
 }
+
+startup();
 </script>
 </body>
 </html>
