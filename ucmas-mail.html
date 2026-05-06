@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>UCMAS MAIL</title>
+<link rel="stylesheet" href="https://unpkg.com/grapesjs/dist/css/grapes.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -336,6 +337,41 @@ tr:hover td{background:var(--surface2)}
 .modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
 
 
+/* GRAPES BUILDER OVERLAY */
+.gjs-overlay{position:fixed;inset:0;z-index:8000;background:#1a1a2e;display:flex;flex-direction:column}
+.gjs-overlay.hidden{display:none}
+.gjs-topbar{height:52px;background:#111319;border-bottom:1px solid #1e2338;display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0}
+.gjs-topbar-title{font-family:'Montserrat',sans-serif;font-weight:700;font-size:15px;color:#e6e8f2;flex:1}
+.gjs-container{flex:1;overflow:hidden}
+#gjs{height:100%}
+
+/* Override GrapeJS colors to match dark theme */
+.gjs-one-bg{background:#111319!important}
+.gjs-two-bg{background:#181c26!important}
+.gjs-three-bg{background:#1e2230!important}
+.gjs-four-bg{background:#28304a!important}
+.gjs-color-warn{color:#f5a623!important}
+.gjs-color-hl{color:#7b93ff!important}
+.gjs-pn-panel{background:#111319!important;border-right:1px solid #1e2338!important}
+.gjs-block{background:#181c26!important;border:1px solid #1e2338!important;color:#e6e8f2!important;border-radius:7px!important}
+.gjs-block:hover{background:#1e2230!important;border-color:#4f6cff!important}
+.gjs-block__media{color:#7b93ff!important}
+.gjs-pn-btn{color:#5e6585!important}
+.gjs-pn-btn:hover,.gjs-pn-btn.gjs-pn-active{color:#7b93ff!important}
+.gjs-cv-canvas{background:#0d0d1a!important}
+.gjs-frame-wrapper{border-radius:8px;overflow:hidden}
+.gjs-toolbar{background:#4f6cff!important;border-radius:6px!important}
+.gjs-toolbar-item{color:#fff!important}
+.gjs-rte-toolbar{background:#181c26!important;border:1px solid #1e2338!important;border-radius:6px!important}
+.gjs-layer{background:#181c26!important;color:#e6e8f2!important}
+.gjs-layer:hover{background:#1e2230!important}
+.gjs-layer.gjs-selected{background:#4f6cff22!important;border-color:#4f6cff!important}
+.gjs-sm-sector-title,.gjs-clm-tags-header,.gjs-sm-header{background:#1e2230!important;color:#5e6585!important}
+.gjs-sm-property .gjs-field{background:#181c26!important;border:1px solid #1e2338!important;color:#e6e8f2!important;border-radius:5px!important}
+.gjs-trt-header,.gjs-sm-sectors,.gjs-clm-tags,.gjs-sm-properties,.gjs-trt-trait__header{background:#111319!important}
+.gjs-mdl-container{background:rgba(0,0,0,.7)!important}
+.gjs-mdl-dialog{background:#111319!important;border:1px solid #28304a!important;border-radius:12px!important}
+
 /* SKELETON LOADING */
 @keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
 .dash-skeleton{height:54px;border-radius:8px;background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);background-size:800px 100%;animation:shimmer 1.4s infinite;margin:8px 0}
@@ -358,6 +394,32 @@ tr:hover td{background:var(--surface2)}
 </head>
 <body>
 
+
+<!-- GRAPES BUILDER OVERLAY -->
+<div class="gjs-overlay hidden" id="gjs-overlay">
+  <div class="gjs-topbar">
+    <div class="gjs-topbar-title">🏗 Email Builder</div>
+    <div style="display:flex;gap:4px;background:#1e2230;border-radius:7px;padding:3px">
+      <button id="gjsBtn-desktop" onclick="gjsSetDevice('Desktop')"
+        style="padding:4px 10px;border-radius:5px;border:none;background:#4f6cff;color:#fff;cursor:pointer;font-size:13px">🖥 Desktop</button>
+      <button id="gjsBtn-tablet" onclick="gjsSetDevice('Tablet')"
+        style="padding:4px 10px;border-radius:5px;border:none;background:transparent;color:#5e6585;cursor:pointer;font-size:13px">📱 Tablet</button>
+      <button id="gjsBtn-mobile" onclick="gjsSetDevice('Mobile portrait')"
+        style="padding:4px 10px;border-radius:5px;border:none;background:transparent;color:#5e6585;cursor:pointer;font-size:13px">📲 Mobile</button>
+    </div>
+    <div style="width:1px;height:24px;background:#1e2338"></div>
+    <button onclick="gjsUndo()" style="padding:5px 10px;border-radius:6px;border:1px solid #1e2338;background:#181c26;color:#e6e8f2;cursor:pointer;font-size:13px">↩ Undo</button>
+    <button onclick="gjsRedo()" style="padding:5px 10px;border-radius:6px;border:1px solid #1e2338;background:#181c26;color:#e6e8f2;cursor:pointer;font-size:13px">↪ Redo</button>
+    <button onclick="gjsClearCanvas()" style="padding:5px 10px;border-radius:6px;border:1px solid #1e2338;background:#181c26;color:#f55c5c;cursor:pointer;font-size:13px">🗑 Xoá</button>
+    <div style="width:1px;height:24px;background:#1e2338"></div>
+    <input id="gjs-tmpl-name" placeholder="Tên template..." style="padding:5px 12px;border-radius:6px;border:1px solid #1e2338;background:#181c26;color:#e6e8f2;font-family:'Montserrat',sans-serif;font-size:13px;width:190px;outline:none">
+    <button onclick="closeBuilder()" style="padding:5px 12px;border-radius:6px;border:1px solid #1e2338;background:#181c26;color:#5e6585;cursor:pointer;font-size:13px">✕ Đóng</button>
+    <button onclick="saveFromBuilder()" style="padding:5px 16px;border-radius:6px;border:none;background:#4f6cff;color:#fff;cursor:pointer;font-size:13px;font-weight:600">💾 Lưu template</button>
+  </div>
+  <div class="gjs-container">
+    <div id="gjs"></div>
+  </div>
+</div>
 
 <!-- TOAST -->
 <div class="toast-area" id="toast-area"></div>
@@ -813,6 +875,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
         ↑ Upload file
         <input type="file" accept=".html,.htm,.txt" style="display:none" onchange="uploadTemplateFile(event)">
       </label>
+      <button class="btn" onclick="openBuilder()" style="border-color:var(--accent);color:var(--accent2)">🏗 Kéo thả Builder</button>
       <button class="btn btn-primary" onclick="saveCurrentTemplate()">💾 Lưu template</button>
     </div>
   </div>
@@ -2661,6 +2724,228 @@ function init() {
 // KHÔNG gọi init() ở đây — gọi sau khi load data thật từ backend
 
 // ════════════════════════════════════════
+// ════════════════════════════════════════
+// GRAPESJS BUILDER
+// ════════════════════════════════════════
+let _gjsEditor = null;
+let _gjsLoaded = false;
+
+function loadGrapeJS() {
+  return new Promise((resolve) => {
+    if (_gjsLoaded) { resolve(); return; }
+    const s1 = document.createElement('script');
+    s1.src = 'https://unpkg.com/grapesjs';
+    s1.onload = () => {
+      const s2 = document.createElement('script');
+      s2.src = 'https://unpkg.com/grapesjs-preset-newsletter';
+      s2.onload = () => { _gjsLoaded = true; resolve(); };
+      document.head.appendChild(s2);
+    };
+    document.head.appendChild(s1);
+  });
+}
+
+async function openBuilder() {
+  const overlay = document.getElementById('gjs-overlay');
+  overlay.classList.remove('hidden');
+
+  // Điền tên template hiện tại
+  const tmplName = document.getElementById('tmpl-name-input')?.value || '';
+  document.getElementById('gjs-tmpl-name').value = tmplName;
+
+  // Load GrapeJS nếu chưa có
+  if (!_gjsEditor) {
+    const loading = document.getElementById('gjs');
+    loading.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#5e6585;font-size:14px">⟳ Đang tải editor...</div>';
+    await loadGrapeJS();
+    initGrapeJS();
+  }
+
+  // Load nội dung template hiện tại vào builder
+  const currentHtml = document.getElementById('tmpl-code')?.value || '';
+  if (_gjsEditor && currentHtml) {
+    _gjsEditor.setComponents(currentHtml);
+  }
+}
+
+function initGrapeJS() {
+  _gjsEditor = grapesjs.init({
+    container: '#gjs',
+    height: '100%',
+    storageManager: false, // không dùng storage local của GrapeJS
+    plugins: ['gjs-preset-newsletter'],
+    pluginsOpts: {
+      'gjs-preset-newsletter': {
+        modalLabelImport: 'Paste HTML',
+        modalLabelExport: 'Copy HTML',
+        codeViewerTheme: 'material',
+        inlineCss: true,
+      }
+    },
+    deviceManager: {
+      devices: [
+        { name: 'Desktop',          width: '' },
+        { name: 'Tablet',           width: '768px', widthMedia: '768px' },
+        { name: 'Mobile portrait',  width: '375px', widthMedia: '480px' },
+      ]
+    },
+    canvas: {
+      styles: [
+        'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap'
+      ]
+    },
+    styleManager: {
+      appendTo: '.gjs-pn-views-container',
+    },
+    blockManager: {
+      appendTo: '#gjs-blocks',
+    },
+  });
+
+  // Thêm các blocks email chuẩn responsive
+  addEmailBlocks(_gjsEditor);
+}
+
+function addEmailBlocks(editor) {
+  const bm = editor.BlockManager;
+
+  bm.add('ucmas-section', {
+    label: '📦 Section',
+    category: 'Layout',
+    content: `<table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto">
+      <tr><td style="padding:20px;background:#ffffff">
+        <p style="margin:0;font-family:Arial,sans-serif;font-size:15px;color:#333">Nhập nội dung tại đây...</p>
+      </td></tr>
+    </table>`,
+  });
+
+  bm.add('ucmas-2col', {
+    label: '⊞ 2 cột',
+    category: 'Layout',
+    content: `<table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="50%" style="padding:16px;background:#f9f9f9;vertical-align:top">
+          <p style="margin:0;font-family:Arial,sans-serif;font-size:14px;color:#333">Cột trái</p>
+        </td>
+        <td width="50%" style="padding:16px;background:#ffffff;vertical-align:top">
+          <p style="margin:0;font-family:Arial,sans-serif;font-size:14px;color:#333">Cột phải</p>
+        </td>
+      </tr>
+    </table>`,
+  });
+
+  bm.add('ucmas-header', {
+    label: '🏷 Header',
+    category: 'Components',
+    content: `<table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:32px 24px;background:#4f6cff;text-align:center">
+        <h1 style="margin:0;font-family:Arial,sans-serif;font-size:28px;font-weight:700;color:#ffffff">UCMAS Vietnam</h1>
+        <p style="margin:8px 0 0;font-family:Arial,sans-serif;font-size:14px;color:rgba(255,255,255,.8)">Thông báo quan trọng</p>
+      </td></tr>
+    </table>`,
+  });
+
+  bm.add('ucmas-button', {
+    label: '🔘 Button CTA',
+    category: 'Components',
+    content: `<table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:24px;text-align:center">
+        <a href="#" style="display:inline-block;padding:14px 32px;background:#4f6cff;color:#ffffff;text-decoration:none;border-radius:8px;font-family:Arial,sans-serif;font-size:15px;font-weight:600">Bấm vào đây</a>
+      </td></tr>
+    </table>`,
+  });
+
+  bm.add('ucmas-divider', {
+    label: '➖ Divider',
+    category: 'Components',
+    content: `<table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:8px 24px"><hr style="border:none;border-top:1px solid #e0e0e0;margin:0"></td></tr>
+    </table>`,
+  });
+
+  bm.add('ucmas-footer', {
+    label: '🔻 Footer',
+    category: 'Components',
+    content: `<table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:24px;background:#f5f5f5;text-align:center">
+        <p style="margin:0;font-family:Arial,sans-serif;font-size:12px;color:#999">© 2025 UCMAS Vietnam. All rights reserved.</p>
+        <p style="margin:6px 0 0;font-family:Arial,sans-serif;font-size:12px;color:#aaa">
+          <a href="#" style="color:#4f6cff;text-decoration:none">Hủy đăng ký</a> · <a href="#" style="color:#4f6cff;text-decoration:none">Chính sách bảo mật</a>
+        </p>
+      </td></tr>
+    </table>`,
+  });
+
+  bm.add('ucmas-vars', {
+    label: '🔤 Biến cá nhân',
+    category: 'Components',
+    content: `<table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:20px 24px;background:#fff">
+        <p style="margin:0;font-family:Arial,sans-serif;font-size:15px;color:#333">
+          Xin chào <strong>{{name}}</strong>,<br><br>
+          Đây là email dành cho khách hàng <strong>{{level}}</strong> của chúng tôi.
+        </p>
+      </td></tr>
+    </table>`,
+  });
+}
+
+function gjsSetDevice(device) {
+  if (_gjsEditor) _gjsEditor.setDevice(device);
+  const btns = ['Desktop','Tablet','Mobile portrait'];
+  btns.forEach(d => {
+    const btnKey = d === 'Mobile portrait' ? 'mobile' : d.toLowerCase();
+    const btn = document.getElementById(`gjsBtn-${btnKey}`);
+    if (btn) {
+      btn.style.background = d === device ? '#4f6cff' : 'transparent';
+      btn.style.color = d === device ? '#fff' : '#5e6585';
+    }
+  });
+}
+
+function gjsUndo()         { _gjsEditor?.UndoManager.undo(); }
+function gjsRedo()         { _gjsEditor?.UndoManager.redo(); }
+function gjsClearCanvas()  {
+  if (!confirm('Xoá toàn bộ nội dung builder?')) return;
+  _gjsEditor?.setComponents('');
+}
+
+function closeBuilder() {
+  document.getElementById('gjs-overlay').classList.add('hidden');
+}
+
+function saveFromBuilder() {
+  if (!_gjsEditor) return;
+  const name = document.getElementById('gjs-tmpl-name').value.trim() || 'Template Builder';
+  // Lấy HTML đầy đủ (inline CSS cho email)
+  const html = _gjsEditor.runCommand('gjs-get-inlined-html') || _gjsEditor.getHtml();
+  const css  = _gjsEditor.getCss();
+  const fullHtml = `<!DOCTYPE html><html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif}
+  ${css}
+  @media only screen and (max-width:480px){
+    table{width:100%!important}
+    td{display:block!important;width:100%!important;padding:12px!important}
+    img{max-width:100%!important;height:auto!important}
+  }
+</style>
+</head><body>
+${html}
+</body></html>`;
+
+  // Đưa vào code editor
+  document.getElementById('tmpl-name-input').value = name;
+  document.getElementById('tmpl-code').value = fullHtml;
+  activeTemplate = null; // coi như template mới
+
+  closeBuilder();
+  setEditorMode('split'); // hiện split để thấy kết quả
+  toast(`✓ Đã lưu HTML từ Builder — bấm 💾 Lưu template để lưu vào Supabase`);
+}
+
 // QUICK ADD CONTACTS
 // ════════════════════════════════════════
 function openQuickAdd() {
