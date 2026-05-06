@@ -4895,7 +4895,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
         for (const i of idxs) {
           const c = contacts[i];
           if (c?.id) {
-            try { await apiFetch('/api/contacts-level', { method: 'PATCH', body: JSON.stringify({ id: c.id, levelId }) }); }
+            try { await apiFetch('/api/contacts?action=level', { method: 'PATCH', body: JSON.stringify({ id: c.id, levelId }) }); }
             catch (_) { }
           }
         }
@@ -4908,7 +4908,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
       renderContactTable();
       toast(`Đã cập nhật level → ${lv ? lv.name : levelId}`);
       if (window._backendConnected && contacts[i].id) {
-        try { await apiFetch('/api/contacts-level', { method: 'PATCH', body: JSON.stringify({ id: contacts[i].id, levelId }) }); }
+        try { await apiFetch('/api/contacts?action=level', { method: 'PATCH', body: JSON.stringify({ id: contacts[i].id, levelId }) }); }
         catch (e) { toast('Lỗi lưu level: ' + e.message, 'err'); }
       }
     }
@@ -6341,7 +6341,7 @@ ${html}
       }));
 
       try {
-        const result = await apiFetch('/api/contacts-bulk', {
+        const result = await apiFetch('/api/contacts?action=bulk', {
           method: 'POST',
           body: JSON.stringify({ contacts: toUpsert }),
         });
