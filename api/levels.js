@@ -8,9 +8,10 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const db = makeDB(getDB(req));
-      const [levels, contacts] = await Promise.all([db.getLevels(), db.getContacts()]);
-      const countMap = {};
-      contacts.forEach(c => { if (c.level_id) countMap[c.level_id] = (countMap[c.level_id] || 0) + 1; });
+      const [levels, countMap] = await Promise.all([
+        db.getLevels(),
+        db.getContactCountsPerLevel(), // đếm chính xác toàn bộ contacts
+      ]);
       ok(res, levels.map(l => ({ ...l, count: countMap[l.id] || 0 })));
     } catch (e) { err(res, e.message, 500); }
 

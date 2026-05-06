@@ -737,8 +737,8 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
         <button class="btn" id="btn-next-page" onclick="changePage(1)" style="padding:4px 12px;font-size:12px">Sau →</button>
         <select class="fsel" id="per-page-sel" onchange="changePerPage(this.value)" style="padding:4px 8px;font-size:12px;width:auto">
           <option value="100">100/trang</option>
-          <option value="200" selected>200/trang</option>
-          <option value="500">500/trang</option>
+          <option value="200">200/trang</option>
+          <option value="500" selected>500/trang</option>
         </select>
       </div>
     </div>
@@ -1642,7 +1642,7 @@ let activeTemplate = null;
 let selectedLevels = {};
 let currentFilter = 'all';
 let currentPage   = 0;
-let perPage       = 200;
+let perPage       = 500;
 let totalContacts = 0;
 let editorMode = 'split';
 let selectedColor = '#f5c842';
@@ -1717,7 +1717,9 @@ function renderSidebar() {
     </div>`;
   }).join('');
   // update all contacts badge
-  document.getElementById('sb-cnt-all').textContent = levels.reduce((s,l)=>s+l.count,0);
+  // Dùng totalContacts từ server nếu có, fallback về tổng count từ levels
+  const sidebarTotal = totalContacts > 0 ? totalContacts : levels.reduce((s,l)=>s+l.count,0);
+  document.getElementById('sb-cnt-all').textContent = sidebarTotal;
 }
 
 function sbClickLevel(id, hasChildren) {
@@ -3037,15 +3039,21 @@ async function fetchFreshData(silent = false) {
     const stats = await res.json();
     if (!stats.success) { hideLoading(); return; }
 
-    if (!silent) showLoading('Đang tải levels...');
-    const lvRaw = await apiFetch('/api/levels');
+    if (!silent) showLoading('Đang tải dữ liệu...');
+    // Load levels + contact counts cùng lúc
+    const [lvRaw, statsRaw] = await Promise.all([
+      apiFetch('/api/levels'),
+      apiFetch('/api/stats').catch(() => null),
+    ]);
     const lv = lvRaw?.length ? lvRaw.map(l => ({
       id: l.id, name: l.name, color: l.color,
       parent: l.parent_id || null, desc: l.description || '', count: l.count || 0,
     })) : null;
+    // Cập nhật totalContacts từ stats
+    if (statsRaw?.totalContacts != null) totalContacts = statsRaw.totalContacts;
 
     if (!silent) showLoading('Đang tải contacts...');
-    // Chỉ load trang đầu (200 contacts) — phần còn lại load qua pagination
+    if (!silent) showLoading('Đang tải contacts...');
     const ctRaw = await apiFetch(`/api/contacts?page=0&per_page=${perPage}`);
     const ct = ctRaw?.data ? ctRaw.data.map(c => ({
       id: c.id, name: c.name, email: c.email,
