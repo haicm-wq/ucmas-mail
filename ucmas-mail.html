@@ -717,10 +717,22 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
   </div>
 
   <div class="tbl-wrap">
-    <div class="tbl-bar">
+    <div class="tbl-bar" style="flex-wrap:wrap;gap:8px">
       <input class="tbl-search" type="text" placeholder="🔍 Tìm tên, email..." oninput="filterTable(this.value)">
       <div class="chip-row" id="filter-chips"></div>
-      <div style="margin-left:auto;font-family:var(--fm);font-size:11px;color:var(--muted)" id="table-count">0 contacts</div>
+      <!-- Pagination controls — nằm trên cùng thanh bar -->
+      <div id="contact-pagination" style="display:flex;align-items:center;gap:6px;margin-left:auto">
+        <span style="font-family:var(--fm);font-size:11px;color:var(--muted)" id="page-info">—</span>
+        <button class="btn" id="btn-prev-page" onclick="changePage(-1)" style="padding:3px 10px;font-size:12px">←</button>
+        <span id="page-num" style="font-family:var(--fm);font-size:12px;color:var(--text);white-space:nowrap">Trang 1</span>
+        <button class="btn" id="btn-next-page" onclick="changePage(1)" style="padding:3px 10px;font-size:12px">→</button>
+        <select class="fsel" id="per-page-sel" onchange="changePerPage(this.value)" style="padding:3px 8px;font-size:12px;width:auto">
+          <option value="100">100/trang</option>
+          <option value="200">200/trang</option>
+          <option value="500" selected>500/trang</option>
+        </select>
+        <span style="font-family:var(--fm);font-size:11px;color:var(--muted)" id="table-count">0 contacts</span>
+      </div>
     </div>
     <table><thead><tr>
       <th><input type="checkbox" id="chk-all" onchange="selectAll(this)"></th>
@@ -728,20 +740,6 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
     </tr></thead>
     <tbody id="contact-tbody"></tbody>
     </table>
-    <!-- Pagination -->
-    <div id="contact-pagination" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface)">
-      <div style="font-family:var(--fm);font-size:11.5px;color:var(--muted)" id="page-info">—</div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button class="btn" id="btn-prev-page" onclick="changePage(-1)" style="padding:4px 12px;font-size:12px">← Trước</button>
-        <span id="page-num" style="font-family:var(--fm);font-size:12px;color:var(--text);min-width:60px;text-align:center">Trang 1</span>
-        <button class="btn" id="btn-next-page" onclick="changePage(1)" style="padding:4px 12px;font-size:12px">Sau →</button>
-        <select class="fsel" id="per-page-sel" onchange="changePerPage(this.value)" style="padding:4px 8px;font-size:12px;width:auto">
-          <option value="100">100/trang</option>
-          <option value="200">200/trang</option>
-          <option value="500" selected>500/trang</option>
-        </select>
-      </div>
-    </div>
   </div>
 </div>
 
