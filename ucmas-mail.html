@@ -2182,8 +2182,17 @@
     }
 
     /* WORKFLOW BUILDER */
-    .wf-layout { display: grid; grid-template-columns: 220px 1fr; gap: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; max-height: calc(100vh - 180px); }
-    .wf-sidebar { background: var(--surface2); border-right: 1px solid var(--border); padding: 14px; overflow-y: auto; }
+    /* Hide main sidebar when workflows page is active */
+    .sidebar.wf-hidden { display: none; }
+    .main.wf-mode { overflow: hidden; }
+    #page-workflows { padding: 0; }
+    #page-workflows.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    #page-workflows .ph { padding: 20px 24px 0; flex-shrink: 0; margin-bottom: 16px; }
+
+    .wf-layout { display: grid; grid-template-columns: 240px 1fr; gap: 0; border: 1px solid var(--border); border-radius: 10px; flex: 1; min-height: 0; overflow: hidden; margin: 0 24px 20px; }
+    .wf-sidebar { background: var(--surface2); border-right: 1px solid var(--border); padding: 14px; overflow-y: auto; min-height: 0; }
+    .wf-sidebar::-webkit-scrollbar { width: 3px; }
+    .wf-sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
     .wf-sidebar-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .wf-sidebar-hd h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--text); }
     .wf-card { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface3); cursor: pointer; margin-bottom: 8px; transition: all .15s; }
@@ -2195,12 +2204,14 @@
     .wf-card-status.active { background: rgba(56,217,169,.12); color: var(--ok); }
     .wf-card-status.draft { background: rgba(255,255,255,.06); color: var(--muted); }
     .wf-card-status.paused { background: rgba(255,193,7,.12); color: var(--warn); }
-    .wf-main { padding: 20px; overflow-y: auto; }
+    .wf-main { padding: 20px; overflow-y: auto; min-height: 0; }
+    .wf-main::-webkit-scrollbar { width: 4px; }
+    .wf-main::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
     .wf-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; color: var(--muted); gap: 12px; }
     .wf-empty-icon { font-size: 48px; opacity: .4; }
 
     /* Flow Canvas */
-    .wf-flow { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 20px 0; }
+    .wf-flow { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 20px 0; padding-bottom: 80px; }
     .wf-node { width: 340px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface2); overflow: hidden; transition: all .15s; position: relative; }
     .wf-node:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,.2); }
     .wf-node-hd { padding: 10px 14px; display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
@@ -4569,7 +4580,17 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
       if (pg) pg.classList.add('active');
       if (tabEl) tabEl.classList.add('active');
       if (sbEl) sbEl.classList.add('active');
-      document.querySelector('.main').scrollTop = 0;
+      // Hide main sidebar on workflows page (it has its own sidebar)
+      const mainSidebar = document.querySelector('.sidebar');
+      const mainEl = document.querySelector('.main');
+      if (id === 'workflows') {
+        mainSidebar.classList.add('wf-hidden');
+        mainEl.classList.add('wf-mode');
+      } else {
+        mainSidebar.classList.remove('wf-hidden');
+        mainEl.classList.remove('wf-mode');
+      }
+      mainEl.scrollTop = 0;
       if (id === 'levels') renderLevelPage();
       if (id === 'campaign') renderCampaignTargets();
       if (id === 'templates') { renderTemplates(); setTimeout(() => setEditorMode('visual'), 100); }
