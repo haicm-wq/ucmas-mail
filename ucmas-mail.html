@@ -2030,13 +2030,16 @@
     .editor-area {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      min-height: 500px
+      min-height: 500px;
+      overflow: hidden
     }
 
     .editor-pane {
       border-right: 1px solid var(--border);
       display: flex;
-      flex-direction: column
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden
     }
 
     .editor-pane:last-child {
@@ -2171,6 +2174,11 @@
       border: none;
       background: #fff;
       min-height: 460px
+    }
+
+    /* In split mode, scale down the visual editor to fit */
+    .editor-area.split-mode .ve-iframe {
+      transform-origin: top left;
     }
 
     /* MODAL */
@@ -5078,22 +5086,48 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
 
       if (mode === 'visual') {
         area.style.gridTemplateColumns = '1fr';
+        area.classList.remove('split-mode');
         visualPane.style.display = '';
         veToolbar.style.display = '';
+        // Reset iframe scale
+        const veFrame = document.getElementById('ve-frame');
+        if (veFrame) { veFrame.style.transform = ''; veFrame.style.width = ''; veFrame.style.height = ''; }
         if (!_veReady) initVisualEditor();
         else syncCodeToVisual();
       } else if (mode === 'split') {
         area.style.gridTemplateColumns = '1fr 1fr';
+        area.classList.add('split-mode');
         codePane.style.display = '';
         visualPane.style.display = '';
         veToolbar.style.display = '';
+        // Scale down iframe to fit the pane
+        const veFrame = document.getElementById('ve-frame');
+        if (veFrame) {
+          requestAnimationFrame(() => {
+            const paneW = visualPane.offsetWidth;
+            // Use 600px as the email design width
+            const emailW = 600;
+            if (paneW > 0 && paneW < emailW) {
+              const scale = paneW / emailW;
+              veFrame.style.transform = `scale(${scale})`;
+              veFrame.style.width = emailW + 'px';
+              veFrame.style.height = (460 / scale) + 'px';
+            } else {
+              veFrame.style.transform = '';
+              veFrame.style.width = '100%';
+              veFrame.style.height = '';
+            }
+          });
+        }
         if (!_veReady) initVisualEditor();
         else syncCodeToVisual();
       } else if (mode === 'code') {
         area.style.gridTemplateColumns = '1fr';
+        area.classList.remove('split-mode');
         codePane.style.display = '';
       } else if (mode === 'preview') {
         area.style.gridTemplateColumns = '1fr';
+        area.classList.remove('split-mode');
         previewPane.style.display = '';
         updatePreviewFrame();
       }
