@@ -5472,7 +5472,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
     // ════════════════════════════════════════
     // WORKFLOW BUILDER
     // ════════════════════════════════════════
-    let workflows = JSON.parse(localStorage.getItem('ucmas_workflows') || '[]');
+    let workflows = [];
     let activeWorkflow = null;
 
     const WF_NODE_TYPES = {
@@ -5482,8 +5482,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
       condition: { icon: '🔀', label: 'Điều kiện', color: 'condition' },
     };
 
-    function saveWorkflows() {
-      localStorage.setItem('ucmas_workflows', JSON.stringify(workflows));
+    function updateWfBadges() {
       const badge = document.getElementById('sb-cnt-wf');
       if (badge) badge.textContent = workflows.length;
       const cnt = document.getElementById('wf-count');
@@ -5493,7 +5492,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
     function renderWorkflowList() {
       const list = document.getElementById('wf-list');
       if (!list) return;
-      saveWorkflows();
+      updateWfBadges();
       list.innerHTML = workflows.map(wf => `
         <div class="wf-card ${activeWorkflow === wf.id ? 'active-wf' : ''}" onclick="openWorkflow('${wf.id}')">
           <div class="wf-card-name">${wf.name}</div>
@@ -5504,20 +5503,30 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
         </div>`).join('') || '<div style="text-align:center;color:var(--muted);padding:20px;font-size:12px">Chưa có workflow nào</div>';
     }
 
-    function createWorkflow() {
-      const wf = {
-        id: 'wf_' + Date.now(),
+    async function createWorkflow() {
+      const wfData = {
         name: 'Workflow mới',
         status: 'draft',
         nodes: [
           { id: 'n_' + Date.now(), type: 'trigger', config: { triggerType: 'tag_assigned', tag: '' } }
         ],
       };
-      workflows.push(wf);
-      activeWorkflow = wf.id;
-      renderWorkflowList();
-      openWorkflow(wf.id);
-      toast('Đã tạo workflow mới');
+      try {
+        if (window._backendConnected) {
+          const wf = await apiFetch('/api/workflows', {
+            method: 'POST', body: JSON.stringify(wfData),
+          });
+          workflows.push(wf);
+          activeWorkflow = wf.id;
+        } else {
+          const wf = { ...wfData, id: 'wf_' + Date.now() };
+          workflows.push(wf);
+          activeWorkflow = wf.id;
+        }
+        renderWorkflowList();
+        openWorkflow(activeWorkflow);
+        toast('Đã tạo workflow mới');
+      } catch (e) { toast('Lỗi tạo workflow: ' + e.message, 'err'); }
     }
 
     function openWorkflow(id) {
@@ -5532,7 +5541,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
       renderWorkflowFlow();
     }
 
-    function saveWorkflow() {
+    async function saveWorkflow() {
       const wf = workflows.find(w => w.id === activeWorkflow);
       if (!wf) return;
       wf.name = document.getElementById('wf-name').value.trim() || 'Workflow';
@@ -5555,26 +5564,42 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
           node.config.condType = el.querySelector('[data-cfg=condType]')?.value || 'opened';
         }
       });
-      saveWorkflows();
-      renderWorkflowList();
-      toast(`Đã lưu: ${wf.name}`);
+      try {
+        if (window._backendConnected) {
+          await apiFetch(`/api/workflows?id=${wf.id}`, {
+            method: 'PUT', body: JSON.stringify({ name: wf.name, status: wf.status, nodes: wf.nodes }),
+          });
+        }
+        updateWfBadges();
+        renderWorkflowList();
+        toast(`Đã lưu: ${wf.name}`);
+      } catch (e) { toast('Lỗi lưu: ' + e.message, 'err'); }
     }
 
     function updateWfStatus() {
       const wf = workflows.find(w => w.id === activeWorkflow);
-      if (wf) { wf.status = document.getElementById('wf-status').value; saveWorkflows(); renderWorkflowList(); }
+      if (wf) { wf.status = document.getElementById('wf-status').value; updateWfBadges(); renderWorkflowList(); }
     }
 
-    function deleteWorkflow() {
+    async function deleteWorkflow() {
       const wf = workflows.find(w => w.id === activeWorkflow);
       if (!wf || !confirm(`Xoá workflow "${wf.name}"?`)) return;
-      workflows = workflows.filter(w => w.id !== activeWorkflow);
-      activeWorkflow = null;
-      document.getElementById('wf-editor').style.display = 'none';
-      document.getElementById('wf-empty').style.display = '';
-      saveWorkflows();
-      renderWorkflowList();
-      toast('Đã xoá workflow');
+      try {
+        if (window._backendConnected) {
+          const res = await fetch(API + `/api/workflows?id=${wf.id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', ...cfgHeaders() },
+          });
+          if (!res.ok) throw new Error('Lỗi server');
+        }
+        workflows = workflows.filter(w => w.id !== activeWorkflow);
+        activeWorkflow = null;
+        document.getElementById('wf-editor').style.display = 'none';
+        document.getElementById('wf-empty').style.display = '';
+        updateWfBadges();
+        renderWorkflowList();
+        toast('Đã xoá workflow');
+      } catch (e) { toast('Lỗi xoá: ' + e.message, 'err'); }
     }
 
     function addWfNode(type, afterIdx) {
@@ -5589,7 +5614,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
       const node = { id: 'n_' + Date.now(), type, config: defaults[type] || {} };
       if (afterIdx !== undefined) wf.nodes.splice(afterIdx + 1, 0, node);
       else wf.nodes.push(node);
-      saveWorkflows();
+      updateWfBadges();
       renderWorkflowFlow();
       document.getElementById('wf-add-menu')?.classList.remove('open');
     }
@@ -5599,7 +5624,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
       if (!wf) return;
       if (wf.nodes.length <= 1) { toast('Workflow cần ít nhất 1 node', 'err'); return; }
       wf.nodes = wf.nodes.filter(n => n.id !== nodeId);
-      saveWorkflows();
+      updateWfBadges();
       renderWorkflowFlow();
     }
 
@@ -5705,7 +5730,16 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
     }
 
     // Init workflows on page load
-    function initWorkflows() {
+    async function initWorkflows() {
+      if (window._backendConnected) {
+        try {
+          const data = await apiFetch('/api/workflows');
+          workflows = data || [];
+        } catch (e) {
+          console.warn('Workflows API not available, using empty list');
+          workflows = [];
+        }
+      }
       renderWorkflowList();
     }
 
