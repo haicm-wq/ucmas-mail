@@ -6130,7 +6130,6 @@ ${html}
       if (tm?.length) templates = tm;
       renderSidebar(); renderDashStats(); renderFilterChips();
       renderContactTable(); renderTemplates(); renderCampaignTargets();
-      if (templates.length) selectTemplate(templates[0].id);
       if (ca) { renderHistoryFromApi(ca); renderDashCampaigns(ca); }
       // Cập nhật pagination UI
       if (totalContacts > 0) updatePaginationUI(totalContacts);
