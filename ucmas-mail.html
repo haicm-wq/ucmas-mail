@@ -2181,6 +2181,61 @@
       transform-origin: top left;
     }
 
+    /* WORKFLOW BUILDER */
+    .wf-layout { display: grid; grid-template-columns: 260px 1fr; gap: 0; min-height: calc(100vh - 200px); }
+    .wf-sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; }
+    .wf-sidebar-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .wf-sidebar-hd h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--text); }
+    .wf-card { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; margin-bottom: 8px; transition: all .15s; }
+    .wf-card:hover { border-color: var(--accent); background: var(--accent-glow); }
+    .wf-card.active-wf { border-color: var(--accent); background: var(--accent-glow); box-shadow: 0 0 0 2px var(--accent-glow); }
+    .wf-card-name { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+    .wf-card-meta { font-size: 10.5px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+    .wf-card-status { padding: 1px 7px; border-radius: 10px; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .wf-card-status.active { background: rgba(56,217,169,.12); color: var(--ok); }
+    .wf-card-status.draft { background: rgba(255,255,255,.06); color: var(--muted); }
+    .wf-card-status.paused { background: rgba(255,193,7,.12); color: var(--warn); }
+    .wf-main { padding: 20px; overflow-y: auto; }
+    .wf-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--muted); gap: 12px; }
+    .wf-empty-icon { font-size: 48px; opacity: .4; }
+
+    /* Flow Canvas */
+    .wf-flow { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 20px 0; }
+    .wf-node { width: 340px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface2); overflow: hidden; transition: all .15s; position: relative; }
+    .wf-node:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+    .wf-node-hd { padding: 10px 14px; display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
+    .wf-node-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .wf-node-body { padding: 0 14px 12px; font-size: 12px; color: var(--muted); }
+    .wf-node-del { position: absolute; top: 8px; right: 8px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; opacity: 0; transition: opacity .15s; }
+    .wf-node:hover .wf-node-del { opacity: 1; }
+    .wf-node-del:hover { color: var(--err); }
+    .wf-node-body select, .wf-node-body input { width: 100%; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface3); color: var(--text); font-size: 12px; outline: none; margin-top: 4px; }
+    .wf-node-body label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; display: block; margin-top: 8px; }
+
+    /* Node type colors */
+    .wf-type-trigger .wf-node-hd { background: rgba(56,217,169,.1); color: var(--ok); }
+    .wf-type-trigger .wf-node-icon { background: rgba(56,217,169,.2); color: var(--ok); }
+    .wf-type-email .wf-node-hd { background: rgba(79,108,255,.1); color: var(--accent2); }
+    .wf-type-email .wf-node-icon { background: rgba(79,108,255,.2); color: var(--accent2); }
+    .wf-type-wait .wf-node-hd { background: rgba(255,193,7,.1); color: var(--warn); }
+    .wf-type-wait .wf-node-icon { background: rgba(255,193,7,.2); color: var(--warn); }
+    .wf-type-condition .wf-node-hd { background: rgba(168,85,247,.1); color: #a855f7; }
+    .wf-type-condition .wf-node-icon { background: rgba(168,85,247,.2); color: #a855f7; }
+
+    /* Connector line */
+    .wf-connector { width: 2px; height: 28px; background: var(--border2); position: relative; }
+    .wf-connector::after { content: '▼'; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); font-size: 8px; color: var(--border2); }
+
+    /* Add node button */
+    .wf-add-node { width: 36px; height: 36px; border-radius: 50%; border: 2px dashed var(--border2); background: transparent; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all .15s; margin-top: 4px; }
+    .wf-add-node:hover { border-color: var(--accent); color: var(--accent2); background: var(--accent-glow); }
+
+    /* Add node dropdown */
+    .wf-add-menu { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px; width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,.3); z-index: 50; display: none; }
+    .wf-add-menu.open { display: block; }
+    .wf-add-opt { padding: 8px 12px; border-radius: 7px; cursor: pointer; font-size: 12.5px; display: flex; align-items: center; gap: 8px; transition: background .12s; color: var(--text); }
+    .wf-add-opt:hover { background: var(--surface3); }
+
     /* MODAL */
     .modal-overlay {
       position: fixed;
@@ -2934,6 +2989,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
       <button class="nav-tab" onclick="gotoPage('levels',this)">Levels</button>
       <button class="nav-tab" onclick="gotoPage('templates',this)">Templates</button>
       <button class="nav-tab" onclick="gotoPage('campaign',this)">New Campaign</button>
+      <button class="nav-tab" onclick="gotoPage('workflows',this)">Workflows</button>
       <button class="nav-tab" onclick="gotoPage('history',this)">History</button>
     </nav>
     <div class="spacer"></div>
@@ -2955,6 +3011,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
         <button class="sb-item" onclick="gotoPage('templates',null,this)">▤ Templates <span
             class="sb-badge" id="sb-cnt-tmpl">0</span></button>
         <button class="sb-item" onclick="gotoPage('campaign',null,this)">✉ New Campaign</button>
+        <button class="sb-item" onclick="gotoPage('workflows',null,this)">⚡ Workflows <span class="sb-badge" id="sb-cnt-wf">0</span></button>
         <button class="sb-item" onclick="gotoPage('history',null,this)">◷ History</button>
         <div class="sb-div"></div>
         <div class="sb-label">Segments</div>
@@ -3392,6 +3449,47 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
             </div>
             <button class="send-btn" id="btn-send-campaign" onclick="startSend()">✉ Send Campaign</button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKFLOWS -->
+  <div id="page-workflows" class="page">
+    <div class="ph">
+      <div>
+        <div class="ph-title">Email Workflows</div>
+        <div class="ph-sub">Tự động hoá chuỗi email theo hành vi khách hàng</div>
+      </div>
+      <button class="btn btn-primary" onclick="createWorkflow()" style="font-size:12px">+ Tạo Workflow</button>
+    </div>
+    <div class="wf-layout">
+      <div class="wf-sidebar" id="wf-sidebar-list">
+        <div class="wf-sidebar-hd">
+          <h3>📋 Workflows</h3>
+          <span style="font-size:11px;color:var(--muted)" id="wf-count">0</span>
+        </div>
+        <div id="wf-list"></div>
+      </div>
+      <div class="wf-main" id="wf-canvas">
+        <div class="wf-empty" id="wf-empty">
+          <div class="wf-empty-icon">⚡</div>
+          <div style="font-size:14px">Chọn hoặc tạo workflow mới</div>
+          <div style="font-size:12px">Xây dựng chuỗi email tự động theo trigger và điều kiện</div>
+        </div>
+        <div id="wf-editor" style="display:none">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <input class="fi" id="wf-name" placeholder="Tên workflow" style="max-width:300px;font-weight:600">
+            <select class="fsel" id="wf-status" style="width:auto;padding:4px 10px;font-size:11px" onchange="updateWfStatus()">
+              <option value="draft">Draft</option>
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+            </select>
+            <div class="spacer"></div>
+            <button class="btn" onclick="saveWorkflow()" style="font-size:11.5px">💾 Lưu</button>
+            <button class="abtn" onclick="deleteWorkflow()" style="color:var(--err);font-size:11.5px">🗑 Xoá</button>
+          </div>
+          <div class="wf-flow" id="wf-flow"></div>
         </div>
       </div>
     </div>
@@ -5372,6 +5470,246 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
     }
 
     // ════════════════════════════════════════
+    // WORKFLOW BUILDER
+    // ════════════════════════════════════════
+    let workflows = JSON.parse(localStorage.getItem('ucmas_workflows') || '[]');
+    let activeWorkflow = null;
+
+    const WF_NODE_TYPES = {
+      trigger: { icon: '⚡', label: 'Trigger', color: 'trigger' },
+      email:   { icon: '✉', label: 'Gửi Email', color: 'email' },
+      wait:    { icon: '⏱', label: 'Chờ / Delay', color: 'wait' },
+      condition: { icon: '🔀', label: 'Điều kiện', color: 'condition' },
+    };
+
+    function saveWorkflows() {
+      localStorage.setItem('ucmas_workflows', JSON.stringify(workflows));
+      const badge = document.getElementById('sb-cnt-wf');
+      if (badge) badge.textContent = workflows.length;
+      const cnt = document.getElementById('wf-count');
+      if (cnt) cnt.textContent = workflows.length;
+    }
+
+    function renderWorkflowList() {
+      const list = document.getElementById('wf-list');
+      if (!list) return;
+      saveWorkflows();
+      list.innerHTML = workflows.map(wf => `
+        <div class="wf-card ${activeWorkflow === wf.id ? 'active-wf' : ''}" onclick="openWorkflow('${wf.id}')">
+          <div class="wf-card-name">${wf.name}</div>
+          <div class="wf-card-meta">
+            <span class="wf-card-status ${wf.status}">${wf.status}</span>
+            <span>${wf.nodes.length} bước</span>
+          </div>
+        </div>`).join('') || '<div style="text-align:center;color:var(--muted);padding:20px;font-size:12px">Chưa có workflow nào</div>';
+    }
+
+    function createWorkflow() {
+      const wf = {
+        id: 'wf_' + Date.now(),
+        name: 'Workflow mới',
+        status: 'draft',
+        nodes: [
+          { id: 'n_' + Date.now(), type: 'trigger', config: { triggerType: 'tag_assigned', tag: '' } }
+        ],
+      };
+      workflows.push(wf);
+      activeWorkflow = wf.id;
+      renderWorkflowList();
+      openWorkflow(wf.id);
+      toast('Đã tạo workflow mới');
+    }
+
+    function openWorkflow(id) {
+      activeWorkflow = id;
+      const wf = workflows.find(w => w.id === id);
+      if (!wf) return;
+      document.getElementById('wf-empty').style.display = 'none';
+      document.getElementById('wf-editor').style.display = '';
+      document.getElementById('wf-name').value = wf.name;
+      document.getElementById('wf-status').value = wf.status;
+      renderWorkflowList();
+      renderWorkflowFlow();
+    }
+
+    function saveWorkflow() {
+      const wf = workflows.find(w => w.id === activeWorkflow);
+      if (!wf) return;
+      wf.name = document.getElementById('wf-name').value.trim() || 'Workflow';
+      wf.status = document.getElementById('wf-status').value;
+      // Save node configs from DOM
+      wf.nodes.forEach(node => {
+        const el = document.getElementById('wfn-' + node.id);
+        if (!el) return;
+        if (node.type === 'trigger') {
+          node.config.triggerType = el.querySelector('[data-cfg=triggerType]')?.value || 'tag_assigned';
+          node.config.tag = el.querySelector('[data-cfg=tag]')?.value || '';
+          node.config.level = el.querySelector('[data-cfg=level]')?.value || '';
+        } else if (node.type === 'email') {
+          node.config.templateId = el.querySelector('[data-cfg=templateId]')?.value || '';
+          node.config.subject = el.querySelector('[data-cfg=subject]')?.value || '';
+        } else if (node.type === 'wait') {
+          node.config.delay = parseInt(el.querySelector('[data-cfg=delay]')?.value) || 1;
+          node.config.unit = el.querySelector('[data-cfg=unit]')?.value || 'hours';
+        } else if (node.type === 'condition') {
+          node.config.condType = el.querySelector('[data-cfg=condType]')?.value || 'opened';
+        }
+      });
+      saveWorkflows();
+      renderWorkflowList();
+      toast(`Đã lưu: ${wf.name}`);
+    }
+
+    function updateWfStatus() {
+      const wf = workflows.find(w => w.id === activeWorkflow);
+      if (wf) { wf.status = document.getElementById('wf-status').value; saveWorkflows(); renderWorkflowList(); }
+    }
+
+    function deleteWorkflow() {
+      const wf = workflows.find(w => w.id === activeWorkflow);
+      if (!wf || !confirm(`Xoá workflow "${wf.name}"?`)) return;
+      workflows = workflows.filter(w => w.id !== activeWorkflow);
+      activeWorkflow = null;
+      document.getElementById('wf-editor').style.display = 'none';
+      document.getElementById('wf-empty').style.display = '';
+      saveWorkflows();
+      renderWorkflowList();
+      toast('Đã xoá workflow');
+    }
+
+    function addWfNode(type, afterIdx) {
+      const wf = workflows.find(w => w.id === activeWorkflow);
+      if (!wf) return;
+      const defaults = {
+        trigger: { triggerType: 'tag_assigned', tag: '', level: '' },
+        email: { templateId: '', subject: '' },
+        wait: { delay: 1, unit: 'hours' },
+        condition: { condType: 'opened' },
+      };
+      const node = { id: 'n_' + Date.now(), type, config: defaults[type] || {} };
+      if (afterIdx !== undefined) wf.nodes.splice(afterIdx + 1, 0, node);
+      else wf.nodes.push(node);
+      saveWorkflows();
+      renderWorkflowFlow();
+      document.getElementById('wf-add-menu')?.classList.remove('open');
+    }
+
+    function removeWfNode(nodeId) {
+      const wf = workflows.find(w => w.id === activeWorkflow);
+      if (!wf) return;
+      if (wf.nodes.length <= 1) { toast('Workflow cần ít nhất 1 node', 'err'); return; }
+      wf.nodes = wf.nodes.filter(n => n.id !== nodeId);
+      saveWorkflows();
+      renderWorkflowFlow();
+    }
+
+    function renderNodeBody(node) {
+      const c = node.config || {};
+      if (node.type === 'trigger') {
+        const levelOpts = (typeof levels !== 'undefined' ? levels : []).map(l =>
+          `<option value="${l.id}" ${c.level === l.id ? 'selected' : ''}>${l.name}</option>`
+        ).join('');
+        return `
+          <label>Loại trigger</label>
+          <select data-cfg="triggerType">
+            <option value="tag_assigned" ${c.triggerType === 'tag_assigned' ? 'selected' : ''}>Gắn tag / Level</option>
+            <option value="manual" ${c.triggerType === 'manual' ? 'selected' : ''}>Thủ công</option>
+            <option value="contact_added" ${c.triggerType === 'contact_added' ? 'selected' : ''}>Contact mới thêm</option>
+          </select>
+          <label>Level / Tag</label>
+          <select data-cfg="level"><option value="">— Chọn level —</option>${levelOpts}</select>`;
+      }
+      if (node.type === 'email') {
+        const tmplOpts = (typeof templates !== 'undefined' ? templates : []).map(t =>
+          `<option value="${t.id}" ${c.templateId === t.id ? 'selected' : ''}>${t.icon} ${t.name}</option>`
+        ).join('');
+        return `
+          <label>Template email</label>
+          <select data-cfg="templateId"><option value="">— Chọn template —</option>${tmplOpts}</select>
+          <label>Subject (tuỳ chỉnh)</label>
+          <input data-cfg="subject" value="${c.subject || ''}" placeholder="Để trống = dùng subject mặc định">`;
+      }
+      if (node.type === 'wait') {
+        return `
+          <label>Thời gian chờ</label>
+          <div style="display:flex;gap:6px">
+            <input data-cfg="delay" type="number" min="1" value="${c.delay || 1}" style="width:80px">
+            <select data-cfg="unit" style="width:auto">
+              <option value="minutes" ${c.unit === 'minutes' ? 'selected' : ''}>Phút</option>
+              <option value="hours" ${c.unit === 'hours' ? 'selected' : ''}>Giờ</option>
+              <option value="days" ${c.unit === 'days' ? 'selected' : ''}>Ngày</option>
+            </select>
+          </div>`;
+      }
+      if (node.type === 'condition') {
+        return `
+          <label>Điều kiện</label>
+          <select data-cfg="condType">
+            <option value="opened" ${c.condType === 'opened' ? 'selected' : ''}>Email được mở</option>
+            <option value="clicked" ${c.condType === 'clicked' ? 'selected' : ''}>Có click link</option>
+            <option value="not_opened" ${c.condType === 'not_opened' ? 'selected' : ''}>Không mở email</option>
+          </select>
+          <div style="margin-top:8px;font-size:10.5px;color:var(--muted)">
+            ✓ Đúng → tiếp tục flow bên dưới<br>
+            ✕ Sai → dừng workflow cho contact này
+          </div>`;
+      }
+      return '';
+    }
+
+    function renderWorkflowFlow() {
+      const wf = workflows.find(w => w.id === activeWorkflow);
+      const flow = document.getElementById('wf-flow');
+      if (!wf || !flow) return;
+
+      flow.innerHTML = wf.nodes.map((node, idx) => {
+        const t = WF_NODE_TYPES[node.type] || {};
+        const isFirst = idx === 0;
+        return `
+          ${idx > 0 ? '<div class="wf-connector"></div>' : ''}
+          <div class="wf-node wf-type-${t.color}" id="wfn-${node.id}">
+            ${!isFirst ? `<button class="wf-node-del" onclick="removeWfNode('${node.id}')" title="Xoá">✕</button>` : ''}
+            <div class="wf-node-hd">
+              <div class="wf-node-icon">${t.icon}</div>
+              <span>${t.label}</span>
+              <span style="margin-left:auto;font-size:10px;opacity:.5">#${idx + 1}</span>
+            </div>
+            <div class="wf-node-body">${renderNodeBody(node)}</div>
+          </div>
+          ${idx < wf.nodes.length - 1 ? '' : `
+            <div class="wf-connector"></div>
+            <div style="position:relative">
+              <button class="wf-add-node" onclick="toggleAddMenu(this)" title="Thêm bước">+</button>
+              <div class="wf-add-menu" id="wf-add-menu">
+                <div class="wf-add-opt" onclick="addWfNode('email',${idx})">✉ Gửi Email</div>
+                <div class="wf-add-opt" onclick="addWfNode('wait',${idx})">⏱ Chờ / Delay</div>
+                <div class="wf-add-opt" onclick="addWfNode('condition',${idx})">🔀 Điều kiện</div>
+              </div>
+            </div>
+          `}`;
+      }).join('');
+    }
+
+    function toggleAddMenu(btn) {
+      const menu = btn.nextElementSibling;
+      if (menu) menu.classList.toggle('open');
+      // Close on click outside
+      setTimeout(() => {
+        document.addEventListener('click', function closer(e) {
+          if (!menu.contains(e.target) && e.target !== btn) {
+            menu.classList.remove('open');
+            document.removeEventListener('click', closer);
+          }
+        });
+      }, 10);
+    }
+
+    // Init workflows on page load
+    function initWorkflows() {
+      renderWorkflowList();
+    }
+
+    // ════════════════════════════════════════
     // SCHEDULE
     // ════════════════════════════════════════
     function toggleSchedule() {
@@ -6208,7 +6546,7 @@ ${html}
       if (ct) contacts = ct;
       if (tm?.length) templates = tm;
       renderSidebar(); renderDashStats(); renderFilterChips();
-      renderContactTable(); renderTemplates(); renderCampaignTargets();
+      renderContactTable(); renderTemplates(); renderCampaignTargets(); initWorkflows();
       if (ca) { renderHistoryFromApi(ca); renderDashCampaigns(ca); }
       // Cập nhật pagination UI
       if (totalContacts > 0) updatePaginationUI(totalContacts);
