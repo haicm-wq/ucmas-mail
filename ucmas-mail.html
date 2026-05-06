@@ -4932,7 +4932,16 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
       if (!confirm(`Xoá template "${t.name}"?`)) return;
       if (window._backendConnected) {
         try {
-          await apiFetch(`/api/templates/${id}`, { method: 'DELETE' });
+          const res = await fetch(API + `/api/templates/${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', ...cfgHeaders() },
+          });
+          if (!res.ok) {
+            const text = await res.text();
+            let msg = 'Lỗi server';
+            try { msg = JSON.parse(text).error || msg; } catch(_) { msg = text || msg; }
+            throw new Error(msg);
+          }
         } catch (e) {
           toast('Lỗi xoá: ' + e.message, 'err');
           return;
