@@ -4934,7 +4934,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
       if (!confirm(`Xoá template "${t.name}"?`)) return;
       if (window._backendConnected) {
         try {
-          const res = await fetch(API + `/api/templates/${id}`, {
+          const res = await fetch(API + `/api/templates?id=${id}`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json', ...cfgHeaders() },
           });
