@@ -2926,7 +2926,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
         <button class="sb-item" onclick="gotoPage('contacts',null,this)">◉ All Contacts <span class="sb-badge"
             id="sb-cnt-all">284</span></button>
         <button class="sb-item" onclick="gotoPage('templates',null,this)">▤ Templates <span
-            class="sb-badge">5</span></button>
+            class="sb-badge" id="sb-cnt-tmpl">0</span></button>
         <button class="sb-item" onclick="gotoPage('campaign',null,this)">✉ New Campaign</button>
         <button class="sb-item" onclick="gotoPage('history',null,this)">◷ History</button>
         <div class="sb-div"></div>
@@ -4892,7 +4892,9 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
     function renderTemplates() {
       const grid = document.getElementById('template-grid');
       const countEl = document.getElementById('tmpl-count');
+      const sbBadge = document.getElementById('sb-cnt-tmpl');
       if (countEl) countEl.textContent = templates.length + ' mẫu';
+      if (sbBadge) sbBadge.textContent = templates.length;
       grid.innerHTML = templates.map(t => `
     <div class="tmpl-card ${activeTemplate === t.id ? 'active-tmpl' : ''}" onclick="selectTemplate('${t.id}')">
       <div class="tmpl-card-row">
