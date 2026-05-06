@@ -2184,9 +2184,16 @@
     /* WORKFLOW BUILDER */
     /* Hide main sidebar when workflows page is active */
     .sidebar.wf-hidden { display: none; }
-    .main.wf-mode { overflow: hidden; }
+    /* Workflow page overlays the entire .main area absolutely */
     #page-workflows { padding: 0; }
-    #page-workflows.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    #page-workflows.active {
+      display: flex;
+      flex-direction: column;
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      background: var(--bg);
+    }
     #page-workflows .ph { padding: 20px 24px 0; flex-shrink: 0; margin-bottom: 16px; }
 
     .wf-layout { display: grid; grid-template-columns: 240px 1fr; gap: 0; border: 1px solid var(--border); border-radius: 10px; flex: 1; min-height: 0; overflow: hidden; margin: 0 24px 20px; }
@@ -3395,7 +3402,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
           <div class="fg"><label class="fl">Người gửi</label>
             <select class="fi" id="c-sender" onchange="onSenderChange()" style="cursor:pointer">
               <option value="ucmas|UCMAS Vietnam">📧 UCMAS Vietnam (mặc định)</option>
-              <option value="muahetrainghiem@ucmasvietnam.com|Mùa Hè Trải Nghiệm UCMAS">🌴 Mùa Hè Trải Nghiệm (muahetrainghiem@ucmasvietnam.com)</option>
+              <option value="muahetrainghiem@ucmasvietnam.com|UCMAS - TRẠI HÈ BÁN TRÚ">🌴 UCMAS - TRẠI HÈ BÁN TRÚ (muahetrainghiem@ucmasvietnam.com)</option>
             </select>
             <input type="hidden" id="c-from" value="UCMAS Vietnam">
             <input type="hidden" id="c-from-email" value="">
@@ -4585,10 +4592,8 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
       const mainEl = document.querySelector('.main');
       if (id === 'workflows') {
         mainSidebar.classList.add('wf-hidden');
-        mainEl.classList.add('wf-mode');
       } else {
         mainSidebar.classList.remove('wf-hidden');
-        mainEl.classList.remove('wf-mode');
       }
       mainEl.scrollTop = 0;
       if (id === 'levels') renderLevelPage();
