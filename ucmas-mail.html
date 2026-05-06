@@ -3381,7 +3381,14 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
         <div class="card-body">
           <div class="fg"><label class="fl">Campaign Name</label><input class="fi" id="c-name"
               placeholder="VD: Newsletter tháng 6 UCMAS"></div>
-          <div class="fg"><label class="fl">From Name</label><input class="fi" id="c-from" value="UCMAS Vietnam"></div>
+          <div class="fg"><label class="fl">Người gửi</label>
+            <select class="fi" id="c-sender" onchange="onSenderChange()" style="cursor:pointer">
+              <option value="ucmas|UCMAS Vietnam">📧 UCMAS Vietnam (mặc định)</option>
+              <option value="muahetrainghiem@ucmasvietnam.com|Mùa Hè Trải Nghiệm UCMAS">🌴 Mùa Hè Trải Nghiệm (muahetrainghiem@ucmasvietnam.com)</option>
+            </select>
+            <input type="hidden" id="c-from" value="UCMAS Vietnam">
+            <input type="hidden" id="c-from-email" value="">
+          </div>
           <div class="fg"><label class="fl">Subject — hỗ trợ {{name}}, {{level}}</label><input class="fi" id="c-subject"
               placeholder="Xin chào {{name}} — Thông báo từ UCMAS"></div>
           <div class="fg">
@@ -5433,6 +5440,14 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
       renderTemplates();
     }
 
+    function onSenderChange() {
+      const val = document.getElementById('c-sender').value;
+      const [email, name] = val.split('|');
+      document.getElementById('c-from').value = name || 'UCMAS Vietnam';
+      // If email contains @, it's a custom email; otherwise use default
+      document.getElementById('c-from-email').value = email.includes('@') ? email : '';
+    }
+
     function loadTemplateIntoCampaign(id) {
       if (!id) return;
       const t = templates.find(x => x.id === id);
@@ -6896,8 +6911,8 @@ ${html}
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...cfgHeaders() },
           body: JSON.stringify({
-            name, from_name: from, subject,
-            body_text: body, target_level_ids: selectedLevelIds,
+            name, from_name: from, from_email: document.getElementById('c-from-email').value || '',
+            subject, body_text: body, target_level_ids: selectedLevelIds,
           }),
         });
 
