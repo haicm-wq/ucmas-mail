@@ -6450,7 +6450,7 @@ ${html}
       const body = document.getElementById('tmpl-code').value;
       try {
         if (activeTemplate && templates.find(t => t.id === activeTemplate)) {
-          await apiFetch(`/api/templates/${activeTemplate}`, {
+          await apiFetch(`/api/templates?id=${activeTemplate}`, {
             method: 'PUT', body: JSON.stringify({ name, body }),
           });
         } else {
