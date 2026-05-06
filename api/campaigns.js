@@ -8,7 +8,9 @@ export default async function handler(req, res) {
 
   try {
     const db = makeDB(getDB(req));
-    if (req.query.logs) {
+    if (req.query.contact_email) {
+      ok(res, await db.getContactEmailHistory(req.query.contact_email));
+    } else if (req.query.logs) {
       ok(res, await db.getCampaignLogs(req.query.logs));
     } else {
       ok(res, await db.getCampaigns());

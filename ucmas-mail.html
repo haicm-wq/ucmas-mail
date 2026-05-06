@@ -2686,6 +2686,26 @@
     </div>
   </div>
 
+
+  <!-- CONTACT EMAIL HISTORY MODAL -->
+  <div class="modal-overlay" id="modal-contact-history">
+    <div class="modal" style="width:560px">
+      <div class="modal-header">
+        <div class="modal-title">📧 Lịch sử email</div>
+        <button class="modal-close" onclick="closeModal('modal-contact-history')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:12px">
+          <span style="font-weight:600;font-size:14px" id="ch-contact-name"></span>
+          <span style="color:var(--muted);font-size:12px;margin-left:8px" id="ch-contact-email"></span>
+        </div>
+        <div id="ch-history-list" style="max-height:400px;overflow-y:auto">
+          <div style="padding:20px;text-align:center;color:var(--muted)">Đang tải...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- QUICK ADD CONTACTS MODAL -->
   <div class="modal-overlay" id="modal-quick-add">
     <div class="modal" style="width:500px">
@@ -3353,7 +3373,17 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
               <div class="sum-row"><span class="sl">Rate limit</span><span class="sv" style="color:var(--ok)">✓
                   Safe</span></div>
             </div>
-            <button class="send-btn" onclick="startSend()">✉ Send Campaign</button>
+            <!-- Schedule -->
+            <div class="sum-div"></div>
+            <div style="display:flex;align-items:center;gap:8px;margin:8px 0">
+              <input type="checkbox" id="c-schedule-check" onchange="toggleSchedule()">
+              <label for="c-schedule-check" style="font-size:12.5px;color:var(--text);cursor:pointer">⏰ Lên lịch gửi</label>
+            </div>
+            <div id="c-schedule-wrap" style="display:none;margin-bottom:10px">
+              <input type="datetime-local" class="fi" id="c-schedule-time" style="font-size:12px;padding:6px 10px">
+              <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Chọn thời gian gửi (theo giờ máy chủ)</div>
+            </div>
+            <button class="send-btn" id="btn-send-campaign" onclick="startSend()">✉ Send Campaign</button>
           </div>
         </div>
       </div>
@@ -3373,43 +3403,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
         <div class="card-title">All Campaigns</div>
       </div>
       <div class="card-body" style="padding:0 18px">
-        <div class="h-item">
-          <div class="h-icon ok">✉</div>
-          <div style="flex:1">
-            <div class="h-title">Chương trình UCMAS Tháng 5</div>
-            <div class="h-meta"><span class="lt lt1">L1</span> · 22/05/2025 14:32</div>
-          </div>
-          <div class="h-stats">
-            <div class="h-sent" style="color:var(--ok)">48/48</div>
-            <div class="h-rate">100% · 0 failed</div>
-          </div>
-          <button class="abtn" style="margin-left:12px">Export</button>
-        </div>
-        <div class="h-item">
-          <div class="h-icon partial">✉</div>
-          <div style="flex:1">
-            <div class="h-title">Newsletter Q2 2025</div>
-            <div class="h-meta"><span class="lt lt1">L1</span><span class="lt lt2">L2</span><span
-                class="lt lt3">L3</span> · 15/05/2025 09:15</div>
-          </div>
-          <div class="h-stats">
-            <div class="h-sent" style="color:var(--warn)">238/246</div>
-            <div class="h-rate">96.7% · 8 failed</div>
-          </div>
-          <button class="abtn" style="margin-left:12px">Export</button>
-        </div>
-        <div class="h-item">
-          <div class="h-icon ok">✉</div>
-          <div style="flex:1">
-            <div class="h-title">Welcome Series</div>
-            <div class="h-meta"><span class="lt lt4">L4</span> · 10/05/2025 10:00</div>
-          </div>
-          <div class="h-stats">
-            <div class="h-sent" style="color:var(--ok)">38/38</div>
-            <div class="h-rate">100% · 0 failed</div>
-          </div>
-          <button class="abtn" style="margin-left:12px">Export</button>
-        </div>
+        <div style="padding:28px;color:var(--muted);text-align:center">Đang tải...</div>
       </div>
     </div>
   </div>
@@ -4589,6 +4583,8 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
       <td><span class="sdot ${statusIcon}"></span>${statusLabel}</td>
       <td style="color:var(--muted);font-size:12px">${c.last}</td>
       <td>
+        <button class="abtn" onclick="viewContactHistory('${c.email}','${c.name.replace(/'/g,"\\'")}')"
+          style="font-size:10px;padding:2px 8px" title="Xem lịch sử email">📧 Lịch sử</button>
         <select class="lsel" onchange="changeContactLevel(${i}, this.value)">
           ${levels.map(l => `<option value="${l.id}"${l.id === c.level_id ? ' selected' : ''}>${l.name}</option>`).join('')}
         </select>
@@ -5340,6 +5336,56 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
         </head><body>${rendered.split('\n').map(l => l.trim() ? `<p>${l}</p>` : '').join('\n')}</body></html>`;
       }
       frame.srcdoc = rendered;
+    }
+
+    // ════════════════════════════════════════
+    // SCHEDULE
+    // ════════════════════════════════════════
+    function toggleSchedule() {
+      const checked = document.getElementById('c-schedule-check').checked;
+      document.getElementById('c-schedule-wrap').style.display = checked ? '' : 'none';
+      const btn = document.getElementById('btn-send-campaign');
+      btn.innerHTML = checked ? '⏰ Lên lịch gửi' : '✉ Send Campaign';
+      if (checked) {
+        // Set default time to 1 hour from now
+        const d = new Date(Date.now() + 3600000);
+        const local = d.toISOString().slice(0, 16);
+        document.getElementById('c-schedule-time').value = local;
+      }
+    }
+
+    // ════════════════════════════════════════
+    // CONTACT EMAIL HISTORY
+    // ════════════════════════════════════════
+    async function viewContactHistory(email, name) {
+      document.getElementById('ch-contact-name').textContent = name;
+      document.getElementById('ch-contact-email').textContent = email;
+      document.getElementById('ch-history-list').innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Đang tải...</div>';
+      document.getElementById('modal-contact-history').classList.add('open');
+
+      try {
+        const logs = await apiFetch(`/api/campaigns?contact_email=${encodeURIComponent(email)}`);
+        if (!logs || !logs.length) {
+          document.getElementById('ch-history-list').innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Chưa nhận email nào</div>';
+          return;
+        }
+        document.getElementById('ch-history-list').innerHTML = logs.map(l => {
+          const date = l.sent_at ? new Date(l.sent_at).toLocaleString('vi-VN') : '—';
+          const statusColor = l.status === 'sent' ? 'var(--ok)' : 'var(--err)';
+          const statusLabel = l.status === 'sent' ? '✓ Đã gửi' : '✕ Lỗi';
+          return `<div class="h-item" style="padding:10px 0;border-bottom:1px solid var(--border)">
+            <div class="h-icon ${l.status === 'sent' ? 'ok' : 'err'}" style="width:32px;height:32px;font-size:14px">✉</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:500;font-size:13px">${l.campaign_name || 'Campaign'}</div>
+              <div style="font-size:11px;color:var(--muted)">${date}</div>
+            </div>
+            <span style="font-size:11px;font-weight:500;color:${statusColor}">${statusLabel}</span>
+          </div>`;
+        }).join('');
+      } catch (e) {
+        document.getElementById('ch-history-list').innerHTML =
+          `<div style="padding:20px;text-align:center;color:var(--err)">Lỗi: ${e.message}</div>`;
+      }
     }
 
     // ════════════════════════════════════════
@@ -6401,6 +6447,29 @@ ${html}
       const from = document.getElementById('c-from').value.trim();
 
       if (!name || !subject || !body) { toast('Điền đầy đủ Campaign Name, Subject và Nội dung!', 'err'); return; }
+
+      // Check schedule
+      const isScheduled = document.getElementById('c-schedule-check')?.checked;
+      if (isScheduled) {
+        const schedTime = document.getElementById('c-schedule-time').value;
+        if (!schedTime) { toast('Chọn thời gian gửi!', 'err'); return; }
+        const schedDate = new Date(schedTime);
+        if (schedDate <= new Date()) { toast('Thời gian gửi phải ở tương lai!', 'err'); return; }
+        // Lưu scheduled campaign
+        const scheduled = JSON.parse(localStorage.getItem('ucmas_scheduled') || '[]');
+        scheduled.push({
+          id: 'sched_' + Date.now(),
+          name, from, subject, body,
+          target_level_ids: segs.map(([id]) => { const lv = getLevelById(id); return lv ? lv.id : id; }).filter(Boolean),
+          scheduled_at: schedDate.toISOString(),
+          status: 'scheduled',
+        });
+        localStorage.setItem('ucmas_scheduled', JSON.stringify(scheduled));
+        toast(`⏰ Đã lên lịch gửi "${name}" vào ${schedDate.toLocaleString('vi-VN')}`, 'ok');
+        document.getElementById('c-schedule-check').checked = false;
+        toggleSchedule();
+        return;
+      }
 
       // Lấy level uuid từ tên level đã chọn
       const selectedLevelIds = segs.map(([id]) => {
