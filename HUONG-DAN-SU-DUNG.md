@@ -1,66 +1,271 @@
 # 📧 UCMAS MAIL — Hệ Thống Email Marketing
 
-> **Phiên bản:** 1.1.0  
+> **Phiên bản:** 2.0.0  
 > **Cập nhật:** 07/05/2026  
-> **Nền tảng:** Web App (Vercel + Supabase + Resend)
+> **Nền tảng:** Vercel + GitHub + Supabase + Resend
 
 ---
 
 ## 📋 MỤC LỤC
 
 1. [Giới thiệu](#1-giới-thiệu)
-2. [Yêu cầu hệ thống](#2-yêu-cầu-hệ-thống)
-3. [Cài đặt & Triển khai](#3-cài-đặt--triển-khai)
-4. [Hướng dẫn sử dụng](#4-hướng-dẫn-sử-dụng)
-5. [Mô tả tính năng chi tiết](#5-mô-tả-tính-năng-chi-tiết)
-6. [Kiến trúc kỹ thuật](#6-kiến-trúc-kỹ-thuật)
-7. [Xử lý sự cố](#7-xử-lý-sự-cố)
+2. [Kiến trúc hệ thống](#2-kiến-trúc-hệ-thống)
+3. [Vai trò từng thành phần](#3-vai-trò-từng-thành-phần)
+4. [Giới hạn của từng nền tảng](#4-giới-hạn-của-từng-nền-tảng)
+5. [Cài đặt & Triển khai](#5-cài-đặt--triển-khai)
+6. [Hướng dẫn sử dụng](#6-hướng-dẫn-sử-dụng)
+7. [Cơ chế gửi email](#7-cơ-chế-gửi-email)
+8. [API Endpoints](#8-api-endpoints)
+9. [Xử lý sự cố](#9-xử-lý-sự-cố)
 
 ---
 
 ## 1. GIỚI THIỆU
 
-**UCMAS MAIL** là công cụ email marketing nội bộ được xây dựng cho hệ thống UCMAS, cho phép:
+**UCMAS MAIL** là công cụ email marketing nội bộ cho hệ thống UCMAS, cho phép:
 
-- Quản lý danh sách học viên/phụ huynh theo cấp bậc (Level)
-- Soạn email HTML chuyên nghiệp bằng visual editor hoặc code editor
-- Gửi hàng loạt email marketing theo chiến dịch (Campaign)
-- Theo dõi trạng thái email: đã gửi, đã mở, đã click, bounce, spam
-- Tự động đồng bộ dữ liệu tracking từ Resend
-
-### Điểm nổi bật
-
-| Tính năng | Mô tả |
-|-----------|-------|
-| 🚀 Gửi hàng loạt | Gửi tới hàng nghìn email với rate limiting tự động |
-| 🔄 Chống trùng lặp | Log ngay mỗi email, resume thông minh khi bị timeout |
-| ⏹ Dừng/Tiếp tục | Chủ động dừng chiến dịch và gửi tiếp bất cứ lúc nào |
-| 📊 Tracking realtime | Theo dõi delivered, opened, clicked, bounced qua webhook |
-| 🎨 Drag & Drop Builder | GrapeJS email builder tích hợp sẵn |
-| 📱 Import linh hoạt | Hỗ trợ CSV, XLSX, Google Sheets |
+- Quản lý danh sách học viên/phụ huynh theo cấp bậc (Level) và Segment
+- Soạn email HTML chuyên nghiệp bằng visual editor, code editor hoặc drag & drop builder
+- Gửi hàng loạt email theo chiến dịch (Campaign) — **đảm bảo mỗi người chỉ nhận đúng 1 email**
+- Theo dõi trạng thái email: delivered, opened, clicked, bounced, spam
+- Dừng khẩn cấp toàn hệ thống bằng 1 nút khi phát hiện bất thường
+- Tự động tiếp tục gửi khi bị timeout (không cần thao tác thủ công)
 
 ---
 
-## 2. YÊU CẦU HỆ THỐNG
+## 2. KIẾN TRÚC HỆ THỐNG
 
-### Dịch vụ bên ngoài (bắt buộc)
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        NGƯỜI DÙNG                           │
+│                    (Trình duyệt web)                        │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ HTTPS
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                       VERCEL                                │
+│  ┌─────────────────┐    ┌──────────────────────────────┐   │
+│  │  Static Files   │    │    Serverless Functions      │   │
+│  │  ucmas-mail.html│    │    /api/*.js  (12 functions) │   │
+│  │  styles.css     │    │                              │   │
+│  │  app.js         │    │  campaigns-send.js           │   │
+│  └─────────────────┘    │  contacts.js                 │   │
+│                         │  tracking.js ...             │   │
+│                         └──────────┬─────────────────-─┘   │
+└─────────────────────────────────────────────────────────────┘
+                 │                   │
+                 ▼                   ▼
+┌───────────────────┐    ┌───────────────────────────────────┐
+│     SUPABASE      │    │              RESEND               │
+│  (PostgreSQL DB)  │    │         (Email Service)           │
+│                   │    │                                   │
+│  contacts         │    │  POST /emails  → gửi email        │
+│  campaigns        │    │  Webhooks      → tracking events  │
+│  send_logs        │    │  GET /emails   → backfill data    │
+│  email_events     │    └───────────────────────────────────┘
+│  levels           │
+│  templates        │
+│  workflows        │
+│  segments         │
+└───────────────────┘
 
-| Dịch vụ | Mục đích | Đăng ký |
-|---------|----------|---------|
-| **Vercel** | Hosting web app + serverless API | [vercel.com](https://vercel.com) |
-| **Supabase** | Database lưu contacts, campaigns, logs | [supabase.com](https://supabase.com) |
-| **Resend** | Dịch vụ gửi email (API) | [resend.com](https://resend.com) |
+┌─────────────────────────────────────────────────────────────┐
+│                        GITHUB                               │
+│  Repository: haicm-wq/ucmas-mail                           │
+│  → Push code → Vercel tự động deploy                       │
+└─────────────────────────────────────────────────────────────┘
+```
 
-### Thông tin cần chuẩn bị
+### Luồng dữ liệu chính
 
-- **Supabase URL** — URL của project Supabase (dạng `https://xxx.supabase.co`)
-- **Supabase Service Role Key** — Key có quyền đọc/ghi database
-- **Resend API Key** — Key gửi email (dạng `re_xxxxx`)
-- **From Email** — Địa chỉ email người gửi (cần verify domain trên Resend)
+```
+1. IMPORT CONTACTS:
+   File CSV/XLSX → API contacts-import → Supabase contacts table
+
+2. GỬI CAMPAIGN:
+   User click → API campaigns-send → Resend API → Email đến inbox
+                                  ↓
+                            Supabase send_logs (log ngay mỗi email)
+
+3. TRACKING:
+   Người nhận mở email → Resend → Webhook POST /api/webhooks
+                                → Supabase email_events
+
+4. RESUME (khi timeout):
+   Frontend phát hiện ngắt kết nối → đọc send_logs (ai đã nhận)
+   → gọi ?resume=id → chỉ gửi phần còn lại
+```
 
 ---
 
-## 3. CÀI ĐẶT & TRIỂN KHAI
+## 3. VAI TRÒ TỪNG THÀNH PHẦN
+
+### 🐙 GitHub
+**Vai trò:** Lưu trữ và quản lý source code
+
+- Repository: `https://github.com/haicm-wq/ucmas-mail`
+- Branch chính: `master`
+- **Kết nối với Vercel:** Mỗi khi push code lên GitHub → Vercel tự động build và deploy
+- Không cần thao tác thủ công trên Vercel sau khi đã liên kết
+
+---
+
+### ▲ Vercel
+**Vai trò:** Hosting toàn bộ ứng dụng (frontend + backend)
+
+Vercel phục vụ 2 loại nội dung:
+
+**1. Static files (frontend):**
+- `ucmas-mail.html` — giao diện người dùng
+- `styles.css` — toàn bộ CSS
+- `app.js` — toàn bộ JavaScript logic phía client
+
+**2. Serverless Functions (backend API):**
+- 12 file trong thư mục `/api/` — mỗi file là 1 API endpoint độc lập
+- Chạy Node.js, xử lý request → truy vấn Supabase → gọi Resend API
+- Không có server thường trực — mỗi request tạo 1 function instance mới
+
+**Cách kết nối:**
+```
+GitHub push → Vercel webhook → Build → Deploy production
+URL: https://ucmas-mail.vercel.app
+```
+
+**Environment Variables trên Vercel:**
+```
+SUPABASE_URL               = https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY  = eyJhbG...
+RESEND_API_KEY             = re_xxxxx
+FROM_EMAIL                 = info@yourdomain.com
+```
+
+---
+
+### 🗄️ Supabase
+**Vai trò:** Database lưu trữ toàn bộ dữ liệu của ứng dụng
+
+Supabase là PostgreSQL database được host trên cloud. Các bảng:
+
+| Bảng | Lưu trữ |
+|------|---------|
+| `levels` | Cấp bậc học viên (Level 1, Level 2,...) |
+| `contacts` | Danh sách email người nhận |
+| `templates` | Mẫu email HTML |
+| `campaigns` | Chiến dịch gửi email + kill switch |
+| `send_logs` | Log chi tiết từng email đã gửi |
+| `email_events` | Sự kiện tracking (opened, clicked,...) |
+| `segments` | Nhóm contacts theo rule |
+| `workflows` | Quy trình tự động hóa |
+
+**Cách kết nối:**
+- Vercel Functions gọi Supabase qua REST API (supabase-js client)
+- Xác thực bằng `Service Role Key` — có quyền đọc/ghi toàn bộ
+
+**Lưu ý quan trọng:**
+- Supabase Free Tier sẽ **tự pause project** sau 1 tuần không có request
+- Khi project bị pause → app mất kết nối → cần vào Supabase Dashboard để restore
+
+---
+
+### 📨 Resend
+**Vai trò:** Dịch vụ gửi email thực tế
+
+Resend nhận lệnh gửi email từ Vercel Function và thực hiện:
+- Gửi email đến inbox người nhận
+- Tracking delivery, open, click
+- Gửi webhook về app khi có sự kiện mới
+
+**Cách kết nối:**
+```
+Vercel Function (campaigns-send.js)
+  → POST https://api.resend.com/emails
+  → Resend gửi email
+  → Resend POST webhook đến /api/webhooks (tracking)
+```
+
+**Cần cấu hình trên Resend:**
+1. Verify domain gửi email
+2. Tạo API Key
+3. Cấu hình Webhook URL: `https://ucmas-mail.vercel.app/api/webhooks`
+
+---
+
+### 🌐 Trình duyệt (Frontend)
+**Vai trò:** Giao diện người dùng, điều phối luồng gửi email
+
+`app.js` chạy trên trình duyệt thực hiện:
+- Render toàn bộ UI (contacts, campaigns, history,...)
+- Gọi `/api/*` endpoints trên Vercel
+- **Quản lý auto-resume:** khi connection bị ngắt (Vercel timeout), frontend phát hiện và tự gọi `?resume=id` sau 3 giây
+- Hiển thị tiến trình gửi realtime qua SSE (Server-Sent Events)
+- Lưu cấu hình kết nối trong localStorage (khi không dùng Vercel env vars)
+
+---
+
+## 4. GIỚI HẠN CỦA TỪNG NỀN TẢNG
+
+### ▲ Vercel (Hobby Plan — Miễn phí)
+
+| Giới hạn | Giá trị | Ảnh hưởng |
+|----------|---------|-----------|
+| **Serverless Functions** | **Tối đa 12 functions** | Không được tạo thêm file trong `/api/` |
+| **Thời gian chạy tối đa** | **300 giây/request** | Campaign ~200-300 email/lần |
+| **Bandwidth** | 100 GB/tháng | Thường không chạm |
+| **Build time** | 45 phút/build | Thường build xong trong <1 phút |
+| **Concurrent requests** | Không giới hạn | OK |
+
+> ⚠️ **Quan trọng:** Giới hạn 12 functions là cứng — nếu thêm file `.js` vào `/api/` sẽ build lỗi ngay.  
+> Giải pháp: gộp nhiều tính năng vào 1 file dùng query params (VD: `?action=stop`, `?emergency=status`).
+
+**Tốc độ gửi thực tế:**
+- Mỗi request gửi được ~100-300 email (tùy tốc độ Resend)
+- Campaign 2000 email cần ~7-20 lần request (tự động resume)
+- Tổng thời gian: ~20-40 phút cho 2000 email
+
+---
+
+### 🗄️ Supabase (Free Tier)
+
+| Giới hạn | Giá trị | Ảnh hưởng |
+|----------|---------|-----------|
+| **Số project** | 2 projects | Đủ dùng |
+| **Database size** | 500 MB | ~5 triệu dòng send_logs |
+| **Bandwidth** | 5 GB/tháng | Thường đủ |
+| **Row limit** | Không giới hạn | OK |
+| **Concurrent connections** | 60 | Đủ cho Vercel functions |
+| **Auto-pause** | **Sau 1 tuần không dùng** | Project bị đóng băng, cần restore thủ công |
+
+> ⚠️ **Auto-pause:** Nếu app không có request trong 7 ngày, Supabase sẽ pause project. Vào Supabase Dashboard → bấm "Restore" để khôi phục.
+
+---
+
+### 📨 Resend (Free Tier)
+
+| Giới hạn | Giá trị | Ảnh hưởng |
+|----------|---------|-----------|
+| **Email/tháng** | **3,000 email** | Đủ cho test, cần nâng cấp cho production lớn |
+| **Email/ngày** | 100 email | Giới hạn chặt với free plan |
+| **Domain** | 1 domain | Đủ dùng |
+| **Webhook** | Có | Tracking hoạt động đầy đủ |
+| **API rate limit** | 10 req/giây | Gửi tuần tự 1 email không vấn đề |
+
+> ⚠️ **Nếu vượt 100 email/ngày (free):** Resend sẽ từ chối, email bị log là `failed`. Nâng lên plan trả phí để gửi không giới hạn.
+
+---
+
+### 🐙 GitHub (Free)
+
+| Giới hạn | Giá trị | Ảnh hưởng |
+|----------|---------|-----------|
+| **Repository** | Không giới hạn | OK |
+| **File size** | 100 MB/file | Không liên quan |
+| **Actions** | 2,000 phút/tháng | Không dùng Actions |
+
+Không có giới hạn đáng lo ngại với cách dùng hiện tại.
+
+---
+
+## 5. CÀI ĐẶT & TRIỂN KHAI
 
 ### Bước 1: Clone dự án
 
@@ -72,464 +277,260 @@ npm install
 
 ### Bước 2: Tạo database trên Supabase
 
-Truy cập Supabase Dashboard → SQL Editor → chạy các lệnh tạo bảng. App có sẵn phần **Database Setup** (tab ⚙ Settings → Database) với các câu SQL cần chạy:
+Vào Supabase Dashboard → SQL Editor → chạy theo thứ tự:
+1. `migration-v2.sql` — bảng cơ bản
+2. `migration-v3-tags.sql` — hệ thống tags
+3. `migration-v4-segments.sql` — hệ thống segments
 
-**Các bảng cần tạo:**
+### Bước 3: Cấu hình Vercel
 
-| Bảng | Mục đích |
-|------|----------|
-| `levels` | Cấp bậc/nhóm học viên (VD: Level 1, Level 2,...) |
-| `contacts` | Danh sách email người nhận (phụ huynh, học viên) |
-| `templates` | Mẫu email HTML đã lưu |
-| `campaigns` | Chiến dịch gửi email |
-| `send_logs` | Log chi tiết từng email đã gửi |
-| `email_events` | Sự kiện tracking (opened, clicked, bounced,...) |
-| `workflows` | Workflow automation (nếu sử dụng) |
-
-### Bước 3: Cấu hình biến môi trường
-
-**Cách 1: Qua Vercel Dashboard** (khuyến nghị cho production)
 ```
-Vercel → Project Settings → Environment Variables
-- SUPABASE_URL = https://xxx.supabase.co
-- SUPABASE_SERVICE_ROLE_KEY = eyJhbG...
-- RESEND_API_KEY = re_xxxxx
-- FROM_EMAIL = info@yourdomain.com
+Vercel Dashboard → Project → Settings → Environment Variables:
+
+SUPABASE_URL               = https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY  = eyJhbG...
+RESEND_API_KEY             = re_xxxxx
+FROM_EMAIL                 = info@yourdomain.com
 ```
 
-**Cách 2: Qua giao diện app** (cho lần đầu sử dụng)
-- Mở app → bấm ⚙ Settings → nhập các thông tin kết nối
-- Dữ liệu lưu trong localStorage của trình duyệt
+### Bước 4: Liên kết GitHub → Vercel
 
-### Bước 4: Cài đặt Webhook (tracking)
+1. Vào Vercel → Import Project → chọn GitHub repo `ucmas-mail`
+2. Sau đó mỗi lần `git push` → Vercel tự build và deploy
 
-1. Vào **Resend Dashboard** → Settings → Webhooks
-2. Thêm endpoint: `https://your-domain.vercel.app/api/webhooks`
+### Bước 5: Cấu hình Webhook Resend
+
+1. Resend Dashboard → Settings → Webhooks
+2. Add endpoint: `https://ucmas-mail.vercel.app/api/webhooks`
 3. Chọn events: `email.delivered`, `email.opened`, `email.clicked`, `email.bounced`, `email.complained`
-4. Lưu lại
-
-### Bước 5: Deploy
-
-```bash
-# Deploy lên Vercel
-vercel --prod
-
-# Hoặc chạy local để test
-npm run dev
-```
 
 ---
 
-## 4. HƯỚNG DẪN SỬ DỤNG
+## 6. HƯỚNG DẪN SỬ DỤNG
 
-### 4.1 Dashboard (Trang chủ)
+### 6.1 Dashboard
 
-Trang tổng quan hiển thị:
-- **Thống kê contacts** theo từng level (Level 1, 2, 3, 4,...)
-- **Chiến dịch gần đây** với trạng thái (draft, sending, completed, paused)
-- **Sidebar bên trái** hiển thị cây level và số lượng contacts
+- Thống kê contacts theo level
+- Chiến dịch gần đây
+- Số liệu tổng quan
 
-### 4.2 Quản lý Contacts
+### 6.2 Quản lý Contacts
 
-**Xem danh sách:**
-- Bấm tab **"Contacts"** trên thanh navigation
-- Lọc theo level bằng cách bấm vào chip hoặc sidebar
-- Tìm kiếm bằng tên hoặc email
-- Phân trang: chọn số contacts/trang (200, 500, 1000)
-
-**Import contacts:**
-
+**Import:**
 | Cách | Hướng dẫn |
 |------|-----------|
-| **Upload file** | Kéo thả hoặc bấm vào vùng upload → chọn file CSV/XLSX |
-| **Google Sheets** | Bấm "📊 Google Sheets" → dán link Sheet (phải public) |
-| **Thêm nhanh** | Bấm "⚡ Quick Add" → nhập dạng `tên, email, level` mỗi dòng |
+| File CSV/XLSX | Kéo thả → tự động parse |
+| Google Sheets | Dán link public sheet |
+| Quick Add | Nhập `tên, email, level` mỗi dòng |
 
-**Định dạng file import** (cần 3 cột bắt buộc):
-
+**Format file:**
 ```
 name,email,level
-Nguyễn Văn A,nguyenvana@gmail.com,LEVEL 1
-Trần Thị B,tranthib@yahoo.com,LEVEL 2
+Nguyễn Văn A,a@gmail.com,LEVEL 1
 ```
 
-Cột tùy chọn: `company`, `phone`
+**Thao tác hàng loạt (bulk actions):**
+- Tick chọn nhiều contacts → thanh bulk hiện ra
+- Đổi level hàng loạt
+- Gắn tag hàng loạt
+- **📂 Thêm vào Segment:** chọn segment có sẵn hoặc tạo mới
+- Xóa hàng loạt
 
-> **Lưu ý:** Khi import email đã tồn tại, hệ thống sẽ **cập nhật thông tin mới** (tên, level, company,...) thay vì tạo trùng.
+### 6.3 Templates
 
-**Thao tác hàng loạt:**
-- Tick chọn nhiều contacts → thanh bulk actions hiện ra
-- **Đổi level hàng loạt**: chọn level mới từ dropdown
-- **Xóa hàng loạt**: bấm nút "Xóa đã chọn"
+4 chế độ soạn:
+- **Visual** — WYSIWYG như Word
+- **Code** — HTML thuần
+- **Split** — Visual + Code song song
+- **Preview** — Xem kết quả cuối
 
-**Xem lịch sử email:**
-- Bấm nút **"📧 Lịch sử"** bên cạnh mỗi contact
-- Hiển thị tất cả email đã gửi cho contact đó, kèm trạng thái
+Biến template: `{{name}}`, `{{email}}`, `{{level}}`, `{{company}}`, `{{date}}`
 
-### 4.3 Quản lý Levels
+### 6.4 Gửi Campaign
 
-**Tạo level mới:**
-- Tab **"Levels"** → form "Tạo nhanh" bên phải
-- Nhập tên, chọn màu, chọn level cha (nếu là sub-level)
-- Bấm "Tạo Level"
+1. Tab **Campaign** → nhập Subject, From Name, chọn Template
+2. Chọn Level(s) muốn gửi
+3. Bấm **🚀 Gửi Campaign**
+4. Theo dõi tiến trình realtime
 
-**Cấu trúc level:**
-```
-Level 1 (gốc)
-  ├── Level 1A (sub)
-  └── Level 1B (sub)
-Level 2 (gốc)
-  ├── Level 2A (sub)
-  └── Level 2B (sub)
-```
+**Khi campaign bị dừng giữa chừng:**
+- Vào **History** → bấm **▶ Gửi tiếp**
+- Hệ thống tự bỏ qua email đã gửi, gửi tiếp phần còn lại
+- Có thể cần bấm nhiều lần với campaign lớn (mỗi lần ~100-300 email)
 
-### 4.4 Soạn Email Templates
+### 6.5 Nút Dừng Khẩn Cấp ⛔
 
-App cung cấp **4 chế độ soạn email**:
+Nút đỏ **"Dừng khẩn cấp"** ở góc trên phải:
 
-| Chế độ | Mô tả |
-|--------|-------|
-| **Visual** | Soạn trực tiếp như Word, có toolbar formatting |
-| **Code** | Viết HTML thuần, có syntax highlighting |
-| **Split** | Visual + Code song song, đồng bộ realtime |
-| **Preview** | Xem trước email với dữ liệu mẫu |
+- **Khi nhấn:** Dừng TẤT CẢ campaigns đang gửi trên toàn hệ thống
+- Banner đỏ xuất hiện trên toàn trang
+- Trạng thái lưu vào DB — reload trang vẫn giữ nguyên
+- **Để mở lại:** Bấm nút xanh **"✅ Mở khoá hệ thống"**
 
-**Tạo template mới:**
-1. Tab **"Templates"** → bấm **"+ New"**
-2. Nhập tên template
-3. Soạn nội dung email
-4. Bấm **"💾 Lưu"**
+### 6.6 History & Tracking
 
-**Sử dụng biến template:**
-- `{{name}}` — Tên người nhận
-- `{{email}}` — Email người nhận
-- `{{level}}` — Level/cấp bậc
-- `{{company}}` — Công ty
-- `{{date}}` — Ngày gửi
+- Danh sách campaigns với số liệu: Sent, Opened, Clicked, Bounced
+- Bấm vào campaign để xem chi tiết từng email
+- Nút **🔄 Đồng bộ** để backfill từ Resend
+- Nút **📥 Export CSV**
+- Nút **⏹ Dừng** (với campaign đang `sending`)
+- Nút **▶ Gửi tiếp** (với campaign `partial`/`paused`)
 
-**Ví dụ:**
-```html
-<h2>Xin chào {{name}}!</h2>
-<p>Cảm ơn bạn đã đăng ký khóa học {{level}} tại UCMAS.</p>
-```
+### 6.7 Segments
 
-**GrapeJS Drag & Drop Builder:**
-- Bấm **"🏗 Builder"** để mở trình soạn kéo thả chuyên nghiệp
-- Hỗ trợ responsive (Desktop/Tablet/Mobile)
-- Kéo thả các block: text, image, button, column, divider
-- Undo/Redo, xóa canvas
-- Lưu trực tiếp thành template
-
-**Chèn thành phần:**
-- **🔗 Link**: chèn đường dẫn với text tùy chỉnh
-- **🖼 Ảnh**: upload hoặc dán URL ảnh, chọn kích thước
-- **🔘 Button**: tạo nút CTA với màu sắc, border radius tùy chỉnh
-
-### 4.5 Tạo & Gửi Campaign
-
-**Bước 1: Cấu hình campaign**
-1. Tab **"Campaign"**
-2. Nhập **Subject** email (tiêu đề)
-3. Nhập **Tên người gửi** (From Name)
-4. Chọn **Template** hoặc soạn trực tiếp
-5. Tick chọn **Level** muốn gửi (có thể chọn nhiều)
-
-**Bước 2: Preview & Gửi**
-1. Xem preview bên phải (thay biến template bằng dữ liệu mẫu)
-2. Kiểm tra thông tin tổng kết: số contacts, levels đã chọn
-3. Bấm **"🚀 Gửi Campaign"**
-
-**Trong quá trình gửi:**
-- Thanh tiến trình hiển thị: `Đang gửi 150/2016...`
-- Thông báo mỗi batch 10 email
-- Nút **"⏹ Dừng gửi"** để tạm dừng bất cứ lúc nào
-
-**Gửi tiếp campaign bị dừng:**
-- Vào tab **History** → bấm vào campaign có trạng thái `paused` hoặc `sending`
-- Bấm **"▶ Gửi tiếp"**
-- Hệ thống tự động bỏ qua email đã gửi, chỉ gửi phần còn lại
-
-### 4.6 Theo dõi Tracking (History)
-
-**Trang History hiển thị:**
-- Danh sách tất cả campaigns đã gửi
-- Trạng thái: `draft` | `sending` | `paused` | `completed`
-- Số liệu: Sent, Delivered, Opened, Clicked, Bounced
-
-**Xem chi tiết campaign:**
-- Bấm vào tên campaign để mở chi tiết
-- Thống kê: tỷ lệ mở (open rate), tỷ lệ click (click rate)
-- Danh sách từng email đã gửi kèm trạng thái
-
-**Đồng bộ dữ liệu từ Resend:**
-- Bấm **"🔄 Đồng bộ trạng thái từ Resend"**
-- Hệ thống quét Resend API và cập nhật trạng thái mới nhất
-- Hỗ trợ 2 chế độ:
-  - **Có log**: fetch trạng thái theo resend_id
-  - **Không có log**: tìm kiếm theo subject + recipient
-
-**Export logs:**
-- Bấm **"📥 Export CSV"** để tải danh sách gửi thành file CSV
-
-### 4.7 Workflow Automation
-
-> Tính năng xây dựng workflow tự động hóa quy trình gửi email.
-
-**Giao diện workflow builder:**
-- Sidebar trái: danh sách workflows
-- Canvas chính: flow chart các bước
-
-**Các loại node:**
-- **Trigger**: Điều kiện kích hoạt (VD: khi thêm tag, khi đăng ký)
-- **Email**: Gửi email theo template
-- **Delay**: Chờ một khoảng thời gian
-- **Condition**: Rẽ nhánh theo điều kiện
-- **Tag**: Gắn tag cho contact
-
-### 4.8 Settings (Cài đặt)
-
-Bấm **⚙** trên thanh navigation để mở cài đặt:
-
-| Mục | Nội dung |
-|-----|----------|
-| **Supabase URL** | URL project Supabase |
-| **Supabase Key** | Service Role Key |
-| **Resend API Key** | Key gửi email |
-| **From Email** | Địa chỉ người gửi |
-| **Test Connection** | Kiểm tra kết nối |
+Nhóm contacts theo rule động (level + tag):
+- Tạo segment → thêm rule (level hoặc tag)
+- Contacts tự động match theo rule
+- Dùng để gửi campaign cho nhóm phức tạp
 
 ---
 
-## 5. MÔ TẢ TÍNH NĂNG CHI TIẾT
+## 7. CƠ CHẾ GỬI EMAIL
 
-### 5.1 Hệ thống gửi email
+### Gửi tuần tự — đảm bảo không trùng lặp
 
 ```
-[Bấm Gửi] → Lấy contacts theo level → Loop từng email:
-  1. Kiểm tra đã gửi chưa (trong send_logs)
-  2. Nếu chưa → gửi qua Resend API
-  3. Log ngay vào send_logs (resend_id, status, email)
-  4. Delay 150ms giữa mỗi email (rate limiting)
-  5. Thông báo tiến trình mỗi 10 email
+[Bắt đầu Campaign]
+       ↓
+Lấy contacts theo level (từ Supabase)
+       ↓
+Email 1 → Gửi qua Resend → Log ngay vào send_logs ✓
+       ↓
+Email 2 → Gửi qua Resend → Log ngay vào send_logs ✓
+       ↓
+       ...
+       ↓
+Email 100 → [Vercel timeout sau 300s]
+       ↓
+Frontend phát hiện mất kết nối → chờ 3 giây
+       ↓
+Gọi ?resume=campaign_id
+       ↓
+Backend đọc send_logs → thấy 99 email đã gửi → BỎ QUA
+       ↓
+Tiếp tục từ email 100 → 101 → 102...
+       ↓
+[Timeout lại] → Resume lại → ... → XONG
 ```
 
-**Chống trùng lặp:**
-- Mỗi email gửi xong được log ngay lập tức vào database
-- Khi resume: kiểm tra send_logs → bỏ qua email đã có
-- Kể cả Vercel timeout ở giữa → không bao giờ gửi trùng
+### 3 lớp bảo vệ chống gửi trùng
 
-**Dừng gửi:**
-- Bấm "⏹ Dừng" → campaign chuyển sang `paused`
-- Gửi tiếp bất cứ lúc nào → chỉ gửi phần còn lại
+| Lớp | Cơ chế |
+|-----|--------|
+| **Set trong RAM** | Load toàn bộ email đã `sent` vào Set khi resume — check trước khi gửi |
+| **logSend idempotent** | Nếu DB đã có record `status=sent` → không ghi đè, bỏ qua |
+| **Server lock** | Nếu campaign đang `sending` → từ chối request resume mới (HTTP 409) |
 
-### 5.2 Hệ thống Tracking
+### Kill Switch (cơ chế dừng khẩn cấp)
 
-**Webhook (realtime):**
-```
-Resend gửi email → Người nhận mở/click → Resend gửi webhook 
-→ POST /api/webhooks → Lưu vào bảng email_events
-```
-
-Các sự kiện được tracking:
-- `delivered` — Email đã đến hộp thư
-- `opened` — Người nhận đã mở email
-- `clicked` — Người nhận đã click link trong email
-- `bounced` — Email bị trả lại (địa chỉ không tồn tại)
-- `complained` — Người nhận báo spam
-
-**Backfill (đồng bộ thủ công):**
-- Dùng khi webhook bị miss hoặc campaign cũ không có log
-- Quét Resend API theo subject + recipient để tìm email
-- Loại bỏ duplicate tự động
-
-### 5.3 Import Contacts
-
-**Từ file (CSV/XLSX):**
-- Upload file lên → parse → validate → upsert vào database
-- Email trùng → cập nhật thông tin mới (tên, level, phone,...)
-- Báo lỗi cụ thể từng dòng nếu thiếu dữ liệu
-
-**Từ Google Sheets:**
-- Dán link Google Sheets (phải ở chế độ "Anyone with the link can view")
-- Hệ thống tự export CSV → parse → import
-- Không cần publish sheet
-
-**Quick Add:**
-- Nhập nhanh dạng text: `Tên, email, level` mỗi dòng
-- Preview trước khi thêm
-
-### 5.4 Visual Email Editor
-
-**4 chế độ editor:**
-- **Visual**: WYSIWYG editor (What You See Is What You Get)
-- **Code**: HTML editor thuần
-- **Split**: Visual + Code song song, đồng bộ 2 chiều
-- **Preview**: Xem kết quả cuối cùng với dữ liệu mẫu
-
-**GrapeJS Builder:**
-- Drag & drop builder chuyên nghiệp cho email HTML
-- Hỗ trợ responsive preview: Desktop, Tablet, Mobile
-- Blocks có sẵn: text, image, button, columns, divider
-- Undo/Redo, clear canvas
-- Export thành template
+- Mỗi 10 email, backend query DB kiểm tra trạng thái kill switch
+- Nếu kill switch active → dừng ngay, cập nhật campaign thành `paused`
+- Frontend cũng dừng timer auto-resume
 
 ---
 
-## 6. KIẾN TRÚC KỸ THUẬT
-
-### Cấu trúc thư mục
-
-```
-ucmas-mail/
-├── ucmas-mail.html      # Giao diện HTML (2,016 dòng)
-├── styles.css           # Toàn bộ CSS (2,726 dòng)
-├── app.js               # Toàn bộ JavaScript (2,710 dòng)
-├── package.json         # Dependencies
-├── vercel.json          # Vercel routing config
-│
-├── api/                 # Serverless API (Vercel Functions)
-│   ├── _utils.js        # Helpers: ok/err/cors/getDB
-│   ├── campaigns.js     # GET campaigns, POST test email
-│   ├── campaigns-send.js# Gửi/resume/dừng campaign
-│   ├── config.js        # Kiểm tra trạng thái config
-│   ├── contacts.js      # CRUD contacts
-│   ├── contacts-import.js# Upload file import
-│   ├── levels.js        # CRUD levels
-│   ├── sheets-proxy.js  # Import từ Google Sheets
-│   ├── stats.js         # Thống kê dashboard
-│   ├── templates.js     # CRUD templates
-│   ├── tracking.js      # Tracking & backfill
-│   ├── webhooks.js      # Nhận webhook từ Resend
-│   └── workflows.js     # CRUD workflows
-│
-└── lib/                 # Shared libraries
-    ├── csvParser.js     # Parse CSV/XLSX
-    ├── email.js         # Gửi email qua Resend
-    ├── importHelper.js  # Logic import dùng chung
-    └── supabase.js      # Tất cả Supabase CRUD operations
-```
-
-### Tech Stack
-
-| Layer | Công nghệ |
-|-------|-----------|
-| **Frontend** | Vanilla HTML/CSS/JS, GrapeJS |
-| **Backend** | Vercel Serverless Functions (Node.js) |
-| **Database** | Supabase (PostgreSQL) |
-| **Email Service** | Resend API |
-| **Hosting** | Vercel |
-| **Font** | Google Fonts (Montserrat) |
-
-### Database Schema
-
-```
-levels          contacts         templates
-├── id          ├── id           ├── id
-├── name        ├── name         ├── name
-├── color       ├── email        ├── icon
-├── parent_id   ├── level_id     ├── description
-├── description ├── company      ├── body
-└── sort_order  ├── phone        ├── tags[]
-                ├── status       └── created_at
-                ├── last_sent_at
-                └── created_at
-
-campaigns        send_logs         email_events
-├── id           ├── id            ├── id
-├── name         ├── campaign_id   ├── resend_email_id
-├── subject      ├── contact_id    ├── event_type
-├── body         ├── email         ├── recipient_email
-├── from_name    ├── level         ├── metadata (json)
-├── target_levels├── status        └── created_at
-├── status       ├── resend_id
-├── sent_count   ├── error_msg
-├── failed_count └── sent_at
-├── sent_at
-└── created_at
-```
-
-### API Endpoints
+## 8. API ENDPOINTS
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
 | GET | `/api/config` | Kiểm tra cấu hình server |
 | GET | `/api/stats` | Thống kê dashboard |
-| GET | `/api/levels` | Lấy danh sách levels |
-| POST | `/api/levels` | Tạo level mới |
-| DELETE | `/api/levels?id=xxx` | Xóa level |
-| GET | `/api/contacts` | Lấy contacts (có phân trang) |
-| POST | `/api/contacts?action=bulk` | Import contacts hàng loạt |
-| PATCH | `/api/contacts?action=level` | Đổi level cho contact |
-| DELETE | `/api/contacts?id=xxx` | Xóa contact |
+| GET/POST/DELETE | `/api/levels` | CRUD levels |
+| GET/POST/PATCH/DELETE | `/api/contacts` | CRUD contacts + bulk actions |
 | POST | `/api/contacts-import` | Upload file CSV/XLSX |
 | GET | `/api/sheets-proxy?url=xxx` | Import từ Google Sheets |
-| GET | `/api/templates` | Lấy danh sách templates |
-| POST | `/api/templates` | Tạo template mới |
-| PUT | `/api/templates?id=xxx` | Sửa template |
-| DELETE | `/api/templates?id=xxx` | Xóa template |
-| GET | `/api/campaigns` | Lấy danh sách campaigns |
-| POST | `/api/campaigns?action=test` | Gửi email test |
-| POST | `/api/campaigns-send` | Gửi campaign |
+| GET/POST/PUT/DELETE | `/api/templates` | CRUD templates |
+| GET/POST | `/api/campaigns` | Lấy campaigns, gửi test email |
+| POST | `/api/campaigns-send` | Gửi campaign mới |
 | POST | `/api/campaigns-send?resume=id` | Gửi tiếp campaign |
 | POST | `/api/campaigns-send?stop=id` | Dừng campaign |
+| GET | `/api/campaigns-send?emergency=status` | Kiểm tra kill switch |
+| POST | `/api/campaigns-send?emergency=stop` | Kích hoạt kill switch |
+| POST | `/api/campaigns-send?emergency=resume` | Tắt kill switch |
 | GET | `/api/tracking?summary` | Lấy tracking overview |
 | POST | `/api/tracking?backfill=id` | Đồng bộ từ Resend |
 | POST | `/api/webhooks` | Nhận webhook từ Resend |
-| GET | `/api/workflows` | Lấy danh sách workflows |
-| POST | `/api/workflows` | Tạo workflow |
-| PUT | `/api/workflows?id=xxx` | Sửa workflow |
-| DELETE | `/api/workflows?id=xxx` | Xóa workflow |
+| GET/POST/PUT/DELETE | `/api/workflows` | CRUD workflows |
 
 ---
 
-## 7. XỬ LÝ SỰ CỐ
+## 9. XỬ LÝ SỰ CỐ
 
-### Campaign gửi bị dừng giữa chừng
+### Campaign bị stuck / không tiến trình
 
-**Nguyên nhân:** Vercel có giới hạn thời gian chạy (60s cho serverless function). Nếu campaign có >400 email, có thể bị timeout.
+1. Kiểm tra **Vercel Logs** — xem có lỗi API không
+2. Vào **History** → bấm **▶ Gửi tiếp**
+3. Mỗi lần resume gửi ~100-300 email rồi tự tiếp tục
 
-**Cách xử lý:**
-1. Vào tab **History** → tìm campaign bị dừng (trạng thái `sending` hoặc `paused`)
-2. Bấm **"▶ Gửi tiếp"**
-3. Hệ thống sẽ tự bỏ qua email đã gửi và tiếp tục phần còn lại
-4. Có thể phải bấm gửi tiếp nhiều lần cho campaign lớn (>2000 email)
+### Email bị gửi trùng (lịch sử)
+
+Đã được fix hoàn toàn trong v2.0. Nếu vẫn xảy ra:
+1. Nhấn **⛔ Dừng khẩn cấp** ngay
+2. Kiểm tra Resend Dashboard xem số lượng thực tế
+3. Kiểm tra `send_logs` trong Supabase — đảm bảo có UNIQUE constraint trên `(campaign_id, email)`
 
 ### Tracking không hiển thị
 
-**Nguyên nhân:** Webhook chưa được cấu hình đúng, hoặc campaign cũ không có send_logs.
+1. Kiểm tra Webhook URL trên Resend: `https://ucmas-mail.vercel.app/api/webhooks`
+2. Bấm **🔄 Đồng bộ** để backfill thủ công
+3. Mở Console (F12) để xem lỗi
 
-**Cách xử lý:**
-1. Kiểm tra Webhook URL trên Resend Dashboard
-2. Bấm **"🔄 Đồng bộ trạng thái từ Resend"** trên campaign
-3. Mở Console (F12) để xem log debug nếu vẫn không hoạt động
+### Supabase mất kết nối
 
-### Import file lỗi
+1. Vào [supabase.com](https://supabase.com) kiểm tra project có bị pause không
+2. Nếu có → bấm **Restore project**
+3. Free tier pause sau 1 tuần không có request
 
-**Kiểm tra:**
-- File phải có 3 cột: `name`, `email`, `level`
-- Tên level phải khớp chính xác với level đã tạo trong hệ thống (không phân biệt hoa thường)
-- Email phải có ký tự `@`
+### Vercel build lỗi "Too many functions"
 
-### Webhook URL hiển thị "Method not allowed"
+- Hobby plan giới hạn **12 Serverless Functions**
+- Không được thêm file `.js` mới vào `/api/`
+- Gộp tính năng mới vào file API hiện có dùng query params
 
-**Đây là bình thường!** Endpoint `/api/webhooks` chỉ chấp nhận method POST từ Resend. Khi mở bằng trình duyệt (GET), nó sẽ trả về lỗi 405 — điều này không ảnh hưởng đến chức năng.
+### Kết nối xoay tròn / không load được
 
-### Kết nối xoay tròn mãi
-
-**Cách xử lý:**
-1. Kiểm tra Supabase URL và Key trong Settings (⚙)
-2. Bấm "Test Connection" để kiểm tra
-3. Đảm bảo Supabase project chưa bị pause (free tier tự pause sau 1 tuần không dùng)
+1. Bấm **⚙ Settings** → kiểm tra Supabase URL và Key
+2. Bấm **Test Connection**
+3. Đảm bảo Service Role Key (không phải anon key)
 
 ---
 
-## 📞 HỖ TRỢ
+## 📁 CẤU TRÚC CODE
 
-Nếu gặp vấn đề, kiểm tra:
-1. **Console trình duyệt** (F12 → Console) — xem lỗi JavaScript
-2. **Vercel Logs** — xem lỗi API server
-3. **Supabase Dashboard** — kiểm tra dữ liệu trong database
+```
+ucmas-mail/
+├── ucmas-mail.html      # Giao diện chính (HTML)
+├── styles.css           # Toàn bộ CSS
+├── app.js               # Toàn bộ JavaScript frontend
+├── vercel.json          # Cấu hình Vercel (maxDuration: 300s)
+├── package.json
+│
+├── api/                 # 12 Serverless Functions
+│   ├── _utils.js        # Helpers dùng chung (không phải function)
+│   ├── campaigns-send.js# Gửi/resume/dừng/kill-switch
+│   ├── campaigns.js     # Lấy campaigns, test email
+│   ├── config.js        # Kiểm tra cấu hình
+│   ├── contacts.js      # CRUD contacts + bulk + segments
+│   ├── contacts-import.js
+│   ├── levels.js
+│   ├── sheets-proxy.js
+│   ├── stats.js
+│   ├── templates.js
+│   ├── tracking.js
+│   ├── webhooks.js
+│   └── workflows.js
+│
+├── lib/                 # Shared libraries
+│   ├── email.js         # Gọi Resend API
+│   ├── supabase.js      # Tất cả Supabase CRUD + kill switch
+│   ├── csvParser.js     # Parse CSV/XLSX
+│   └── importHelper.js
+│
+├── migration-v2.sql     # Tạo bảng cơ bản
+├── migration-v3-tags.sql
+└── migration-v4-segments.sql
+```
 
 ---
 
-*Tài liệu này được tạo tự động và cập nhật cùng với code. Phiên bản: 1.1.0*
+*Tài liệu cập nhật: 07/05/2026 — Phiên bản 2.0.0*
