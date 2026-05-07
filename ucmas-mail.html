@@ -7067,13 +7067,21 @@ ${html}
       }
     }
 
-    async function resumeCampaign(campaignId) {
-      toast('▶ Đang gửi tiếp campaign...');
+    async function resumeCampaign(campaignId, isAutoResume) {
+      if (!isAutoResume) toast('▶ Đang gửi tiếp campaign...');
+      let lastSent = 0, lastTotal = 0, completed = false;
       try {
         const response = await fetch(`/api/campaigns-send?resume=${campaignId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...cfgHeaders() },
         });
+        // Check if all already sent (JSON response, not SSE)
+        const ct = response.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+          const json = await response.json();
+          if (json.success) { toast('✅ Tất cả email đã được gửi!'); refreshTracking(); return; }
+          else { toast('Lỗi: ' + (json.error || 'Unknown'), 'err'); return; }
+        }
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -7086,10 +7094,30 @@ ${html}
           for (const ev of events) {
             if (!ev.startsWith('data: ')) continue;
             const data = JSON.parse(ev.slice(6));
-            if (data.type === 'progress') toast(`📨 Đang gửi: ${data.sent}/${data.total}`, 'ok');
-            if (data.type === 'done') { toast(`✅ Hoàn thành! ${data.sent}/${data.total} đã gửi`); refreshTracking(); }
-            if (data.type === 'error') toast('⚠ ' + data.error, 'warn');
+            if (data.type === 'start' || data.type === 'progress') {
+              lastSent = data.sent || 0; lastTotal = data.total || 0;
+              const pct = lastTotal > 0 ? Math.round(lastSent / lastTotal * 100) : 0;
+              toast(`📨 Đang gửi: ${lastSent}/${lastTotal} (${pct}%)`, 'ok');
+            }
+            if (data.type === 'done') {
+              completed = true;
+              toast(`✅ Hoàn thành! ${data.sent}/${data.total} đã gửi`);
+              refreshTracking();
+            }
+            if (data.type === 'error' && !data.resumable) { toast('❌ ' + data.error, 'err'); return; }
           }
+        }
+      } catch (e) { /* connection lost — will auto-retry below */ }
+      // Auto-resume if not completed
+      if (!completed && lastTotal > 0 && lastSent < lastTotal) {
+        toast(`⏳ Gửi được ${lastSent}/${lastTotal}. Tự động gửi tiếp sau 3 giây...`);
+        await new Promise(r => setTimeout(r, 3000));
+        return resumeCampaign(campaignId, true);
+      }
+      if (!completed && lastSent === 0) {
+        toast('⚠ Không thể kết nối. Thử lại bằng nút Gửi tiếp.', 'warn');
+      }
+    }
         }
       } catch (e) { toast('Lỗi: ' + e.message + '. Thử lại sau.', 'err'); }
     }
@@ -7310,6 +7338,7 @@ ${html}
             if (data.type === 'start') {
               document.getElementById('ps1').className = 'pstep done';
               document.getElementById('ps2').className = 'pstep run';
+              window._sendingCampaignId = data.campaignId;
             }
             if (data.type === 'progress') {
               const pct = Math.round((data.sent + data.failed) / data.total * 100);
@@ -7334,8 +7363,8 @@ ${html}
               if (data.resumable) {
                 document.getElementById('prog-fill').style.width = Math.round(data.sent/data.total*100) + '%';
                 document.getElementById('prog-pct').textContent = Math.round(data.sent/data.total*100) + '%';
-                toast('⚠ Đã gửi ' + data.sent + '/' + data.total + '. Vào History để gửi tiếp.', 'warn');
-                setTimeout(() => { prog.classList.remove('active'); gotoPage('history'); }, 1500);
+                toast('⏳ Đã gửi ' + data.sent + '/' + data.total + '. Tự động gửi tiếp...');
+                setTimeout(async () => { prog.classList.remove('active'); await resumeCampaign(data.campaignId, true); }, 3000);
               } else {
                 prog.classList.remove('active');
                 toast('Gửi thất bại: ' + data.error, 'err');
@@ -7343,9 +7372,15 @@ ${html}
             }
           }
         }
-      } catch (e) {
-        prog.classList.remove('active');
-        toast('⚠ Kết nối bị ngắt. Vào History để kiểm tra và gửi tiếp.', 'warn');
+        // Auto-resume: tự gửi tiếp sau 3 giây
+        if (window._sendingCampaignId) {
+          toast('⏳ Kết nối bị ngắt. Tự động gửi tiếp sau 3 giây...');
+          const cid = window._sendingCampaignId;
+          setTimeout(async () => { prog.classList.remove('active'); await resumeCampaign(cid, true); }, 3000);
+        } else {
+          prog.classList.remove('active');
+          toast('⚠ Kết nối bị ngắt', 'warn');
+        }
         setTimeout(() => gotoPage('history'), 1500);
       }
     };
