@@ -7,12 +7,33 @@
     const CODE_SYNC_DELAY = 400;
     const AUTO_RESUME_DELAY = 3000;
     const COPY_FEEDBACK_DELAY = 2000;
+    const CACHE_TTL_MS = 5 * 60 * 1000; // 5 phút — sau đó fetch fresh
+    const DEFAULT_PER_PAGE = 100;        // giảm từ 500 → 100
 
-    // Debounce utility — tránh gọi liên tục khi user gõ nhanh
+    // ════════════════════════════════════════
+    // UTILITIES
+    // ════════════════════════════════════════
+
+    // Debounce — tránh gọi liên tục khi user gõ nhanh
     function debounce(fn, ms) {
       let timer;
       return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
     }
+
+    // XSS-safe escape — LUÔN dùng khi nhúng data người dùng vào HTML
+    function esc(s) {
+      return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // DRY helper — refresh contacts (dùng ở 7 chỗ khác nhau)
+    function refreshContacts() {
+      refreshContacts();
+    }
+
+    // Level lookup map — O(1) thay vì O(n) scan mỗi lần
+    let _levelMap = new Map();
+    function rebuildLevelMap() { _levelMap = new Map(levels.map(l => [l.id, l])); }
+    function getLevelById(id) { return _levelMap.get(id) || null; }
 
     // ════════════════════════════════════════
     // DATA STORE
@@ -28,7 +49,7 @@
     let selectedLevels = {};
     let currentFilter = 'all';
     let currentPage = 0;
-    let perPage = 500;
+    let perPage = DEFAULT_PER_PAGE;
     let totalContacts = 0;
     let editorMode = 'split';
     let selectedColor = '#f5c842';
@@ -97,9 +118,10 @@
     }
 
     // ════════════════════════════════════════
+    // ════════════════════════════════════════
     // LEVEL HELPERS
     // ════════════════════════════════════════
-    function getLevelById(id) { return levels.find(l => l.id === id); }
+    // getLevelById → dùng _levelMap.get() ở trên (O(1))
     function getRootLevels() { return levels.filter(l => !l.parent); }
     function getChildren(pid) { return levels.filter(l => l.parent === pid); }
     function getLevelColor(id) { const l = getLevelById(id); return l ? l.color : '#888'; }
@@ -305,9 +327,7 @@
       currentFilter = f;
       currentPage = 0;
       renderFilterChips();
-      const search = document.querySelector('.tbl-search')?.value || '';
-      if (window._backendConnected) loadContactsPage(search);
-      else renderContactTable(search);
+      refreshContacts();
     }
 
     function toggleTagFilter(tag) {
@@ -316,27 +336,21 @@
       else selectedTags.push(tag);
       currentPage = 0;
       renderFilterChips();
-      const search = document.querySelector('.tbl-search')?.value || '';
-      if (window._backendConnected) loadContactsPage(search);
-      else renderContactTable(search);
+      refreshContacts();
     }
 
     function toggleSegmentLogic() {
       segmentLogic = segmentLogic === 'and' ? 'or' : 'and';
       currentPage = 0;
       renderFilterChips();
-      const search = document.querySelector('.tbl-search')?.value || '';
-      if (window._backendConnected) loadContactsPage(search);
-      else renderContactTable(search);
+      refreshContacts();
     }
 
     function toggleTagMode() {
       tagFilterMode = tagFilterMode === 'and' ? 'or' : 'and';
       currentPage = 0;
       renderFilterChips();
-      const search = document.querySelector('.tbl-search')?.value || '';
-      if (window._backendConnected) loadContactsPage(search);
-      else renderContactTable(search);
+      refreshContacts();
     }
 
     const filterTable = debounce(function(q) {
@@ -351,6 +365,9 @@
     async function loadContactsPage(search = '') {
       const levelId = currentFilter === 'all' ? undefined : currentFilter;
       const tagsParam = selectedTags.length ? selectedTags.join(',') : undefined;
+      // Hiện loading row
+      const tbody = document.getElementById('contact-tbody');
+      if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)"><span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> Đang tải...</td></tr>`;
       try {
         let url = `/api/contacts?page=${currentPage}&per_page=${perPage}`;
         if (levelId) url += `&levelId=${levelId}`;
@@ -359,7 +376,6 @@
         const result = await apiFetch(url);
         const { data, total } = result;
         totalContacts = total;
-
         contacts = (data || []).map(c => ({
           id: c.id, name: c.name, email: c.email,
           level: c.levels?.name || '', level_id: c.level_id, company: c.company || '',
@@ -367,11 +383,11 @@
           dbStatus: c.status || 'active',
           last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
         }));
-
         renderContactTable();
         updatePaginationUI(total);
       } catch (e) {
-        renderContactTable();
+        console.error('[loadContactsPage]', e.message);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--err)">⚠ Lỗi tải contacts: ${e.message}</td></tr>`;
       }
     }
 
@@ -389,17 +405,13 @@
 
     function changePage(delta) {
       currentPage = Math.max(0, currentPage + delta);
-      const search = document.querySelector('.tbl-search')?.value || '';
-      if (window._backendConnected) loadContactsPage(search);
-      else renderContactTable(search);
+      refreshContacts();
     }
 
     function changePerPage(val) {
       perPage = parseInt(val);
       currentPage = 0;
-      const search = document.querySelector('.tbl-search')?.value || '';
-      if (window._backendConnected) loadContactsPage(search);
-      else renderContactTable(search);
+      refreshContacts();
     }
     function selectAll(cb) {
       document.querySelectorAll('#contact-tbody input[type=checkbox]').forEach(c => c.checked = cb.checked);
@@ -509,19 +521,27 @@
     // ════════════════════════════════════════
     async function loadAllTags() {
       if (!window._backendConnected) return;
+      // Load tags từ bảng tags (có màu, mô tả)
       try {
-        // Ưu tiên tags từ bảng tags (có màu, mô tả) qua API /api/contacts?action=tags
         const tagData = await apiFetch('/api/contacts?action=tags');
-        if (tagData?.length) allTags = tagData;
-        else allTags = await apiFetch('/api/contacts?action=tags'); // fallback cũ
+        if (Array.isArray(tagData)) allTags = tagData;
         renderFilterChips();
         renderSidebarTags();
-      } catch (_) { }
+      } catch (e) {
+        console.warn('[loadAllTags] Không tải được tags:', e.message);
+        // Nếu bảng tags chưa tạo (migration chưa chạy), thử fallback từ contacts.tags[]
+        try {
+          const fallback = await apiFetch('/api/contacts?action=tags');
+          if (Array.isArray(fallback)) allTags = fallback;
+          renderFilterChips(); renderSidebarTags();
+        } catch (_) {}
+      }
       // Load segments
       try {
-        allSegments = await apiFetch('/api/contacts?action=segments');
+        const segs = await apiFetch('/api/contacts?action=segments');
+        if (Array.isArray(segs)) allSegments = segs;
         renderSidebarSegments();
-      } catch (_) { }
+      } catch (e) { console.warn('[loadAllTags] Không tải được segments:', e.message); }
     }
 
     async function addTagToContact(i, tag) {
@@ -986,10 +1006,22 @@
   </div>`;
     }
 
-    function deleteLevel(id) {
-      if (!confirm(`Xoá level "${id}"? Contacts thuộc level này sẽ không bị xoá.`)) return;
+    async function deleteLevel(id) {
+      const lv = getLevelById(id);
+      const lvName = lv ? lv.name : id;
+      if (!confirm(`Xoá level "${lvName}"?\nContacts thuộc level này sẽ không bị xoá.`)) return;
+      if (window._backendConnected) {
+        try {
+          await apiFetch('/api/levels?id=' + id, { method: 'DELETE' });
+        } catch (e) { toast('Lỗi xoá level: ' + e.message, 'err'); return; }
+      }
+      // Cập nhật local state + xóa cache để reload lấy data mới
       levels = levels.filter(l => l.id !== id && l.parent !== id);
-      scheduleRefresh(); renderLevelPage(); toast(`Đã xoá level ${id}`, 'warn');
+      rebuildLevelMap();
+      clearCache(); // ← xóa cache để reload không trả về data cũ
+      scheduleRefresh();
+      renderLevelPage();
+      toast(`Đã xoá level "${lvName}"`, 'warn');
     }
     function editLevel(id) { toast('Tính năng edit level sẽ có trong bản tiếp theo', 'warn'); }
 
@@ -1027,25 +1059,45 @@
       document.getElementById('ml-name').addEventListener('input', updateModalPreview);
     });
 
-    function saveLevel() {
+    async function saveLevel() {
       const name = document.getElementById('ml-name').value.trim();
       if (!name) { toast('Nhập tên level!', 'err'); return; }
-      if (levels.find(l => l.id === name || l.name === name)) { toast('Level đã tồn tại!', 'err'); return; }
+      if (levels.find(l => l.name === name)) { toast('Level đã tồn tại!', 'err'); return; }
       const parent = document.getElementById('ml-parent').value || null;
       const desc = document.getElementById('ml-desc').value.trim();
-      levels.push({ id: name, name, color: selectedColor, parent, desc, count: 0 });
+      let newId = name;
+      if (window._backendConnected) {
+        try {
+          const created = await apiFetch('/api/levels', { method: 'POST',
+            body: JSON.stringify({ name, color: selectedColor, parent_id: parent, description: desc }) });
+          newId = created?.id || name;
+        } catch (e) { toast('Lỗi tạo level: ' + e.message, 'err'); return; }
+      }
+      levels.push({ id: newId, name, color: selectedColor, parent, desc, count: 0 });
+      rebuildLevelMap();
+      clearCache(); // ← reload sẽ lấy data mới từ Supabase
       closeModal('modal-level');
       scheduleRefresh(); renderLevelPage();
       toast(`Đã tạo level "${name}"`);
     }
 
-    function saveQuickLevel() {
+    async function saveQuickLevel() {
       const name = document.getElementById('ql-name').value.trim();
       if (!name) { toast('Nhập tên level!', 'err'); return; }
-      if (levels.find(l => l.id === name || l.name === name)) { toast('Level đã tồn tại!', 'err'); return; }
+      if (levels.find(l => l.name === name)) { toast('Level đã tồn tại!', 'err'); return; }
       const parent = document.getElementById('ql-parent').value || null;
       const desc = document.getElementById('ql-desc').value.trim();
-      levels.push({ id: name, name, color: selectedColorQuick, parent, desc, count: 0 });
+      let newId = name;
+      if (window._backendConnected) {
+        try {
+          const created = await apiFetch('/api/levels', { method: 'POST',
+            body: JSON.stringify({ name, color: selectedColorQuick, parent_id: parent, description: desc }) });
+          newId = created?.id || name;
+        } catch (e) { toast('Lỗi tạo level: ' + e.message, 'err'); return; }
+      }
+      levels.push({ id: newId, name, color: selectedColorQuick, parent, desc, count: 0 });
+      rebuildLevelMap();
+      clearCache();
       document.getElementById('ql-name').value = '';
       document.getElementById('ql-desc').value = '';
       scheduleRefresh(); renderLevelPage(); renderCampaignTargets();
@@ -2689,21 +2741,23 @@ ${html}
     }
 
     function applyData({ levels: lv, contacts: ct, templates: tm, campaigns: ca }) {
-      if (lv?.length) levels = lv;
+      if (lv?.length) { levels = lv; rebuildLevelMap(); } // ← BẮT BUỘC: rebuild map sau khi set levels
       if (ct) contacts = ct;
       if (tm?.length) templates = tm;
       refreshUI();
       renderContactTable(); renderTemplates(); renderCampaignTargets();
       if (ca) { renderHistoryFromApi(ca); renderDashCampaigns(ca); }
-      // Cập nhật pagination UI
       if (totalContacts > 0) updatePaginationUI(totalContacts);
-      // Load tags cho filter
       loadAllTags();
-      // Cập nhật dashboard live stats
       renderDashLiveStats();
       const now = new Date().toLocaleTimeString('vi-VN');
       const el = document.getElementById('dash-last-updated');
       if (el) el.textContent = 'Cập nhật lúc ' + now;
+    }
+
+    // Xóa cache — gọi sau bất kỳ thao tác ghi nào (xóa, tạo, sửa)
+    function clearCache() {
+      try { sessionStorage.removeItem(CACHE_KEY); } catch (_) {}
     }
 
     function showLoading(msg = 'Đang tải dữ liệu...') {
