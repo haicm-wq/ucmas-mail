@@ -486,7 +486,20 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
     <div class="topbar-info" id="conn-status">
       <div class="status-dot" style="background:var(--muted)"></div>Chưa kết nối
     </div>
+    <button id="kill-switch-btn" onclick="toggleKillSwitch()"
+      style="background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;letter-spacing:.3px;box-shadow:0 0 12px rgba(220,38,38,.4);transition:all .2s">
+      <span style="font-size:14px">⛔</span> Dừng khẩn cấp
+    </button>
     <button class="btn" onclick="openSettings()">⚙ Settings</button>
+  </div>
+
+  <!-- KILL SWITCH BANNER -->
+  <div id="kill-switch-banner" style="display:none;background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;text-align:center;padding:10px 20px;font-size:13px;font-weight:700;letter-spacing:.3px;position:sticky;top:0;z-index:999;box-shadow:0 4px 20px rgba(220,38,38,.5)">
+    <span style="font-size:16px">⛔</span>
+    HỆ THỐNG ĐÃ BỊ KHÓA — TẤT CẢ EMAIL ĐANG DỪNG
+    <button onclick="toggleKillSwitch()" style="margin-left:20px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:5px;padding:3px 12px;cursor:pointer;font-size:12px;font-weight:700">
+      ✓ Mở khoá hệ thống
+    </button>
   </div>
 
   <div class="layout">

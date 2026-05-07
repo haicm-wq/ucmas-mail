@@ -153,6 +153,17 @@ async function sendSequential(campaign, contacts, db, emailConfig, emit, sentEma
   for (let i = 0; i < contacts.length; i++) {
     const contact = contacts[i];
 
+    // Kiểm tra kill switch trước mỗi email (cứ 10 email check 1 lần để tiết kiệm query)
+    if (i % 10 === 0) {
+      const killed = await db.getKillSwitch().catch(() => false);
+      if (killed) {
+        console.log('[sendSequential] Kill switch active — dừng gửi');
+        await db.updateCampaignStatus(campaign.id, { status: 'paused', sent_count: sent, failed_count: failed }).catch(() => {});
+        emit({ type: 'done', sent, failed, total: grandTotal, campaignId: campaign.id, killed: true });
+        return;
+      }
+    }
+
     // Bảo vệ extra: bỏ qua nếu email này đã được gửi thành công
     if (sentEmailsSet.has(contact.email)) {
       console.log(`[skip] ${contact.email} đã gửi rồi`);

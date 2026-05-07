@@ -3283,6 +3283,77 @@ ${html}
     // Flag dùng để dừng campaign từ UI
     window._stopCampaign = false;
     window._sendingCampaignId = null;
+    window._killSwitchActive = false;
+
+    // ── KILL SWITCH TOÀN HỆ THỐNG ──────────────────────────────
+    function applyKillSwitchUI(active) {
+      window._killSwitchActive = active;
+      const btn    = document.getElementById('kill-switch-btn');
+      const banner = document.getElementById('kill-switch-banner');
+      if (!btn || !banner) return;
+
+      if (active) {
+        // Trạng thái KHOÁ — nút chuyển sang "Mở khoá"
+        btn.style.background     = 'linear-gradient(135deg,#16a34a,#15803d)';
+        btn.style.boxShadow      = '0 0 12px rgba(22,163,74,.4)';
+        btn.innerHTML            = '<span style="font-size:14px">✅</span> Mở khoá hệ thống';
+        banner.style.display     = 'block';
+
+        // Dừng frontend ngay lập tức
+        window._stopCampaign = true;
+        clearTimeout(window._resumeTimer);
+        window._sendingCampaignId = null;
+      } else {
+        // Trạng thái BÌNH THƯỜNG — nút đỏ
+        btn.style.background     = 'linear-gradient(135deg,#dc2626,#991b1b)';
+        btn.style.boxShadow      = '0 0 12px rgba(220,38,38,.4)';
+        btn.innerHTML            = '<span style="font-size:14px">⛔</span> Dừng khẩn cấp';
+        banner.style.display     = 'none';
+        window._stopCampaign     = false;
+      }
+    }
+
+    async function toggleKillSwitch() {
+      const active = !window._killSwitchActive;
+
+      if (active) {
+        // Kích hoạt kill switch — hiện confirm
+        if (!confirm('⛔ Dừng khẩn cấp toàn hệ thống?\n\nThao tác này sẽ:\n• Dừng tất cả campaign đang gửi ngay lập tức\n• Khoá hệ thống không cho gửi thêm email\n• Cần mở khoá thủ công để tiếp tục\n\nBạn có chắc chắn?')) return;
+      }
+
+      const btn = document.getElementById('kill-switch-btn');
+      btn.disabled    = true;
+      btn.textContent = '⏳ Đang xử lý...';
+
+      try {
+        const action = active ? 'stop' : 'resume';
+        const result = await apiFetch(`/api/emergency-stop?action=${action}`, { method: 'POST' });
+
+        applyKillSwitchUI(active);
+
+        if (active) {
+          toast(`⛔ Đã khoá hệ thống! ${result.campaignsPaused || 0} campaign bị dừng.`, 'err');
+          refreshTracking();
+        } else {
+          toast('✅ Hệ thống đã mở khoá. Bạn có thể gửi email trở lại.', 'ok');
+        }
+      } catch (e) {
+        toast('Lỗi: ' + e.message, 'err');
+        // Rollback UI
+        btn.disabled = false;
+        applyKillSwitchUI(window._killSwitchActive);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // Kiểm tra trạng thái kill switch khi tải trang
+    async function checkKillSwitchOnLoad() {
+      try {
+        const result = await apiFetch('/api/emergency-stop');
+        if (result.killSwitchActive) applyKillSwitchUI(true);
+      } catch (_) { /* bỏ qua nếu API chưa có */ }
+    }
 
     async function stopCampaign() {
       window._stopCampaign = true;
@@ -3714,6 +3785,7 @@ ${html}
           _serverConfigured = true;
           window._backendConnected = true;
           await loadFromBackend();
+          checkKillSwitchOnLoad(); // kiểm tra kill switch khi tải trang
           return;
         }
       } catch (_) { }
@@ -3729,6 +3801,7 @@ ${html}
       } else {
         await loadFromBackend();
         window._backendConnected = true;
+        checkKillSwitchOnLoad(); // kiểm tra kill switch khi tải trang
       }
     }
 
