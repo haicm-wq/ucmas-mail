@@ -65,23 +65,39 @@ export default async function handler(req, res) {
 }
 
 async function handleResume(req, res, db, emailConfig, campaignId) {
-  const campaigns = await db.getCampaigns();
-  const campaign = campaigns.find(c => c.id === campaignId);
-  if (!campaign) return err(res, 'Campaign không tồn tại');
+  // B1: Lấy thông tin campaign
+  let campaign;
+  try {
+    const campaigns = await db.getCampaigns();
+    campaign = campaigns.find(c => c.id === campaignId);
+    if (!campaign) return err(res, 'Campaign không tồn tại');
+  } catch (e) { return err(res, 'Lỗi đọc campaign: ' + e.message, 500); }
 
-  // Lấy danh sách email ĐÃ GỬI THÀNH CÔNG (đã có trong send_logs)
-  const logs = await db.getCampaignLogs(campaignId);
-  const sentEmails = new Set((logs || []).filter(l => l.status === 'sent').map(l => l.email));
+  // B2: Lấy danh sách email đã gửi thành công
+  let sentEmails = new Set();
+  try {
+    const logs = await db.getCampaignLogs(campaignId);
+    sentEmails = new Set((logs || []).filter(l => l.status === 'sent').map(l => l.email));
+  } catch (e) {
+    console.warn('[handleResume] Không đọc được send_logs, resume từ đầu:', e.message);
+    // Tiếp tục với sentEmails rỗng thay vì crash — an toàn hơn
+  }
 
-  // Lấy contacts cho campaign
-  const allContacts = await db.getContactsByLevelIds(campaign.target_levels || []);
+  // B3: Lấy contacts cần gửi
+  let allContacts = [];
+  try {
+    allContacts = await db.getContactsByLevelIds(campaign.target_levels || []);
+  } catch (e) { return err(res, 'Lỗi đọc contacts: ' + e.message, 500); }
+
   const remaining = allContacts.filter(c => !sentEmails.has(c.email));
 
   if (!remaining.length) {
-    // Cập nhật status completed nếu chưa
-    await db.updateCampaignStatus(campaignId, {
-      status: 'completed', sent_count: sentEmails.size, failed_count: 0,
-    });
+    // Tất cả đã gửi → cập nhật status và trả về
+    try {
+      await db.updateCampaignStatus(campaignId, {
+        status: 'completed', sent_count: sentEmails.size, failed_count: 0,
+      });
+    } catch (e) { console.warn('[handleResume] Không cập nhật được status:', e.message); }
     return ok(res, { message: 'Tất cả email đã được gửi', sent: sentEmails.size, remaining: 0 });
   }
 

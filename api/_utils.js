@@ -16,7 +16,13 @@ export function allowCors(res) {
 export function getDB(req) {
   const url = process.env.SUPABASE_URL     || req.headers['x-sb-url']  || '';
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || req.headers['x-sb-key'] || '';
-  if (!url || !key) throw new Error('Chưa cấu hình Supabase. Vào ⚙ Settings trong app để nhập URL và Key.');
+  if (!url || !key)
+    throw new Error('Chưa cấu hình Supabase. Vào ⚙ Settings trong app để nhập URL và Key.');
+  // Validate format — tránh lỗi CORS khó hiểu khi URL sai
+  if (!url.startsWith('https://') || !url.includes('.supabase.co'))
+    throw new Error('Supabase URL không hợp lệ (phải là https://xxx.supabase.co)');
+  if (key.length < 100)
+    throw new Error('Service Role Key quá ngắn — kiểm tra lại trong Supabase > Settings > API');
   return createClient(url, key);
 }
 

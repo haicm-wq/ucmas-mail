@@ -2473,17 +2473,10 @@ ${html}
         });
         toast(`✓ Đã thêm ${result.imported} contacts vào level ${lv?.name || ''}`);
         closeModal('modal-quick-add');
-
-        // Reload contacts
-        const ctData = await apiFetch('/api/contacts');
-        if (ctData) contacts = ctData.map(c => ({
-          id: c.id, name: c.name, email: c.email,
-          level: c.levels?.name || '', level_id: c.level_id,
-          company: c.company || '',
-          status: c.status === 'active' ? 'pending' : c.status,
-          last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
-        }));
-        renderContactTable(); scheduleRefresh();
+        // Reload contacts — dùng transformContact() để không drop tags
+        clearCache();
+        await loadContactsPage();
+        scheduleRefresh();
       } catch (e) { toast('Lỗi: ' + e.message, 'err'); }
     }
 
@@ -2534,18 +2527,10 @@ ${html}
 
         toast(`Đồng bộ xong: ${json.data.imported} contacts, ${json.data.skipped} bỏ qua`);
 
-        // Reload contacts
-        const ctData = await apiFetch('/api/contacts');
-        if (ctData) {
-          contacts = ctData.map(c => ({
-            id: c.id, name: c.name, email: c.email,
-            level: c.levels?.name || '', level_id: c.level_id,
-            company: c.company || '',
-            status: c.status === 'active' ? 'pending' : c.status,
-            last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
-          }));
-        }
-        renderContactTable(); scheduleRefresh();
+        // Reload contacts — dùng transformContact() để không drop tags
+        clearCache();
+        await loadContactsPage();
+        scheduleRefresh();
 
         // Lưu URL
         const cfg = getSheetsConfig();
@@ -2713,16 +2698,49 @@ ${html}
     }
 
     const API_TIMEOUT = 10000; // 10s timeout cho mỗi API call
+    const API_MAX_RETRIES = 2; // retry tối đa cho GET/DELETE (idempotent)
+
+    // ── Shared contact transformer — NGUỒN DUY NHẤT để map contact data ──
+    // Dùng ở mọi nơi để tránh tags bị drop hay status mapping sai
+    function transformContact(c) {
+      return {
+        id: c.id,
+        name: c.name,
+        email: c.email,
+        level: c.levels?.name || '',
+        level_id: c.level_id,
+        company: c.company || '',
+        tags: c.tags || [],           // QUAN TRỌNG: không được bỏ qua
+        dbStatus: c.status || 'active', // dùng dbStatus, không phải status
+        last: c.last_sent_at
+          ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
+      };
+    }
 
     async function apiFetch(path, options = {}) {
-      const res = await fetch(API + path, {
-        ...options,
-        signal: options.signal || AbortSignal.timeout(API_TIMEOUT),
-        headers: { 'Content-Type': 'application/json', ...cfgHeaders(), ...(options.headers || {}) },
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || 'Lỗi API');
-      return json.data;
+      const method = (options.method || 'GET').toUpperCase();
+      // Chỉ retry cho GET và DELETE (idempotent) — POST/PUT/PATCH không retry
+      const maxRetries = (method === 'GET' || method === 'DELETE') ? API_MAX_RETRIES : 0;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const res = await fetch(API + path, {
+            ...options,
+            signal: options.signal || AbortSignal.timeout(API_TIMEOUT),
+            headers: { 'Content-Type': 'application/json', ...cfgHeaders(), ...(options.headers || {}) },
+          });
+          const json = await res.json();
+          if (!json.success) throw new Error(json.error || 'Lỗi API');
+          return json.data;
+        } catch (e) {
+          const isLast = attempt === maxRetries;
+          if (isLast) throw e;
+          // Exponential backoff: 500ms, 1000ms
+          const delay = 500 * (attempt + 1);
+          console.warn(`[apiFetch] ${method} ${path} thất bại (lần ${attempt + 1}), thử lại sau ${delay}ms:`, e.message);
+          await new Promise(r => setTimeout(r, delay));
+        }
+      }
     }
 
     // ── Load dữ liệu thật từ backend khi server chạy ──────
@@ -2789,7 +2807,7 @@ ${html}
 
     async function fetchFreshData(silent = false) {
       try {
-        // Quick health check trước khi load
+        // Quick health check — 5s timeout
         const res = await fetch('/api/stats', { headers: cfgHeaders(), signal: AbortSignal.timeout(5000) });
         if (!res.ok) { hideLoading(); return; }
         const statsCheck = await res.json();
@@ -2797,55 +2815,74 @@ ${html}
 
         if (!silent) showLoading('Đang tải dữ liệu...');
 
-        // 🚀 Load TẤT CẢ song song — nhanh hơn 3-4x so với tuần tự
-        const [lvRaw, ctRaw, tmRaw, ca] = await Promise.all([
+        // 🛡️ allSettled: 1 API fail KHÔNG làm các API khác bị hủy
+        const [lvRes, ctRes, tmRes, caRes] = await Promise.allSettled([
           apiFetch('/api/levels'),
           apiFetch(`/api/contacts?page=0&per_page=${perPage}`),
           apiFetch('/api/templates'),
           apiFetch('/api/campaigns'),
         ]);
 
-        // Transform data
-        const lv = lvRaw?.length ? lvRaw.map(l => ({
-          id: l.id, name: l.name, color: l.color,
-          parent: l.parent_id || null, desc: l.description || '', count: l.count || 0,
-        })) : null;
+        // Log cảnh báo cho từng API thất bại (không crash app)
+        const apiNames = ['levels', 'contacts', 'templates', 'campaigns'];
+        [lvRes, ctRes, tmRes, caRes].forEach((r, i) => {
+          if (r.status === 'rejected') console.warn(`[fetchFreshData] /api/${apiNames[i]} thất bại:`, r.reason?.message);
+        });
 
-        const ct = ctRaw?.data ? ctRaw.data.map(c => ({
-          id: c.id, name: c.name, email: c.email,
-          level: c.levels?.name || '', level_id: c.level_id, company: c.company || '',
-          tags: c.tags || [],
-          dbStatus: c.status || 'active',
-          last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
-        })) : null;
+        // Transform từng phần — null nếu API đó thất bại (giữ state cũ)
+        const lv = lvRes.status === 'fulfilled' && lvRes.value?.length
+          ? lvRes.value.map(l => ({
+              id: l.id, name: l.name, color: l.color,
+              parent: l.parent_id || null, desc: l.description || '', count: l.count || 0,
+            }))
+          : null;
+
+        // Dùng transformContact() — nguồn duy nhất, không drop tags
+        const ctRaw = ctRes.status === 'fulfilled' ? ctRes.value : null;
+        const ct = ctRaw?.data ? ctRaw.data.map(transformContact) : null;
         if (ctRaw?.total != null) totalContacts = ctRaw.total;
 
-        const tm = tmRaw?.length ? tmRaw.map(t => ({
-          id: t.id, name: t.name, icon: t.icon || '📄',
-          desc: t.description || '', tags: t.tags || [], body: t.body,
-        })) : null;
+        const tmRaw = tmRes.status === 'fulfilled' ? tmRes.value : null;
+        const tm = tmRaw?.length
+          ? tmRaw.map(t => ({
+              id: t.id, name: t.name, icon: t.icon || '📄',
+              desc: t.description || '', tags: t.tags || [], body: t.body,
+            }))
+          : null;
 
-        // Cập nhật totalContacts từ stats health check
+        const ca = caRes.status === 'fulfilled' ? caRes.value : null;
+
+        // Cập nhật totalContacts và level counts từ stats
         if (statsCheck.data?.totalContacts != null) totalContacts = statsCheck.data.totalContacts;
-
-        // Cập nhật level counts từ stats
         if (statsCheck.data?.countMap && lv) {
           lv.forEach(l => { l.count = statsCheck.data.countMap[l.id] || 0; });
         }
 
-        // Lưu cache
-        saveCache({ levels: lv, contacts: ct, templates: tm, campaigns: ca });
+        // Lưu cache (chỉ lưu phần có data, giữ lại phần cũ nếu API fail)
+        const cacheUpdate = {};
+        if (lv) cacheUpdate.levels = lv;
+        if (ct) cacheUpdate.contacts = ct;
+        if (tm) cacheUpdate.templates = tm;
+        if (ca) cacheUpdate.campaigns = ca;
+        if (Object.keys(cacheUpdate).length) saveCache(cacheUpdate);
 
         // Apply vào UI
         applyData({ levels: lv, contacts: ct, templates: tm, campaigns: ca });
         hideLoading();
 
-        document.getElementById('conn-status').innerHTML = `<div class="status-dot"></div>Supabase connected`;
-        if (!silent) toast('Đã tải xong dữ liệu', 'ok');
+        // Thông báo nếu có API bị lỗi
+        const failedApis = apiNames.filter((_, i) => [lvRes, ctRes, tmRes, caRes][i].status === 'rejected');
+        if (failedApis.length > 0 && !silent) {
+          toast(`⚠ Không tải được: ${failedApis.join(', ')}. Dữ liệu có thể chưa đầy đủ.`, 'warn');
+        } else {
+          document.getElementById('conn-status').innerHTML = `<div class="status-dot"></div>Supabase connected`;
+          if (!silent) toast('Đã tải xong dữ liệu', 'ok');
+        }
 
       } catch (e) {
         hideLoading();
-        if (!silent) toast('Lỗi kết nối: ' + e.message, 'err');
+        if (!silent) toast('Lỗi kết nối Supabase: ' + e.message, 'err');
+        else console.warn('[fetchFreshData silent]', e.message);
       }
     }
 
