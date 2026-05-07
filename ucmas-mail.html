@@ -517,6 +517,11 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
             <option value="">Đổi level → chọn level</option>
           </select>
           <button class="btn" onclick="bulkChangeLevel()">✓ Đổi level</button>
+          <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
+          <input type="text" id="bulk-tag-input" placeholder="Nhập tag..." class="fsel" style="width:120px;padding:5px 10px;font-size:12px">
+          <button class="btn" onclick="bulkAddTagAction()">🏷 Gắn tag</button>
+          <button class="btn" onclick="bulkRemoveTagAction()" style="color:var(--err)">✕ Gỡ tag</button>
+          <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
           <button class="btn btn-danger" onclick="bulkDelete()">✕ Xoá đã chọn</button>
           <button class="btn" onclick="clearSelection()" style="font-size:11px">Bỏ chọn</button>
         </div>
@@ -550,6 +555,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
                 <th>Name</th>
                 <th>Email</th>
                 <th>Level</th>
+                <th>Tags</th>
                 <th>Status</th>
                 <th>Last sent</th>
                 <th>Actions</th>

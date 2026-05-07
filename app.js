@@ -32,6 +32,11 @@
     let selectedColor = '#f5c842';
     let selectedColorQuick = '#f5c842';
     let _workflowInited = false;
+    // Tag & Segment state
+    let allTags = []; // [{tag, count}]
+    let selectedTags = []; // tags đang filter
+    let tagFilterMode = 'or'; // 'and' | 'or' cho tags
+    let segmentLogic = 'and'; // 'and' | 'or' giữa level và tags
 
     // Batch render — gộp nhiều render calls vào 1 animation frame
     let _refreshPending = false;
@@ -188,6 +193,7 @@
       <td style="font-weight:500">${c.name}</td>
       <td class="col-em">${c.email}</td>
       <td><span class="lt" style="background:${hexToRgba(color, .12)};color:${color};border:1px solid ${hexToRgba(color, .25)}">● ${levelName}</span></td>
+      <td style="max-width:200px">${(c.tags||[]).map(t=>`<span class="tag-chip" onclick="removeTagFromContact(${i},'${t}')">${t} ×</span>`).join('')}<input class="tag-inline" type="text" placeholder="+ tag" onkeydown="if(event.key==='Enter'){addTagToContact(${i},this.value);this.value='';}" style="width:50px;border:none;background:transparent;color:var(--text);font-size:10px;outline:none"></td>
       <td><span class="sdot ${statusIcon}"></span>${statusLabel}</td>
       <td style="color:var(--muted);font-size:12px">${c.last}</td>
       <td>
@@ -199,7 +205,7 @@
         <button class="abtn" onclick="removeContact(${i})" style="margin-left:4px;color:var(--err)">✕</button>
       </td>
     </tr>`;
-      }).join('') || `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted)">Không có contact nào</td></tr>`;
+      }).join('') || `<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--muted)">Không có contact nào</td></tr>`;
       document.getElementById('table-count').textContent = rows.length + ' contacts';
     }
 
@@ -214,8 +220,30 @@
     function renderFilterChips() {
       const container = document.getElementById('filter-chips');
       const roots = getRootLevels();
-      container.innerHTML = `<button class="chip ${currentFilter === 'all' ? 'ca' : ''}" onclick="setFilter('all')">Tất cả</button>` +
+      let html = `<button class="chip ${currentFilter === 'all' ? 'ca' : ''}" onclick="setFilter('all')">Tất cả</button>` +
         roots.map(r => `<button class="chip ${currentFilter === r.id ? 'ca' : ''}" style="${currentFilter === r.id ? `background:${hexToRgba(r.color, .12)};border-color:${r.color};color:${r.color}` : ''}" onclick="setFilter('${r.id}')">${r.name}</button>`).join('');
+
+      // Tag filter chips
+      if (allTags.length > 0) {
+        html += `<span style="border-left:1px solid var(--border);height:16px;margin:0 6px"></span>`;
+        html += allTags.slice(0, 15).map(t => {
+          const isActive = selectedTags.includes(t.tag);
+          return `<button class="chip ${isActive ? 'ca' : ''}" style="${isActive ? 'background:var(--accent-glow);border-color:var(--accent);color:var(--accent2)' : ''}font-size:11px" onclick="toggleTagFilter('${t.tag.replace(/'/g, "\\'")}')">🏷 ${t.tag} <span style="font-size:9px;opacity:.6">${t.count}</span></button>`;
+        }).join('');
+      }
+
+      // Segment logic toggle (chỉ hiện khi có cả level và tag filter)
+      if (currentFilter !== 'all' && selectedTags.length > 0) {
+        html += `<span style="border-left:1px solid var(--border);height:16px;margin:0 6px"></span>`;
+        html += `<button class="chip ${segmentLogic === 'and' ? 'ca' : ''}" onclick="toggleSegmentLogic()" style="font-size:10px;font-weight:600">${segmentLogic === 'and' ? 'AND' : 'OR'}</button>`;
+      }
+
+      // Tag mode toggle (khi filter nhiều tags)
+      if (selectedTags.length > 1) {
+        html += `<button class="chip" onclick="toggleTagMode()" style="font-size:10px;font-weight:600">${tagFilterMode === 'and' ? 'Tags: ALL' : 'Tags: ANY'}</button>`;
+      }
+
+      container.innerHTML = html;
     }
 
     function setFilter(f) {
@@ -226,8 +254,38 @@
       if (window._backendConnected) loadContactsPage(search);
       else renderContactTable(search);
     }
+
+    function toggleTagFilter(tag) {
+      const idx = selectedTags.indexOf(tag);
+      if (idx >= 0) selectedTags.splice(idx, 1);
+      else selectedTags.push(tag);
+      currentPage = 0;
+      renderFilterChips();
+      const search = document.querySelector('.tbl-search')?.value || '';
+      if (window._backendConnected) loadContactsPage(search);
+      else renderContactTable(search);
+    }
+
+    function toggleSegmentLogic() {
+      segmentLogic = segmentLogic === 'and' ? 'or' : 'and';
+      currentPage = 0;
+      renderFilterChips();
+      const search = document.querySelector('.tbl-search')?.value || '';
+      if (window._backendConnected) loadContactsPage(search);
+      else renderContactTable(search);
+    }
+
+    function toggleTagMode() {
+      tagFilterMode = tagFilterMode === 'and' ? 'or' : 'and';
+      currentPage = 0;
+      renderFilterChips();
+      const search = document.querySelector('.tbl-search')?.value || '';
+      if (window._backendConnected) loadContactsPage(search);
+      else renderContactTable(search);
+    }
+
     const filterTable = debounce(function(q) {
-      currentPage = 0; // reset về trang 1 khi search
+      currentPage = 0;
       if (window._backendConnected) {
         loadContactsPage(q);
       } else {
@@ -237,18 +295,20 @@
 
     async function loadContactsPage(search = '') {
       const levelId = currentFilter === 'all' ? undefined : currentFilter;
+      const tagsParam = selectedTags.length ? selectedTags.join(',') : undefined;
       try {
-        const result = await apiFetch(
-          `/api/contacts?page=${currentPage}&per_page=${perPage}` +
-          (levelId ? `&levelId=${levelId}` : '') +
-          (search ? `&search=${encodeURIComponent(search)}` : '')
-        );
+        let url = `/api/contacts?page=${currentPage}&per_page=${perPage}`;
+        if (levelId) url += `&levelId=${levelId}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (tagsParam) url += `&tags=${encodeURIComponent(tagsParam)}&tagMode=${tagFilterMode}`;
+        const result = await apiFetch(url);
         const { data, total } = result;
         totalContacts = total;
 
         contacts = (data || []).map(c => ({
           id: c.id, name: c.name, email: c.email,
           level: c.levels?.name || '', level_id: c.level_id, company: c.company || '',
+          tags: c.tags || [],
           dbStatus: c.status || 'active',
           last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
         }));
@@ -256,7 +316,7 @@
         renderContactTable();
         updatePaginationUI(total);
       } catch (e) {
-        renderContactTable(); // fallback local
+        renderContactTable();
       }
     }
 
@@ -388,6 +448,91 @@
       }
     }
     function removeContact(i) { contacts.splice(i, 1); renderContactTable(); toast('Đã xoá contact', 'warn'); }
+
+    // ════════════════════════════════════════
+    // TAG MANAGEMENT
+    // ════════════════════════════════════════
+    async function loadAllTags() {
+      if (!window._backendConnected) return;
+      try {
+        allTags = await apiFetch('/api/contacts?action=tags');
+        renderFilterChips();
+      } catch (_) { }
+    }
+
+    async function addTagToContact(i, tag) {
+      tag = tag.trim();
+      if (!tag || !contacts[i]) return;
+      const c = contacts[i];
+      if (!c.tags) c.tags = [];
+      if (c.tags.includes(tag)) return;
+      c.tags.push(tag);
+      renderContactTable();
+      if (window._backendConnected && c.id) {
+        try {
+          await apiFetch('/api/contacts?action=tags', { method: 'PATCH', body: JSON.stringify({ id: c.id, tags: c.tags }) });
+          loadAllTags(); // refresh tag list
+        } catch (e) { toast('Lỗi lưu tag: ' + e.message, 'err'); }
+      }
+    }
+
+    async function removeTagFromContact(i, tag) {
+      if (!contacts[i]) return;
+      const c = contacts[i];
+      c.tags = (c.tags || []).filter(t => t !== tag);
+      renderContactTable();
+      if (window._backendConnected && c.id) {
+        try {
+          await apiFetch('/api/contacts?action=tags', { method: 'PATCH', body: JSON.stringify({ id: c.id, tags: c.tags }) });
+          loadAllTags();
+        } catch (e) { toast('Lỗi xoá tag: ' + e.message, 'err'); }
+      }
+    }
+
+    async function bulkAddTagAction() {
+      const idxs = getCheckedIndices();
+      const tag = document.getElementById('bulk-tag-input').value.trim();
+      if (!idxs.length) return;
+      if (!tag) { toast('Nhập tag muốn gắn!', 'err'); return; }
+
+      const ids = idxs.map(i => contacts[i]?.id).filter(Boolean);
+      idxs.forEach(i => {
+        if (contacts[i]) {
+          if (!contacts[i].tags) contacts[i].tags = [];
+          if (!contacts[i].tags.includes(tag)) contacts[i].tags.push(tag);
+        }
+      });
+      renderContactTable();
+      toast(`Đã gắn tag "${tag}" cho ${idxs.length} contacts`);
+
+      if (window._backendConnected && ids.length) {
+        try {
+          await apiFetch('/api/contacts?action=bulk-tag', { method: 'PATCH', body: JSON.stringify({ ids, tag }) });
+          loadAllTags();
+        } catch (e) { toast('Lỗi: ' + e.message, 'err'); }
+      }
+    }
+
+    async function bulkRemoveTagAction() {
+      const idxs = getCheckedIndices();
+      const tag = document.getElementById('bulk-tag-input').value.trim();
+      if (!idxs.length) return;
+      if (!tag) { toast('Nhập tag muốn gỡ!', 'err'); return; }
+
+      const ids = idxs.map(i => contacts[i]?.id).filter(Boolean);
+      idxs.forEach(i => {
+        if (contacts[i]) contacts[i].tags = (contacts[i].tags || []).filter(t => t !== tag);
+      });
+      renderContactTable();
+      toast(`Đã gỡ tag "${tag}" khỏi ${idxs.length} contacts`, 'warn');
+
+      if (window._backendConnected && ids.length) {
+        try {
+          await apiFetch('/api/contacts?action=bulk-untag', { method: 'PATCH', body: JSON.stringify({ ids, tag }) });
+          loadAllTags();
+        } catch (e) { toast('Lỗi: ' + e.message, 'err'); }
+      }
+    }
 
     // ════════════════════════════════════════
     // LEVEL MANAGEMENT
@@ -2134,6 +2279,8 @@ ${html}
       if (ca) { renderHistoryFromApi(ca); renderDashCampaigns(ca); }
       // Cập nhật pagination UI
       if (totalContacts > 0) updatePaginationUI(totalContacts);
+      // Load tags cho filter
+      loadAllTags();
     }
 
     function showLoading(msg = 'Đang tải dữ liệu...') {

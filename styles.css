@@ -1,4 +1,4 @@
-﻿    :root {
+    :root {
       --bg: #09090f;
       --surface: #111319;
       --surface2: #181c26;
@@ -688,6 +688,36 @@
       font-family: var(--fm);
       font-size: 11px;
       font-weight: 500
+    }
+
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 1px 7px;
+      border-radius: 8px;
+      font-family: var(--fm);
+      font-size: 10px;
+      font-weight: 500;
+      background: rgba(139, 92, 246, .12);
+      color: #a78bfa;
+      border: 1px solid rgba(139, 92, 246, .2);
+      cursor: pointer;
+      margin: 1px 2px;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .tag-chip:hover {
+      background: rgba(239, 68, 68, .15);
+      color: var(--err);
+      border-color: var(--err);
+    }
+    .tag-inline {
+      font-family: var(--fm);
+    }
+    .tag-inline::placeholder {
+      color: var(--muted);
+      opacity: .5;
     }
 
     .lt1 {

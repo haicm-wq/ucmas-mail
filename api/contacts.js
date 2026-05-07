@@ -27,13 +27,49 @@ export default async function handler(req, res) {
       ok(res, { updated: true });
     } catch (e) { err(res, e.message); }
 
-  // --- GET CONTACTS ---
+  // --- UPDATE TAGS (PATCH ?action=tags) ---
+  } else if (req.method === 'PATCH' && action === 'tags') {
+    try {
+      const { id, tags } = req.body;
+      if (!id) return err(res, 'Thiếu id');
+      await getDBFromReq(req).updateContactTags(id, tags || []);
+      ok(res, { updated: true });
+    } catch (e) { err(res, e.message); }
+
+  // --- BULK ADD TAG (PATCH ?action=bulk-tag) ---
+  } else if (req.method === 'PATCH' && action === 'bulk-tag') {
+    try {
+      const { ids, tag } = req.body;
+      if (!ids?.length || !tag) return err(res, 'Thiếu ids hoặc tag');
+      await getDBFromReq(req).bulkAddTag(ids, tag.trim());
+      ok(res, { updated: ids.length });
+    } catch (e) { err(res, e.message, 500); }
+
+  // --- BULK REMOVE TAG (PATCH ?action=bulk-untag) ---
+  } else if (req.method === 'PATCH' && action === 'bulk-untag') {
+    try {
+      const { ids, tag } = req.body;
+      if (!ids?.length || !tag) return err(res, 'Thiếu ids hoặc tag');
+      await getDBFromReq(req).bulkRemoveTag(ids, tag.trim());
+      ok(res, { updated: ids.length });
+    } catch (e) { err(res, e.message, 500); }
+
+  // --- GET ALL TAGS (GET ?action=tags) ---
+  } else if (req.method === 'GET' && action === 'tags') {
+    try {
+      ok(res, await getDBFromReq(req).getAllTags());
+    } catch (e) { err(res, e.message, 500); }
+
+  // --- GET CONTACTS (with optional tag filter) ---
   } else if (req.method === 'GET') {
     try {
       const { levelId, search, status, page = 0, per_page = 200 } = req.query;
       const db = getDBFromReq(req);
       const offset = parseInt(page) * parseInt(per_page);
-      const result = await db.getContactsPaged({ levelId, search, status, offset, limit: parseInt(per_page) });
+      // Parse tags from query: ?tags=vip,new&tagMode=or
+      const tags = req.query.tags ? req.query.tags.split(',').filter(Boolean) : undefined;
+      const tagMode = req.query.tagMode || 'and';
+      const result = await db.getContactsPaged({ levelId, search, status, tags, tagMode, offset, limit: parseInt(per_page) });
       ok(res, result);
     } catch (e) { err(res, e.message, 500); }
 
