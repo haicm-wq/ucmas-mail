@@ -474,10 +474,15 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
         <div class="ph">
           <div>
             <div class="ph-title">Dashboard</div>
-            <div class="ph-sub">Tổng quan hệ thống UCMAS MAIL</div>
+            <div class="ph-sub">Tổng quan hệ thống UCMAS MAIL &nbsp;·&nbsp; <span id="dash-last-updated" style="font-size:11px;color:var(--muted)">Chưa tải</span></div>
           </div>
-          <button class="btn btn-primary" onclick="gotoPage('campaign')">+ New Campaign</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn" onclick="refreshDashboard()" id="dash-refresh-btn" style="font-size:12px">⟳ Làm mới</button>
+            <button class="btn btn-primary" onclick="gotoPage('campaign')">+ New Campaign</button>
+          </div>
         </div>
+        <!-- Quick stats từ Supabase -->
+        <div id="dash-live-stats" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px"></div>
         <div class="stat-row" id="dash-stats"></div>
         <div class="card">
           <div class="card-header">

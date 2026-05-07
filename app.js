@@ -163,12 +163,61 @@
       const roots = getRootLevels().slice(0, 4);
       const classes = ['l1', 'l2', 'l3', 'l4'];
       const container = document.getElementById('dash-stats');
+      if (!container) return;
       container.innerHTML = roots.map((r, i) => `
-    <div class="stat-card ${classes[i] || 'l1'}">
+    <div class="stat-card ${classes[i] || 'l1'}" onclick="filterLevel('${r.id}')" style="cursor:pointer">
       <div class="stat-lbl"><div style="width:8px;height:8px;border-radius:2px;background:${r.color};flex-shrink:0"></div>${r.name}</div>
       <div class="stat-val" style="color:${r.color}">${r.count}</div>
       <div class="stat-sub">contacts · ${getChildren(r.id).length} sub-levels</div>
     </div>`).join('');
+    }
+
+    function renderDashLiveStats() {
+      const el = document.getElementById('dash-live-stats');
+      if (!el) return;
+      const totalTags = allTags.length;
+      const totalSegs = allSegments.length;
+      const totalLvs = levels.length;
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);flex:1;min-width:140px">
+          <span style="font-size:20px">👥</span>
+          <div>
+            <div style="font-size:22px;font-weight:700;color:var(--text)">${totalContacts.toLocaleString()}</div>
+            <div style="font-size:11px;color:var(--muted)">Tổng Contacts</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);flex:1;min-width:140px">
+          <span style="font-size:20px">🏷</span>
+          <div>
+            <div style="font-size:22px;font-weight:700;color:var(--accent2)">${totalTags}</div>
+            <div style="font-size:11px;color:var(--muted)">Tags đang dùng</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);flex:1;min-width:140px">
+          <span style="font-size:20px">◉</span>
+          <div>
+            <div style="font-size:22px;font-weight:700;color:var(--accent)">${totalSegs}</div>
+            <div style="font-size:11px;color:var(--muted)">Segments đã lưu</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);flex:1;min-width:140px">
+          <span style="font-size:20px">⬣</span>
+          <div>
+            <div style="font-size:22px;font-weight:700;color:var(--warn)">${totalLvs}</div>
+            <div style="font-size:11px;color:var(--muted)">Levels cấp bậc</div>
+          </div>
+        </div>`;
+    }
+
+    async function refreshDashboard() {
+      const btn = document.getElementById('dash-refresh-btn');
+      if (btn) { btn.textContent = '⟳ Đang tải...'; btn.disabled = true; }
+      await fetchFreshData(true);
+      renderDashLiveStats();
+      const now = new Date().toLocaleTimeString('vi-VN');
+      const el = document.getElementById('dash-last-updated');
+      if (el) el.textContent = 'Cập nhật lúc ' + now;
+      if (btn) { btn.textContent = '⟳ Làm mới'; btn.disabled = false; }
     }
 
     // ════════════════════════════════════════
@@ -461,8 +510,8 @@
     async function loadAllTags() {
       if (!window._backendConnected) return;
       try {
-        // Ưu tiên tags từ bảng tags (có màu, mô tả) qua API /api/segments?action=tags
-        const tagData = await apiFetch('/api/segments?action=tags');
+        // Ưu tiên tags từ bảng tags (có màu, mô tả) qua API /api/contacts?action=tags
+        const tagData = await apiFetch('/api/contacts?action=tags');
         if (tagData?.length) allTags = tagData;
         else allTags = await apiFetch('/api/contacts?action=tags'); // fallback cũ
         renderFilterChips();
@@ -470,7 +519,7 @@
       } catch (_) { }
       // Load segments
       try {
-        allSegments = await apiFetch('/api/segments?action=segments');
+        allSegments = await apiFetch('/api/contacts?action=segments');
         renderSidebarSegments();
       } catch (_) { }
     }
@@ -485,7 +534,7 @@
       renderContactTable();
       if (window._backendConnected && c.id) {
         try {
-          await apiFetch('/api/contacts?action=tags', { method: 'PATCH', body: JSON.stringify({ id: c.id, tags: c.tags }) });
+          await apiFetch('/api/contacts?action=contact-tags', { method: 'PATCH', body: JSON.stringify({ id: c.id, tags: c.tags }) });
           loadAllTags(); // refresh tag list
         } catch (e) { toast('Lỗi lưu tag: ' + e.message, 'err'); }
       }
@@ -498,7 +547,7 @@
       renderContactTable();
       if (window._backendConnected && c.id) {
         try {
-          await apiFetch('/api/contacts?action=tags', { method: 'PATCH', body: JSON.stringify({ id: c.id, tags: c.tags }) });
+          await apiFetch('/api/contacts?action=contact-tags', { method: 'PATCH', body: JSON.stringify({ id: c.id, tags: c.tags }) });
           loadAllTags();
         } catch (e) { toast('Lỗi xoá tag: ' + e.message, 'err'); }
       }
@@ -643,10 +692,10 @@
       if (!window._backendConnected) { toast('Chưa kết nối Supabase', 'err'); return; }
       try {
         if (editId) {
-          await apiFetch('/api/segments?action=tags', { method: 'PATCH', body: JSON.stringify({ id: editId, name, color: _tfColor, description: desc }) });
+          await apiFetch('/api/contacts?action=tags', { method: 'PATCH', body: JSON.stringify({ id: editId, name, color: _tfColor, description: desc }) });
           toast(`Đã cập nhật tag "${name}"`);
         } else {
-          await apiFetch('/api/segments?action=tags', { method: 'POST', body: JSON.stringify({ name, color: _tfColor, description: desc }) });
+          await apiFetch('/api/contacts?action=tags', { method: 'POST', body: JSON.stringify({ name, color: _tfColor, description: desc }) });
           toast(`Đã tạo tag "${name}"`);
         }
         await loadAllTags();
@@ -658,7 +707,7 @@
     async function deleteTag(id, name) {
       if (!confirm(`Xoá tag "${name}"? Tag này sẽ bị xoá khỏi tất cả contacts.`)) return;
       try {
-        await apiFetch('/api/segments?action=tags&id=' + id, { method: 'DELETE' });
+        await apiFetch('/api/contacts?action=tags&id=' + id, { method: 'DELETE' });
         toast(`Đã xoá tag "${name}"`, 'warn');
         await loadAllTags();
         renderTagPage();
@@ -671,7 +720,7 @@
     async function renderSegmentPage() {
       if (window._backendConnected) {
         try {
-          allSegments = await apiFetch('/api/segments?action=segments');
+          allSegments = await apiFetch('/api/contacts?action=segments');
         } catch (_) { }
       }
       renderSegmentList();
@@ -855,7 +904,7 @@
       el.textContent = '...';
       try {
         const rules = [..._sfLevelRules, ..._sfTagRules];
-        const res = await apiFetch('/api/segments?action=segment-count', {
+        const res = await apiFetch('/api/contacts?action=segment-count', {
           method: 'GET' // can't pass body in GET, use temp segment inline count
         });
         // Use client-side count as estimate
@@ -880,13 +929,13 @@
       const rules = [..._sfLevelRules, ..._sfTagRules];
       try {
         if (editId) {
-          await apiFetch('/api/segments?action=segments', { method: 'PATCH', body: JSON.stringify({ id: editId, name, color: _sfColor, description: desc, rules, logic: _sfLogic, tag_mode: _sfTagMode }) });
+          await apiFetch('/api/contacts?action=segments', { method: 'PATCH', body: JSON.stringify({ id: editId, name, color: _sfColor, description: desc, rules, logic: _sfLogic, tag_mode: _sfTagMode }) });
           toast(`Đã cập nhật segment "${name}"`);
         } else {
-          await apiFetch('/api/segments?action=segments', { method: 'POST', body: JSON.stringify({ name, color: _sfColor, description: desc, rules, logic: _sfLogic, tag_mode: _sfTagMode }) });
+          await apiFetch('/api/contacts?action=segments', { method: 'POST', body: JSON.stringify({ name, color: _sfColor, description: desc, rules, logic: _sfLogic, tag_mode: _sfTagMode }) });
           toast(`Đã tạo segment "${name}"`);
         }
-        allSegments = await apiFetch('/api/segments?action=segments');
+        allSegments = await apiFetch('/api/contacts?action=segments');
         renderSegmentList();
         renderSidebarSegments();
         cancelEditSegment();
@@ -896,7 +945,7 @@
     async function deleteSegment(id, name) {
       if (!confirm(`Xoá segment "${name}"?`)) return;
       try {
-        await apiFetch('/api/segments?action=segments&id=' + id, { method: 'DELETE' });
+        await apiFetch('/api/contacts?action=segments&id=' + id, { method: 'DELETE' });
         allSegments = allSegments.filter(s => s.id !== id);
         renderSegmentList(); renderSidebarSegments();
         toast(`Đã xoá segment "${name}"`, 'warn');
@@ -2650,6 +2699,11 @@ ${html}
       if (totalContacts > 0) updatePaginationUI(totalContacts);
       // Load tags cho filter
       loadAllTags();
+      // Cập nhật dashboard live stats
+      renderDashLiveStats();
+      const now = new Date().toLocaleTimeString('vi-VN');
+      const el = document.getElementById('dash-last-updated');
+      if (el) el.textContent = 'Cập nhật lúc ' + now;
     }
 
     function showLoading(msg = 'Đang tải dữ liệu...') {
@@ -2706,6 +2760,7 @@ ${html}
         const ct = ctRaw?.data ? ctRaw.data.map(c => ({
           id: c.id, name: c.name, email: c.email,
           level: c.levels?.name || '', level_id: c.level_id, company: c.company || '',
+          tags: c.tags || [],
           dbStatus: c.status || 'active',
           last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
         })) : null;
@@ -2718,6 +2773,11 @@ ${html}
 
         // Cập nhật totalContacts từ stats health check
         if (statsCheck.data?.totalContacts != null) totalContacts = statsCheck.data.totalContacts;
+
+        // Cập nhật level counts từ stats
+        if (statsCheck.data?.countMap && lv) {
+          lv.forEach(l => { l.count = statsCheck.data.countMap[l.id] || 0; });
+        }
 
         // Lưu cache
         saveCache({ levels: lv, contacts: ct, templates: tm, campaigns: ca });
