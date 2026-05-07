@@ -248,10 +248,11 @@
     function renderContactTable(query = '') {
       const tbody = document.getElementById('contact-tbody');
       let rows = contacts.filter(c => {
-        // So sánh bằng level_id (UUID) — currentFilter cũng là UUID
-        const levelMatch = currentFilter === 'all'
-          || c.level_id === currentFilter
-          || isChildOf(c.level_id, currentFilter);
+        // Khi backend connected: API đã filter theo level rồi → chỉ filter text
+        // Khi offline: filter cả level lẫn text trên client
+        const levelMatch = window._backendConnected
+          ? true  // API đã lọc đúng level, không filter lại
+          : (currentFilter === 'all' || c.level_id === currentFilter || isChildOf(c.level_id, currentFilter));
         const q = query.toLowerCase();
         const textMatch = !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
         return levelMatch && textMatch;
