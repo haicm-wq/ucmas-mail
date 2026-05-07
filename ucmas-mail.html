@@ -167,6 +167,77 @@
     </div>
   </div>
 
+  <!-- BULK ADD TO SEGMENT MODAL -->
+  <div class="modal-overlay" id="modal-bulk-segment">
+    <div class="modal" style="width:520px">
+      <div class="modal-header">
+        <div class="modal-title">📂 Thêm vào Segment</div>
+        <button class="modal-close" onclick="closeModal('modal-bulk-segment')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:14px;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--muted)">Đang chọn: </span>
+          <span style="font-weight:700;color:var(--accent2)" id="bseg-count-label">0 contacts</span>
+        </div>
+
+        <!-- Tab switcher -->
+        <div style="display:flex;gap:6px;margin-bottom:16px">
+          <button class="chip ca" id="bseg-tab-existing" onclick="switchBulkSegTab('existing')">📂 Thêm vào segment có sẵn</button>
+          <button class="chip" id="bseg-tab-new" onclick="switchBulkSegTab('new')">⊕ Tạo segment mới</button>
+        </div>
+
+        <!-- TAB: existing segment -->
+        <div id="bseg-panel-existing">
+          <div class="fg">
+            <label class="fl">Chọn Segment muốn thêm vào</label>
+            <select class="fsel" id="bseg-existing-sel" style="width:100%" onchange="onBsegExistingChange()">
+              <option value="">— Chọn segment —</option>
+            </select>
+          </div>
+          <div class="info-box" style="font-size:12px;margin-top:8px">
+            Hệ thống sẽ tự động tạo một <strong>tag mới</strong> cho các contacts được chọn,
+            sau đó thêm tag này vào điều kiện của segment đã chọn.
+          </div>
+          <div id="bseg-existing-preview" style="display:none;margin-top:10px;padding:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Segment được chọn:</div>
+            <div id="bseg-existing-info" style="font-size:13px;font-weight:600"></div>
+          </div>
+        </div>
+
+        <!-- TAB: new segment -->
+        <div id="bseg-panel-new" style="display:none">
+          <div class="fg">
+            <label class="fl">Tên Segment mới</label>
+            <input class="fi" id="bseg-new-name" placeholder="VD: Khách VIP tháng 5...">
+          </div>
+          <div class="fg">
+            <label class="fl">Màu</label>
+            <div class="color-row" id="bseg-new-colors">
+              <div class="color-opt selected" style="background:#6366f1" data-color="#6366f1" onclick="pickBulkSegColor(this)"></div>
+              <div class="color-opt" style="background:#8b5cf6" data-color="#8b5cf6" onclick="pickBulkSegColor(this)"></div>
+              <div class="color-opt" style="background:#60a5fa" data-color="#60a5fa" onclick="pickBulkSegColor(this)"></div>
+              <div class="color-opt" style="background:#34d399" data-color="#34d399" onclick="pickBulkSegColor(this)"></div>
+              <div class="color-opt" style="background:#f59e0b" data-color="#f59e0b" onclick="pickBulkSegColor(this)"></div>
+              <div class="color-opt" style="background:#f87171" data-color="#f87171" onclick="pickBulkSegColor(this)"></div>
+            </div>
+          </div>
+          <div class="fg">
+            <label class="fl">Mô tả (tuỳ chọn)</label>
+            <input class="fi" id="bseg-new-desc" placeholder="Mô tả segment...">
+          </div>
+          <div class="info-box" style="font-size:12px;margin-top:4px">
+            Hệ thống sẽ tự động tạo một <strong>tag đặc biệt</strong> gắn vào các contacts được chọn,
+            sau đó tạo segment mới với tag đó làm điều kiện lọc.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('modal-bulk-segment')">Huỷ</button>
+        <button class="btn btn-primary" onclick="executeBulkSegment()">✓ Xác nhận</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- CONTACT EMAIL HISTORY MODAL -->
   <div class="modal-overlay" id="modal-contact-history">
@@ -538,7 +609,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
         </div>
         <!-- Bulk action bar (hiện khi có contact được chọn) -->
         <div id="bulk-bar"
-          style="display:none;align-items:center;gap:10px;padding:10px 14px;background:var(--accent-glow);border:1px solid var(--accent);border-radius:9px;margin-bottom:10px">
+          style="display:none;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px;background:var(--accent-glow);border:1px solid var(--accent);border-radius:9px;margin-bottom:10px">
           <span style="font-family:var(--fm);font-size:12px;color:var(--accent2)" id="bulk-count">0 đã chọn</span>
           <div style="flex:1"></div>
           <select class="fsel" id="bulk-level-sel" style="width:160px;padding:5px 10px;font-size:12px">
@@ -549,6 +620,8 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
           <input type="text" id="bulk-tag-input" placeholder="Nhập tag..." class="fsel" style="width:120px;padding:5px 10px;font-size:12px">
           <button class="btn" onclick="bulkAddTagAction()">🏷 Gắn tag</button>
           <button class="btn" onclick="bulkRemoveTagAction()" style="color:var(--err)">✕ Gỡ tag</button>
+          <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
+          <button class="btn" onclick="openBulkSegmentModal()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-color:#6366f1">📂 Thêm vào Segment</button>
           <div style="border-left:1px solid var(--border);height:20px;margin:0 4px"></div>
           <button class="btn btn-danger" onclick="bulkDelete()">✕ Xoá đã chọn</button>
           <button class="btn" onclick="clearSelection()" style="font-size:11px">Bỏ chọn</button>
