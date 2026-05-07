@@ -1,4 +1,4 @@
-﻿    // ════════════════════════════════════════
+    // ════════════════════════════════════════
     // CONSTANTS
     // ════════════════════════════════════════
     const TOAST_DURATION = 3500;
@@ -3146,7 +3146,7 @@ ${html}
         updateTrackingOverview([]); return;
       }
       document.getElementById('history-campaign-count').textContent = _histCampaigns.length + ' campaigns';
-      const sI = s => s === 'completed' ? 'ok' : s === 'failed' ? 'err' : s === 'sending' ? 'run' : s === 'paused' ? 'partial' : 'partial';
+      const sI = s => s === 'completed' ? 'ok' : s === 'failed' ? 'err' : s === 'sending' ? 'run' : 'partial'; // 'partial' → CSS class (không phải enum DB)
       body.innerHTML = _histCampaigns.map(c => {
         const total = (c.sent_count||0) + (c.failed_count||0);
         const trk = c.tracking || {};
@@ -3155,9 +3155,9 @@ ${html}
         const sd = c.sent_at ? new Date(c.sent_at) : null;
         const active = sd && (Date.now()-sd.getTime()) < TRK_MAX_AGE;
         const tl = active ? '<span style="color:var(--ok);font-size:10px">● tracking</span>' : (sd ? '<span style="font-size:10px;color:var(--muted)">hết hạn</span>' : '');
-        const isPartial  = c.status === 'partial' || c.status === 'sending' || c.status === 'paused';
+        const isPartial  = c.status === 'sending' || c.status === 'paused'; // không có 'partial' trong DB enum
         const isSending  = c.status === 'sending';
-        const canResume  = c.status === 'partial' || c.status === 'paused';
+        const canResume  = c.status === 'paused';                            // chỉ 'paused' mới có nút Resume
         return `<div class="trk-campaign" id="trk-camp-${c.id}">
   <div class="trk-campaign-row" onclick="toggleCampaignDetail('${c.id}')">
     <div class="h-icon ${sI(c.status)}">✉</div>

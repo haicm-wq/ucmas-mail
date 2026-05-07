@@ -243,10 +243,11 @@ async function sendSequential(campaign, contacts, db, emailConfig, emit, sentEma
   }
 
   // Cập nhật trạng thái campaign
+  // Các giá trị enum hợp lệ: draft | sending | paused | completed | failed
   const finalStatus =
-    sent >= grandTotal   ? 'completed' :
-    sent  > sentEmailsSet.size - justSentIds.length ? 'partial' :
-                           'failed';
+    sent >= grandTotal ? 'completed' :
+    sent  > 0          ? 'paused'    :  // gửi được 1 phần → paused (có thể resume)
+                         'failed';
 
   await db.updateCampaignStatus(campaign.id, {
     status: finalStatus,
