@@ -3155,7 +3155,9 @@ ${html}
         const sd = c.sent_at ? new Date(c.sent_at) : null;
         const active = sd && (Date.now()-sd.getTime()) < TRK_MAX_AGE;
         const tl = active ? '<span style="color:var(--ok);font-size:10px">● tracking</span>' : (sd ? '<span style="font-size:10px;color:var(--muted)">hết hạn</span>' : '');
-        const isPartial = c.status === 'partial' || c.status === 'sending' || c.status === 'paused';
+        const isPartial  = c.status === 'partial' || c.status === 'sending' || c.status === 'paused';
+        const isSending  = c.status === 'sending';
+        const canResume  = c.status === 'partial' || c.status === 'paused';
         return `<div class="trk-campaign" id="trk-camp-${c.id}">
   <div class="trk-campaign-row" onclick="toggleCampaignDetail('${c.id}')">
     <div class="h-icon ${sI(c.status)}">✉</div>
@@ -3169,7 +3171,8 @@ ${html}
       <div class="trk-pill"><span class="trk-pill-icon" style="color:#c97ef5">🔗</span>${cR}%</div>
       ${trk.bounced?`<div class="trk-pill" style="border-color:#ff7eb3"><span class="trk-pill-icon" style="color:#ff7eb3">⚠</span>${trk.bounced}</div>`:''}
     </div>
-    ${isPartial ? `<button class="abtn" style="font-size:10px;padding:2px 8px;color:#f5a623;border-color:#f5a623" onclick="event.stopPropagation();resumeCampaign('${c.id}')">▶ Gửi tiếp</button>` : ''}
+    ${canResume ? `<button class="abtn" style="font-size:10px;padding:2px 8px;color:#f5a623;border-color:#f5a623" onclick="event.stopPropagation();resumeCampaign('${c.id}')">▶ Gửi tiếp</button>` : ''}
+    ${isSending ? `<button class="abtn" style="font-size:10px;padding:2px 8px;color:#ff7eb3;border-color:#ff7eb3" onclick="event.stopPropagation();stopCampaignById('${c.id}')">⏹ Dừng</button>` : ''}
     <div class="trk-expand-icon" id="trk-arrow-${c.id}">▸</div>
   </div>
   <div class="trk-campaign-detail" id="trk-detail-${c.id}"></div>
@@ -3291,6 +3294,20 @@ ${html}
       } catch (e) { toast('Lỗi dừng: ' + e.message, 'err'); }
       window._sendingCampaignId = null;
       refreshTracking();
+    }
+
+    // Dừng campaign trực tiếp từ History (theo ID — không cần đang gửi trong tab hiện tại)
+    async function stopCampaignById(campaignId) {
+      if (!confirm('Dừng gửi campaign này?')) return;
+      try {
+        await apiFetch(`/api/campaigns-send?stop=${campaignId}`, { method: 'POST' });
+        toast('⏸ Đã dừng campaign');
+        if (window._sendingCampaignId === campaignId) {
+          window._stopCampaign = true;
+          window._sendingCampaignId = null;
+        }
+        refreshTracking();
+      } catch (e) { toast('Lỗi dừng: ' + e.message, 'err'); }
     }
 
     async function resumeCampaign(campaignId, isAutoResume) {
