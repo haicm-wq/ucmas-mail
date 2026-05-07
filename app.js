@@ -3310,33 +3310,57 @@ ${html}
       } catch (e) { toast('Lỗi dừng: ' + e.message, 'err'); }
     }
 
+    /**
+     * Gửi tiếp campaign bị dở.
+     * An toàn vì backend gửi tuần tự, log ngay mỗi email.
+     * Nếu bị timeout lại → tự động gửi tiếp đến hết.
+     */
     async function resumeCampaign(campaignId, isAutoResume) {
-      // ✅ FIX: Chặn chạy 2 luồng song song
-      if (window._sendingCampaignId && window._sendingCampaignId !== campaignId) {
-        toast('⚠ Đang có campaign khác đang gửi. Vui lòng chờ.', 'warn'); return;
-      }
+      // Chặn 2 luồng song song
       if (window._sendingCampaignId === campaignId) {
-        toast('⚠ Campaign này đang được gửi rồi.', 'warn'); return;
+        if (!isAutoResume) toast('⚠ Campaign này đang được gửi rồi.', 'warn');
+        return;
       }
-      window._stopCampaign = false;
+      if (window._sendingCampaignId) {
+        toast('⚠ Đang có campaign khác đang gửi. Vui lòng chờ.', 'warn');
+        return;
+      }
+
+      window._stopCampaign     = false;
       window._sendingCampaignId = campaignId;
+      clearTimeout(window._resumeTimer);
+
       if (!isAutoResume) toast('▶ Đang gửi tiếp campaign...');
+
       let lastSent = 0, lastTotal = 0, completed = false;
+
       try {
         const response = await fetch(`/api/campaigns-send?resume=${campaignId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...cfgHeaders() },
         });
+
         // Nếu tất cả đã gửi → response là JSON
         const ct = response.headers.get('content-type') || '';
         if (ct.includes('application/json')) {
           const json = await response.json();
-          if (json.success) { toast('✅ Tất cả email đã được gửi!'); refreshTracking(); return; }
-          else { toast('Lỗi: ' + (json.error || 'Unknown'), 'err'); return; }
+          if (json.success) {
+            toast('✅ Tất cả email đã được gửi!');
+            refreshTracking();
+          } else if (json.error?.includes('409') || response.status === 409) {
+            // Campaign đang được gửi bởi tiến trình khác → chờ 10s rồi thử lại
+            toast('⏳ Campaign đang được xử lý. Kiểm tra lại sau...', 'warn');
+            refreshTracking();
+          } else {
+            toast('Lỗi: ' + (json.error || 'Unknown'), 'err');
+          }
+          return;
         }
-        const reader = response.body.getReader();
+
+        const reader  = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+
         while (true) {
           if (window._stopCampaign) { reader.cancel(); break; }
           const { done, value } = await reader.read();
@@ -3344,16 +3368,25 @@ ${html}
           buffer += decoder.decode(value, { stream: true });
           const events = buffer.split('\n\n');
           buffer = events.pop();
+
           for (const ev of events) {
             if (!ev.startsWith('data: ')) continue;
             const data = JSON.parse(ev.slice(6));
-            if (data.type === 'progress') {
-              lastSent = data.sent || 0; lastTotal = data.total || 0;
-              const pct = lastTotal > 0 ? Math.round(lastSent / lastTotal * 100) : 0;
-              toast(`📨 Đã gửi: ${lastSent}/${lastTotal} (${pct}%)`, 'ok');
-            }
+
             if (data.type === 'start') {
-              lastSent = data.alreadySent || 0; lastTotal = data.total || 0;
+              lastSent  = data.alreadySent || 0;
+              lastTotal = data.total || 0;
+              toast(`▶ Tiếp tục từ email ${lastSent + 1}/${lastTotal}...`);
+            }
+            if (data.type === 'progress') {
+              lastSent  = data.sent  || 0;
+              lastTotal = data.total || 0;
+              const pct = lastTotal > 0 ? Math.round(lastSent / lastTotal * 100) : 0;
+              // Cập nhật progress bar nếu đang ở tab New Campaign
+              const progFill = document.getElementById('prog-fill');
+              const progPct  = document.getElementById('prog-pct');
+              if (progFill) progFill.style.width = pct + '%';
+              if (progPct)  progPct.textContent   = pct + '%';
             }
             if (data.type === 'done') {
               completed = true;
@@ -3361,20 +3394,30 @@ ${html}
               window._sendingCampaignId = null;
               refreshTracking();
             }
-            if (data.type === 'error' && !data.resumable) { toast('❌ ' + data.error, 'err'); return; }
           }
         }
       } catch (e) {
-        // Kết nối bị ngắt — KHÔNG auto-resume vì sẽ gây gửi trùng
-        if (!window._stopCampaign) {
-          toast('⚠ Kết nối bị ngắt. Vào History → bấm "▶ Gửi tiếp" để tiếp tục.', 'warn');
-        }
+        // Kết nối bị ngắt (timeout hoặc mất mạng)
+        console.warn('[resumeCampaign] connection lost:', e.message);
       } finally {
-        window._sendingCampaignId = null;
+        if (!completed) window._sendingCampaignId = null;
       }
-      // ✅ FIX: Xóa toàn bộ auto-resume đệ quy
-      // Nếu chưa hoàn thành → user phải tự bấm Gửi tiếp trong History
-      if (!completed && !isAutoResume) {
+
+      if (window._stopCampaign) {
+        window._sendingCampaignId = null;
+        toast('⏸ Đã dừng gửi.');
+        refreshTracking();
+        return;
+      }
+
+      // Tự động gửi tiếp nếu chưa xong — AN TOÀN vì backend tuần tự + log ngay
+      if (!completed && lastTotal > 0 && lastSent < lastTotal) {
+        toast(`⏳ Đã gửi ${lastSent}/${lastTotal}. Tự động tiếp tục sau 3s...`);
+        window._resumeTimer = setTimeout(() => {
+          if (!window._stopCampaign) resumeCampaign(campaignId, true);
+        }, 3000);
+      } else if (!completed) {
+        toast('⚠ Không thể kết nối. Vào History → bấm Gửi tiếp khi sẵn sàng.', 'warn');
         refreshTracking();
       }
     }
@@ -3640,13 +3683,18 @@ ${html}
           }
         }
       } catch (e) {
-        // ✅ FIX: KHÔNG auto-resume — tránh gửi trùng
+        // Kết nối bị ngắt (timeout Vercel) — tự resume an toàn
+        // Backend gửi tuần tự + log ngay → không có email nào gửi trùng
         prog.classList.remove('active');
-        if (window._sendingCampaignId) {
-          toast('⚠ Kết nối bị ngắt. Vào History → bấm "▶ Gửi tiếp" để tiếp tục an toàn.', 'warn');
+        const cid = window._sendingCampaignId;
+        if (cid && !window._stopCampaign) {
           window._sendingCampaignId = null;
+          toast('⏳ Kết nối bị ngắt. Tự động gửi tiếp sau 3 giây...');
           refreshTracking();
+          clearTimeout(window._resumeTimer);
+          window._resumeTimer = setTimeout(() => resumeCampaign(cid, true), 3000);
         } else {
+          window._sendingCampaignId = null;
           toast('⚠ Kết nối bị ngắt', 'warn');
         }
       }
