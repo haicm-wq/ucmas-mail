@@ -1,5 +1,4 @@
-import { makeDB } from '../lib/supabase.js';
-import { ok, err, allowCors, getDB } from './_utils.js';
+import { ok, err, allowCors, getDBFromReq } from './_utils.js';
 
 export default async function handler(req, res) {
   allowCors(res);
@@ -14,7 +13,7 @@ export default async function handler(req, res) {
       if (!Array.isArray(contacts) || !contacts.length) return err(res, 'Danh sách contacts rỗng');
       const valid = contacts.filter(c => c.email?.includes('@') && c.level_id);
       if (!valid.length) return err(res, 'Không có contact hợp lệ (cần email và level_id)');
-      const db = makeDB(getDB(req));
+      const db = getDBFromReq(req);
       const inserted = await db.upsertContacts(valid);
       ok(res, { imported: inserted.length });
     } catch (e) { err(res, e.message, 500); }
@@ -24,7 +23,7 @@ export default async function handler(req, res) {
     try {
       const { id, levelId } = req.body;
       if (!id || !levelId) return err(res, 'Thiếu id hoặc levelId');
-      await makeDB(getDB(req)).updateContactLevel(id, levelId);
+      await getDBFromReq(req).updateContactLevel(id, levelId);
       ok(res, { updated: true });
     } catch (e) { err(res, e.message); }
 
@@ -32,7 +31,7 @@ export default async function handler(req, res) {
   } else if (req.method === 'GET') {
     try {
       const { levelId, search, status, page = 0, per_page = 200 } = req.query;
-      const db     = makeDB(getDB(req));
+      const db = getDBFromReq(req);
       const offset = parseInt(page) * parseInt(per_page);
       const result = await db.getContactsPaged({ levelId, search, status, offset, limit: parseInt(per_page) });
       ok(res, result);
@@ -43,7 +42,7 @@ export default async function handler(req, res) {
     try {
       const id = req.query.id;
       if (!id) return err(res, 'Thiếu id');
-      await makeDB(getDB(req)).deleteContact(id);
+      await getDBFromReq(req).deleteContact(id);
       ok(res, { deleted: true });
     } catch (e) { err(res, e.message); }
 

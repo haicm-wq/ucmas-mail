@@ -1,6 +1,5 @@
-import { makeDB } from '../lib/supabase.js';
 import { sendTestEmail } from '../lib/email.js';
-import { ok, err, allowCors, getDB, getEmailConfig } from './_utils.js';
+import { ok, err, allowCors, getDBFromReq, getEmailConfig } from './_utils.js';
 
 export default async function handler(req, res) {
   allowCors(res);
@@ -19,7 +18,7 @@ export default async function handler(req, res) {
   // --- GET CAMPAIGNS / HISTORY ---
   } else if (req.method === 'GET') {
     try {
-      const db = makeDB(getDB(req));
+      const db = getDBFromReq(req);
       if (req.query.contact_email) {
         ok(res, await db.getContactEmailHistory(req.query.contact_email));
       } else if (req.query.logs) {

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { makeDB } from '../lib/supabase.js';
 
 export function ok(res, data)  { res.status(200).json({ success: true, data }); }
 export function err(res, msg, status = 400) {
@@ -17,6 +18,11 @@ export function getDB(req) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || req.headers['x-sb-key'] || '';
   if (!url || !key) throw new Error('Chưa cấu hình Supabase. Vào ⚙ Settings trong app để nhập URL và Key.');
   return createClient(url, key);
+}
+
+// Shortcut: tạo DB instance từ request (gộp getDB + makeDB)
+export function getDBFromReq(req) {
+  return makeDB(getDB(req));
 }
 
 // Lấy Resend config từ env vars hoặc request headers

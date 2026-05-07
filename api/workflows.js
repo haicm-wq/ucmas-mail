@@ -1,12 +1,11 @@
-import { makeDB } from '../lib/supabase.js';
-import { ok, err, allowCors, getDB } from './_utils.js';
+import { ok, err, allowCors, getDBFromReq } from './_utils.js';
 
 export default async function handler(req, res) {
   allowCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const db = makeDB(getDB(req));
+    const db = getDBFromReq(req);
 
     if (req.method === 'GET') {
       ok(res, await db.getWorkflows());

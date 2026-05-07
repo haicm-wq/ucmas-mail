@@ -1,5 +1,4 @@
-import { makeDB } from '../lib/supabase.js';
-import { allowCors, getDB } from './_utils.js';
+import { allowCors, getDBFromReq } from './_utils.js';
 
 /**
  * Resend Webhook Endpoint
@@ -22,7 +21,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid webhook payload' });
     }
 
-    const db = makeDB(getDB(req));
+    const db = getDBFromReq(req);
     const data = event.data || {};
 
     // Map Resend event types to our event names

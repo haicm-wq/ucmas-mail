@@ -1,7 +1,7 @@
 import multer from 'multer';
-import { makeDB } from '../lib/supabase.js';
 import { parseContactBuffer } from '../lib/csvParser.js';
-import { ok, err, allowCors, getDB } from './_utils.js';
+import { importContacts } from '../lib/importHelper.js';
+import { ok, err, allowCors, getDBFromReq } from './_utils.js';
 
 export const config = { api: { bodyParser: false } };
 
@@ -24,19 +24,8 @@ export default async function handler(req, res) {
     const { rows, errors } = parseContactBuffer(file.buffer, file.originalname);
     if (rows.length === 0) return err(res, errors.join('; '));
 
-    const db = makeDB(getDB(req));
-    const levels = await db.getLevels();
-    const levelMap = {};
-    levels.forEach(l => { levelMap[l.name.toUpperCase()] = l.id; });
-
-    const toUpsert = [], unresolved = [];
-    rows.forEach(row => {
-      const levelId = levelMap[row.level];
-      if (!levelId) { unresolved.push(`Level "${row.level}" không tìm thấy (${row.email})`); return; }
-      toUpsert.push({ name: row.name, email: row.email, level_id: levelId, company: row.company, phone: row.phone, status: 'active' });
-    });
-
-    const inserted = toUpsert.length > 0 ? await db.upsertContacts(toUpsert) : [];
-    ok(res, { imported: inserted.length, skipped: unresolved.length, parseErrors: errors, levelErrors: unresolved });
+    const db = getDBFromReq(req);
+    const result = await importContacts(db, rows);
+    ok(res, { ...result, parseErrors: errors });
   } catch (e) { err(res, e.message, 500); }
 }

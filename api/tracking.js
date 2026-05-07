@@ -1,5 +1,4 @@
-import { makeDB } from '../lib/supabase.js';
-import { ok, err, allowCors, getDB, getEmailConfig } from './_utils.js';
+import { ok, err, allowCors, getDBFromReq, getEmailConfig } from './_utils.js';
 import { Resend } from 'resend';
 
 const RATE_LIMIT_MS = 120;
@@ -17,7 +16,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const db = makeDB(getDB(req));
+    const db = getDBFromReq(req);
 
     // ── POST: Backfill từ Resend ──
     if (req.method === 'POST') {

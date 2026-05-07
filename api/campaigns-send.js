@@ -1,6 +1,5 @@
-import { makeDB } from '../lib/supabase.js';
 import { sendOneEmail } from '../lib/email.js';
-import { ok, err, allowCors, getDB, getEmailConfig } from './_utils.js';
+import { ok, err, allowCors, getDBFromReq, getEmailConfig } from './_utils.js';
 
 export const config = { api: { bodyParser: true } };
 
@@ -18,7 +17,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const db = makeDB(getDB(req));
+  const db = getDBFromReq(req);
   const emailConfig = getEmailConfig(req);
   const { resume, stop } = req.query;
 
