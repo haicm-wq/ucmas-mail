@@ -214,6 +214,67 @@
       padding: 6px 16px 6px
     }
 
+    .sb-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px 4px 0;
+    }
+
+    .sb-mini-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 2px 6px;
+      border-radius: 5px;
+      transition: all .12s;
+      line-height: 1;
+    }
+    .sb-mini-btn:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .sb-tag-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--muted);
+      transition: all .12s;
+      width: calc(100% - 8px);
+      margin: 0 4px;
+      border: none;
+      background: transparent;
+      text-align: left;
+    }
+    .sb-tag-item:hover { background: var(--surface2); color: var(--text); }
+    .sb-tag-item.active { background: var(--surface2); color: var(--text); }
+
+    .sb-seg-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--muted);
+      transition: all .12s;
+      width: calc(100% - 8px);
+      margin: 0 4px;
+      border: none;
+      background: transparent;
+      text-align: left;
+    }
+    .sb-seg-item:hover { background: var(--surface2); color: var(--text); }
+    .sb-seg-item.active { background: var(--surface2); color: var(--text); }
+
     .sb-item {
       display: flex;
       align-items: center;

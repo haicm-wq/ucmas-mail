@@ -426,17 +426,40 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
         <button class="sb-item active" onclick="gotoPage('dashboard',null,this)">◈ Dashboard <span
             class="sb-badge">Live</span></button>
         <button class="sb-item" onclick="gotoPage('contacts',null,this)">◉ All Contacts <span class="sb-badge"
-            id="sb-cnt-all">284</span></button>
+            id="sb-cnt-all">0</span></button>
         <button class="sb-item" onclick="gotoPage('templates',null,this)">▤ Templates <span
             class="sb-badge" id="sb-cnt-tmpl">0</span></button>
         <button class="sb-item" onclick="gotoPage('campaign',null,this)">✉ New Campaign</button>
         <button class="sb-item" onclick="gotoPage('workflows',null,this)">⚡ Workflows <span class="sb-badge" id="sb-cnt-wf">0</span></button>
         <button class="sb-item" onclick="gotoPage('history',null,this)">◷ History</button>
+
         <div class="sb-div"></div>
-        <div class="sb-label">Segments</div>
+
+        <!-- LEVELS -->
+        <div class="sb-section-header">
+          <div class="sb-label" style="margin:0">Levels</div>
+          <button class="sb-mini-btn" onclick="gotoPage('levels',null,null)" title="Quản lý Levels">⚙</button>
+        </div>
         <div class="level-tree" id="sidebar-level-tree"></div>
+
         <div class="sb-div"></div>
-        <button class="sb-item" onclick="gotoPage('levels',null,this)">⊕ Quản lý Levels</button>
+
+        <!-- TAGS -->
+        <div class="sb-section-header">
+          <div class="sb-label" style="margin:0">Tags</div>
+          <button class="sb-mini-btn" onclick="gotoPage('tags',null,null)" title="Quản lý Tags">⚙</button>
+        </div>
+        <div id="sidebar-tag-list"></div>
+
+        <div class="sb-div"></div>
+
+        <!-- SEGMENTS -->
+        <div class="sb-section-header">
+          <div class="sb-label" style="margin:0">Segments</div>
+          <button class="sb-mini-btn" onclick="gotoPage('segments',null,null)" title="Quản lý Segments">⚙</button>
+        </div>
+        <div id="sidebar-segment-list"></div>
+        <button class="sb-item" onclick="gotoPage('segments',null,null)" style="font-size:11px;color:var(--accent2);margin-top:2px">⊕ Tạo Segment mới</button>
       </div>
     </aside>
 
@@ -563,6 +586,139 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
             </thead>
             <tbody id="contact-tbody"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- TAGS MANAGEMENT -->
+      <div id="page-tags" class="page">
+        <div class="ph">
+          <div>
+            <div class="ph-title">Quản lý Tags</div>
+            <div class="ph-sub">Tạo và quản lý tags để phân loại khách hàng linh hoạt</div>
+          </div>
+          <button class="btn btn-primary" onclick="openAddTag()">🏷 Thêm Tag mới</button>
+        </div>
+        <div class="level-manager-grid">
+          <div>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Danh sách Tags</div>
+                <span style="font-family:var(--fm);font-size:11px;color:var(--muted)" id="tag-total-count"></span>
+              </div>
+              <div class="card-body" style="padding:0" id="tag-list-body"></div>
+            </div>
+          </div>
+          <div>
+            <div class="new-level-form" id="tag-form-panel">
+              <div class="new-level-title" id="tag-form-title">🏷 Thêm Tag mới</div>
+              <div class="fg">
+                <label class="fl">Tên Tag</label>
+                <input class="fi" id="tf-name" placeholder="VD: VIP, Đã đăng ký, HN...">
+              </div>
+              <div class="fg">
+                <label class="fl">Màu</label>
+                <div class="color-row" id="tf-colors">
+                  <div class="color-opt selected" style="background:#a78bfa" data-color="#a78bfa" onclick="pickTagColor(this)"></div>
+                  <div class="color-opt" style="background:#60a5fa" data-color="#60a5fa" onclick="pickTagColor(this)"></div>
+                  <div class="color-opt" style="background:#34d399" data-color="#34d399" onclick="pickTagColor(this)"></div>
+                  <div class="color-opt" style="background:#f59e0b" data-color="#f59e0b" onclick="pickTagColor(this)"></div>
+                  <div class="color-opt" style="background:#f87171" data-color="#f87171" onclick="pickTagColor(this)"></div>
+                  <div class="color-opt" style="background:#fb923c" data-color="#fb923c" onclick="pickTagColor(this)"></div>
+                  <div class="color-opt" style="background:#e879f9" data-color="#e879f9" onclick="pickTagColor(this)"></div>
+                </div>
+              </div>
+              <div class="fg">
+                <label class="fl">Mô tả</label>
+                <input class="fi" id="tf-desc" placeholder="Mô tả tag...">
+              </div>
+              <input type="hidden" id="tf-edit-id">
+              <button class="btn btn-primary" style="width:100%" onclick="saveTag()">Lưu Tag</button>
+              <button class="btn" style="width:100%;margin-top:6px;display:none" id="tf-cancel" onclick="cancelEditTag()">Huỷ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEGMENTS BUILDER -->
+      <div id="page-segments" class="page">
+        <div class="ph">
+          <div>
+            <div class="ph-title">Segments</div>
+            <div class="ph-sub">Tạo nhóm khách hàng theo điều kiện Level, Tag hoặc kết hợp AND/OR</div>
+          </div>
+          <button class="btn btn-primary" onclick="openNewSegment()">⊕ Tạo Segment mới</button>
+        </div>
+        <div class="level-manager-grid">
+          <!-- Danh sách segments -->
+          <div>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Danh sách Segments</div>
+                <span style="font-family:var(--fm);font-size:11px;color:var(--muted)" id="seg-total-count"></span>
+              </div>
+              <div class="card-body" style="padding:0" id="segment-list-body"></div>
+            </div>
+          </div>
+          <!-- Form tạo/sửa segment -->
+          <div>
+            <div class="new-level-form" id="seg-form-panel">
+              <div class="new-level-title" id="seg-form-title">⊕ Tạo Segment mới</div>
+              <div class="fg">
+                <label class="fl">Tên Segment</label>
+                <input class="fi" id="sf-name" placeholder="VD: Khách VIP Hà Nội...">
+              </div>
+              <div class="fg">
+                <label class="fl">Màu</label>
+                <div class="color-row" id="sf-colors">
+                  <div class="color-opt selected" style="background:#60a5fa" data-color="#60a5fa" onclick="pickSegColor(this)"></div>
+                  <div class="color-opt" style="background:#a78bfa" data-color="#a78bfa" onclick="pickSegColor(this)"></div>
+                  <div class="color-opt" style="background:#34d399" data-color="#34d399" onclick="pickSegColor(this)"></div>
+                  <div class="color-opt" style="background:#f59e0b" data-color="#f59e0b" onclick="pickSegColor(this)"></div>
+                  <div class="color-opt" style="background:#f87171" data-color="#f87171" onclick="pickSegColor(this)"></div>
+                </div>
+              </div>
+              <div class="fg">
+                <label class="fl">Mô tả</label>
+                <input class="fi" id="sf-desc" placeholder="Mô tả segment...">
+              </div>
+
+              <!-- Điều kiện Levels -->
+              <div class="fg">
+                <label class="fl" style="margin-bottom:6px">Điều kiện Levels</label>
+                <div id="sf-level-rules" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--surface2);border-radius:8px;min-height:36px;border:1px solid var(--border)"></div>
+              </div>
+
+              <!-- Logic giữa level và tag -->
+              <div class="fg" style="display:flex;align-items:center;gap:10px">
+                <label class="fl" style="margin:0;width:auto">Logic Level ↔ Tag:</label>
+                <div style="display:flex;gap:6px">
+                  <button class="chip ca" id="sf-logic-and" onclick="setSegLogic('and')">AND</button>
+                  <button class="chip" id="sf-logic-or" onclick="setSegLogic('or')">OR</button>
+                </div>
+              </div>
+
+              <!-- Điều kiện Tags -->
+              <div class="fg">
+                <label class="fl" style="margin-bottom:6px">Điều kiện Tags</label>
+                <div id="sf-tag-rules" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--surface2);border-radius:8px;min-height:36px;border:1px solid var(--border)"></div>
+                <div style="margin-top:6px;display:flex;align-items:center;gap:8px">
+                  <span style="font-size:11px;color:var(--muted)">Tags phải có:</span>
+                  <button class="chip ca" id="sf-tagmode-or" onclick="setSegTagMode('or')">Ít nhất 1 (OR)</button>
+                  <button class="chip" id="sf-tagmode-and" onclick="setSegTagMode('and')">Tất cả (AND)</button>
+                </div>
+              </div>
+
+              <!-- Preview -->
+              <div style="padding:10px;background:var(--surface2);border-radius:8px;margin-top:4px;border:1px solid var(--border)">
+                <div style="font-size:11px;color:var(--muted)">Ước tính contacts:</div>
+                <div id="sf-preview-count" style="font-size:20px;font-weight:700;color:var(--accent2)">—</div>
+              </div>
+
+              <input type="hidden" id="sf-edit-id">
+              <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="saveSegment()">Lưu Segment</button>
+              <button class="btn" style="width:100%;margin-top:6px;display:none" id="sf-cancel" onclick="cancelEditSegment()">Huỷ</button>
+            </div>
+          </div>
         </div>
       </div>
 
