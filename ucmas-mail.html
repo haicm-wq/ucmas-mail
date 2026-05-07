@@ -7118,9 +7118,6 @@ ${html}
         toast('⚠ Không thể kết nối. Thử lại bằng nút Gửi tiếp.', 'warn');
       }
     }
-        }
-      } catch (e) { toast('Lỗi: ' + e.message + '. Thử lại sau.', 'err'); }
-    }
 
     async function backfillCampaign(campaignId, btn) {
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang đồng bộ...'; }
@@ -7372,6 +7369,7 @@ ${html}
             }
           }
         }
+      } catch (e) {
         // Auto-resume: tự gửi tiếp sau 3 giây
         if (window._sendingCampaignId) {
           toast('⏳ Kết nối bị ngắt. Tự động gửi tiếp sau 3 giây...');
@@ -7381,7 +7379,6 @@ ${html}
           prog.classList.remove('active');
           toast('⚠ Kết nối bị ngắt', 'warn');
         }
-        setTimeout(() => gotoPage('history'), 1500);
       }
     };
 
