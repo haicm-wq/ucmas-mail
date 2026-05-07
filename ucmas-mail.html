@@ -6936,7 +6936,7 @@ ${html}
         updateTrackingOverview([]); return;
       }
       document.getElementById('history-campaign-count').textContent = _histCampaigns.length + ' campaigns';
-      const sI = s => s === 'completed' ? 'ok' : s === 'failed' ? 'err' : 'partial';
+      const sI = s => s === 'completed' ? 'ok' : s === 'failed' ? 'err' : s === 'sending' ? 'run' : 'partial';
       body.innerHTML = _histCampaigns.map(c => {
         const total = (c.sent_count||0) + (c.failed_count||0);
         const trk = c.tracking || {};
@@ -6945,12 +6945,13 @@ ${html}
         const sd = c.sent_at ? new Date(c.sent_at) : null;
         const active = sd && (Date.now()-sd.getTime()) < TRK_MAX_AGE;
         const tl = active ? '<span style="color:var(--ok);font-size:10px">● tracking</span>' : (sd ? '<span style="font-size:10px;color:var(--muted)">hết hạn</span>' : '');
+        const isPartial = c.status === 'partial' || c.status === 'sending';
         return `<div class="trk-campaign" id="trk-camp-${c.id}">
   <div class="trk-campaign-row" onclick="toggleCampaignDetail('${c.id}')">
     <div class="h-icon ${sI(c.status)}">✉</div>
     <div style="flex:1;min-width:140px">
       <div class="h-title">${c.name}</div>
-      <div class="h-meta">${(c.target_levels||[]).map((l,i)=>`<span class="lt lt${(i%4)+1}">${l}</span>`).join('')} · ${sd?sd.toLocaleDateString('vi-VN'):'—'} ${tl}</div>
+      <div class="h-meta">${(c.target_levels||[]).map((l,i)=>`<span class="lt lt${(i%4)+1}">${l}</span>`).join('')} · ${sd?sd.toLocaleDateString('vi-VN'):'—'} ${tl}${isPartial ? ' <span style="color:#f5a623;font-size:10px;font-weight:600">⏸ đang dở (' + c.sent_count + ' đã gửi)</span>' : ''}</div>
     </div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
       <div class="trk-pill"><span class="trk-pill-icon" style="color:#3de8a0">✓</span>${c.sent_count}/${total}</div>
@@ -6958,6 +6959,7 @@ ${html}
       <div class="trk-pill"><span class="trk-pill-icon" style="color:#c97ef5">🔗</span>${cR}%</div>
       ${trk.bounced?`<div class="trk-pill" style="border-color:#ff7eb3"><span class="trk-pill-icon" style="color:#ff7eb3">⚠</span>${trk.bounced}</div>`:''}
     </div>
+    ${isPartial ? `<button class="abtn" style="font-size:10px;padding:2px 8px;color:#f5a623;border-color:#f5a623" onclick="event.stopPropagation();resumeCampaign('${c.id}')">▶ Gửi tiếp</button>` : ''}
     <div class="trk-expand-icon" id="trk-arrow-${c.id}">▸</div>
   </div>
   <div class="trk-campaign-detail" id="trk-detail-${c.id}"></div>
@@ -7063,6 +7065,33 @@ ${html}
       } else {
         if (statusEl) statusEl.textContent = '';
       }
+    }
+
+    async function resumeCampaign(campaignId) {
+      toast('▶ Đang gửi tiếp campaign...');
+      try {
+        const response = await fetch(`/api/campaigns-send?resume=${campaignId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...cfgHeaders() },
+        });
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split('\n\n');
+          buffer = events.pop();
+          for (const ev of events) {
+            if (!ev.startsWith('data: ')) continue;
+            const data = JSON.parse(ev.slice(6));
+            if (data.type === 'progress') toast(`📨 Đang gửi: ${data.sent}/${data.total}`, 'ok');
+            if (data.type === 'done') { toast(`✅ Hoàn thành! ${data.sent}/${data.total} đã gửi`); refreshTracking(); }
+            if (data.type === 'error') toast('⚠ ' + data.error, 'warn');
+          }
+        }
+      } catch (e) { toast('Lỗi: ' + e.message + '. Thử lại sau.', 'err'); }
     }
 
     async function backfillCampaign(campaignId, btn) {
@@ -7302,14 +7331,22 @@ ${html}
               }, 600);
             }
             if (data.type === 'error') {
-              prog.classList.remove('active');
-              toast('Gửi thất bại: ' + data.error, 'err');
+              if (data.resumable) {
+                document.getElementById('prog-fill').style.width = Math.round(data.sent/data.total*100) + '%';
+                document.getElementById('prog-pct').textContent = Math.round(data.sent/data.total*100) + '%';
+                toast('⚠ Đã gửi ' + data.sent + '/' + data.total + '. Vào History để gửi tiếp.', 'warn');
+                setTimeout(() => { prog.classList.remove('active'); gotoPage('history'); }, 1500);
+              } else {
+                prog.classList.remove('active');
+                toast('Gửi thất bại: ' + data.error, 'err');
+              }
             }
           }
         }
       } catch (e) {
         prog.classList.remove('active');
-        toast('Lỗi kết nối: ' + e.message, 'err');
+        toast('⚠ Kết nối bị ngắt. Vào History để kiểm tra và gửi tiếp.', 'warn');
+        setTimeout(() => gotoPage('history'), 1500);
       }
     };
 
