@@ -1,4 +1,20 @@
-﻿    // ════════════════════════════════════════
+    // ════════════════════════════════════════
+    // CONSTANTS
+    // ════════════════════════════════════════
+    const TOAST_DURATION = 3500;
+    const DEBOUNCE_SEARCH = 300;
+    const DEBOUNCE_RENDER = 150;
+    const CODE_SYNC_DELAY = 400;
+    const AUTO_RESUME_DELAY = 3000;
+    const COPY_FEEDBACK_DELAY = 2000;
+
+    // Debounce utility — tránh gọi liên tục khi user gõ nhanh
+    function debounce(fn, ms) {
+      let timer;
+      return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+    }
+
+    // ════════════════════════════════════════
     // DATA STORE
     // ════════════════════════════════════════
     // Khởi tạo rỗng — dữ liệu thật load từ Supabase sau
@@ -53,7 +69,7 @@
       t.className = `toast ${type}`;
       t.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${msg}</span>`;
       document.getElementById('toast-area').appendChild(t);
-      setTimeout(() => t.remove(), 3500);
+      setTimeout(() => t.remove(), TOAST_DURATION);
     }
 
     // ════════════════════════════════════════
@@ -197,14 +213,14 @@
       if (window._backendConnected) loadContactsPage(search);
       else renderContactTable(search);
     }
-    function filterTable(q) {
+    const filterTable = debounce(function(q) {
       currentPage = 0; // reset về trang 1 khi search
       if (window._backendConnected) {
         loadContactsPage(q);
       } else {
         renderContactTable(q);
       }
-    }
+    }, DEBOUNCE_SEARCH);
 
     async function loadContactsPage(search = '') {
       const levelId = currentFilter === 'all' ? undefined : currentFilter;
@@ -459,7 +475,7 @@
       renderSidebar(); renderDashStats(); renderLevelPage(); renderCampaignTargets();
       toast(`Đã tạo level "${name}"`);
     }
-    function updateQuickPreview() { } // placeholder
+    function updateQuickPreview() { /* removed — stub not needed */ }
 
     // ════════════════════════════════════════
     // TEMPLATES
@@ -587,7 +603,7 @@
       // Sync visual → code khi user gõ
       doc.addEventListener('input', () => {
         clearTimeout(_codeSyncTimer);
-        _codeSyncTimer = setTimeout(syncVisualToCode, 400);
+        _codeSyncTimer = setTimeout(syncVisualToCode, CODE_SYNC_DELAY);
       });
       doc.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); veExec('undo'); }
@@ -705,14 +721,15 @@
       }
     }
 
-    function updatePreviewFrame() {
-      const frame = document.getElementById('preview-frame');
-      if (!frame) return;
-      const code = document.getElementById('tmpl-code').value;
-      const sample = { name: 'Nguyễn Văn A', email: 'sample@ucmas.vn', level: 'L1', company: 'UCMAS', date: new Date().toLocaleDateString('vi-VN') };
+    // Shared preview renderer — dùng chung cho template editor và campaign
+    const PREVIEW_SAMPLE = { name: 'Nguyễn Văn A', email: 'sample@ucmas.vn', level: 'L1', company: 'UCMAS', date: new Date().toLocaleDateString('vi-VN') };
+    function renderEmailPreview(code, frame) {
+      if (!frame || !code?.trim()) {
+        if (frame) frame.srcdoc = '<p style="color:#aaa;font-family:Arial;padding:16px">Chưa có nội dung</p>';
+        return;
+      }
       let rendered = code;
-      Object.entries(sample).forEach(([k, v]) => { rendered = rendered.replaceAll('{{' + k + '}}', v); });
-      // Nếu không phải HTML, wrap lại cho đẹp
+      Object.entries(PREVIEW_SAMPLE).forEach(([k, v]) => { rendered = rendered.replaceAll('{{' + k + '}}', v); });
       const isHtml = /^\s*<!DOCTYPE|^\s*<html|<[a-z][\s\S]*>/i.test(rendered);
       if (!isHtml && rendered.trim()) {
         rendered = `<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -722,8 +739,10 @@
       frame.srcdoc = rendered;
     }
 
-    // Override updatePreview để cũng cập nhật frame
-    const _oldUpdatePreview = typeof updatePreview === 'function' ? updatePreview : null;
+    function updatePreviewFrame() {
+      renderEmailPreview(document.getElementById('tmpl-code').value, document.getElementById('preview-frame'));
+    }
+
     function updatePreview() { updatePreviewFrame(); }
 
     // ── Link dialog ──────────────────────────
@@ -893,16 +912,37 @@
       updatePreview(); renderTemplates();
     }
 
-    function saveCurrentTemplate() {
+    async function saveCurrentTemplate() {
       const name = document.getElementById('tmpl-name-input').value.trim() || 'Template mới';
       const body = document.getElementById('tmpl-code').value;
+
       if (activeTemplate) {
+        // Update existing
         const t = templates.find(x => x.id === activeTemplate);
-        if (t) { t.name = name; t.body = body; toast(`Đã lưu: ${name}`); }
+        if (t) {
+          t.name = name; t.body = body;
+          if (window._backendConnected) {
+            try { await apiFetch(`/api/templates?id=${t.id}`, { method: 'PUT', body: JSON.stringify({ name, body }) }); }
+            catch (e) { toast('Lỗi lưu: ' + e.message, 'err'); }
+          }
+          toast(`Đã lưu: ${name}`);
+        }
       } else {
-        const id = 't' + (Date.now());
-        templates.push({ id, name, icon: '📄', desc: 'Template tuỳ chỉnh', tags: ['custom'], body });
-        activeTemplate = id; toast(`Đã lưu template mới: ${name}`);
+        // Create new
+        if (window._backendConnected) {
+          try {
+            const result = await apiFetch('/api/templates', {
+              method: 'POST',
+              body: JSON.stringify({ name, icon: '📄', description: 'Template tuỳ chỉnh', body, tags: ['custom'] }),
+            });
+            if (result) { templates.push(result); activeTemplate = result.id; }
+          } catch (e) { toast('Lỗi tạo template: ' + e.message, 'err'); }
+        } else {
+          const id = 't' + Date.now();
+          templates.push({ id, name, icon: '📄', desc: 'Template tuỳ chỉnh', tags: ['custom'], body });
+          activeTemplate = id;
+        }
+        toast(`Đã lưu template mới: ${name}`);
       }
       renderTemplates();
     }
@@ -935,20 +975,8 @@
     }
 
     function updateCampaignPreview() {
-      const frame = document.getElementById('c-preview-frame');
-      if (!frame) return;
       const code = document.getElementById('c-body').value;
-      if (!code.trim()) { frame.srcdoc = '<p style="color:#aaa;font-family:Arial;padding:16px">Chưa có nội dung</p>'; return; }
-      const sample = {name:'Nguyễn Văn A', email:'sample@ucmas.vn', level:'L1', company:'UCMAS', date: new Date().toLocaleDateString('vi-VN')};
-      let rendered = code;
-      Object.entries(sample).forEach(([k,v]) => { rendered = rendered.replaceAll('{{'+k+'}}', v); });
-      const isHtml = /^\s*<!DOCTYPE|^\s*<html|<[a-z][\s\S]*>/i.test(rendered);
-      if (!isHtml) {
-        rendered = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-        <style>body{font-family:Arial,sans-serif;font-size:15px;color:#222;max-width:600px;margin:0 auto;padding:20px;line-height:1.7}p{margin:0 0 12px}a{color:#4f6cff}</style>
-        </head><body>${rendered.split('\n').map(l => l.trim() ? `<p>${l}</p>` : '').join('\n')}</body></html>`;
-      }
-      frame.srcdoc = rendered;
+      renderEmailPreview(code, document.getElementById('c-preview-frame'));
     }
 
     // ════════════════════════════════════════
@@ -2654,7 +2682,7 @@ ${html}
                 document.getElementById('prog-fill').style.width = Math.round(data.sent/data.total*100) + '%';
                 document.getElementById('prog-pct').textContent = Math.round(data.sent/data.total*100) + '%';
                 toast('⏳ Đã gửi ' + data.sent + '/' + data.total + '. Tự động gửi tiếp...');
-                setTimeout(async () => { prog.classList.remove('active'); await resumeCampaign(data.campaignId, true); }, 3000);
+                setTimeout(async () => { prog.classList.remove('active'); await resumeCampaign(data.campaignId, true); }, AUTO_RESUME_DELAY);
               } else {
                 prog.classList.remove('active');
                 toast('Gửi thất bại: ' + data.error, 'err');
@@ -2667,7 +2695,7 @@ ${html}
         if (window._sendingCampaignId) {
           toast('⏳ Kết nối bị ngắt. Tự động gửi tiếp sau 3 giây...');
           const cid = window._sendingCampaignId;
-          setTimeout(async () => { prog.classList.remove('active'); await resumeCampaign(cid, true); }, 3000);
+          setTimeout(async () => { prog.classList.remove('active'); await resumeCampaign(cid, true); }, AUTO_RESUME_DELAY);
         } else {
           prog.classList.remove('active');
           toast('⚠ Kết nối bị ngắt', 'warn');
