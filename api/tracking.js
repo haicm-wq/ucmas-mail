@@ -1,5 +1,5 @@
 import { ok, err, allowCors, getDBFromReq, getEmailConfig } from './_utils.js';
-import { Resend } from 'resend';
+import { getResend } from '../lib/email.js';
 
 const RATE_LIMIT_MS = 120;
 
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       const { resendKey } = getEmailConfig(req);
       if (!resendKey) return err(res, 'Chưa cấu hình Resend API Key');
 
-      return await handleBackfill(res, db, new Resend(resendKey), backfill);
+      return await handleBackfill(res, db, getResend(resendKey), backfill);
     }
 
     // ── GET endpoints ──
@@ -187,11 +187,9 @@ async function backfillBySearching(res, db, resend, campaign, campaignId) {
   }
 
   // Lấy contacts để map email → contact_id
-  const contacts = campaign.target_levels?.length
-    ? await db.getContactsByLevelIds(campaign.target_levels)
-    : [];
+  // Dùng contacts đã fetch ở trên — không fetch lại lần 2
   const contactMap = {};
-  contacts.forEach(c => { contactMap[c.email] = c; });
+  campaignContacts.forEach(c => { contactMap[c.email] = c; });
 
   // Tạo send_logs + events cho từng email tìm được
   let created = 0, eventsCreated = 0, errors = 0;

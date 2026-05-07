@@ -1370,6 +1370,25 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
 <span class="sql-kw">CREATE INDEX</span> idx_send_logs_status  <span class="sql-kw">ON</span> send_logs(status);
 <span class="sql-kw">CREATE INDEX</span> idx_campaigns_status  <span class="sql-kw">ON</span> campaigns(status);
 
+<span class="sql-cm">-- ★ INDEXES MỚI — tối ưu tracking (v2)</span>
+<span class="sql-kw">CREATE INDEX</span> idx_send_logs_resend  <span class="sql-kw">ON</span> send_logs(resend_id);
+<span class="sql-kw">CREATE INDEX</span> idx_send_logs_email   <span class="sql-kw">ON</span> send_logs(email);
+<span class="sql-kw">CREATE INDEX</span> idx_events_resend     <span class="sql-kw">ON</span> email_events(resend_email_id);
+<span class="sql-kw">CREATE INDEX</span> idx_events_type       <span class="sql-kw">ON</span> email_events(event_type);
+
+<span class="sql-cm">-- ★ UNIQUE constraints — chống trùng lặp data (v2)</span>
+<span class="sql-kw">CREATE UNIQUE INDEX</span> idx_events_unique <span class="sql-kw">ON</span> email_events(resend_email_id, event_type);
+<span class="sql-kw">CREATE UNIQUE INDEX</span> idx_send_logs_unique <span class="sql-kw">ON</span> send_logs(campaign_id, email);
+
+<span class="sql-cm">-- ★ SQL function đếm contacts theo level — thay fetch toàn bộ (v2)</span>
+<span class="sql-kw">CREATE OR REPLACE FUNCTION</span> <span class="sql-fn">count_contacts_per_level</span>()
+<span class="sql-kw">RETURNS TABLE</span>(level_id <span class="sql-kw">uuid</span>, count <span class="sql-kw">bigint</span>) <span class="sql-kw">AS</span> $$
+  <span class="sql-kw">SELECT</span> level_id, <span class="sql-fn">COUNT</span>(*) <span class="sql-kw">FROM</span> contacts
+  <span class="sql-kw">WHERE</span> level_id <span class="sql-kw">IS NOT NULL</span>
+  <span class="sql-kw">GROUP BY</span> level_id;
+$$ <span class="sql-kw">LANGUAGE</span> sql <span class="sql-kw">STABLE</span>;
+
+
 <span class="sql-cm">-- Auto-update updated_at cho templates</span>
 <span class="sql-kw">CREATE OR REPLACE FUNCTION</span> <span class="sql-fn">update_updated_at</span>()
 <span class="sql-kw">RETURNS TRIGGER AS</span> $$
