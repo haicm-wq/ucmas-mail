@@ -25,9 +25,11 @@
       return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    // DRY helper — refresh contacts (dùng ở 7 chỗ khác nhau)
+    // DRY helper — reload contacts từ API với filter hiện tại
     function refreshContacts() {
-      refreshContacts();
+      const search = document.querySelector('.tbl-search')?.value || '';
+      if (window._backendConnected) loadContactsPage(search);
+      else renderContactTable(search);
     }
 
     // Level lookup map — O(1) thay vì O(n) scan mỗi lần
@@ -99,7 +101,7 @@
       if (id === 'segments') renderSegmentPage();
       if (id === 'campaign') renderCampaignTargets();
       if (id === 'templates') { renderTemplates(); setTimeout(() => setEditorMode('visual'), 100); }
-      if (id === 'contacts') renderContactTable();
+      if (id === 'contacts') refreshContacts(); // dùng refreshContacts để load đúng filter từ API
       if (id === 'database') gotoDbPanel('setup');
       if (id === 'history' && window._backendConnected) refreshTracking();
       if (id === 'workflows' && !_workflowInited) { initWorkflows(); _workflowInited = true; }
@@ -172,10 +174,9 @@
     }
 
     function filterLevel(levelId) {
+      // Dùng setFilter thay vì tự xử lý — setFilter gọi refreshContacts() → API đúng filter
       gotoPage('contacts');
-      currentFilter = levelId;
-      renderContactTable();
-      renderFilterChips();
+      setFilter(levelId);
     }
 
     // ════════════════════════════════════════
@@ -258,33 +259,33 @@
         const textMatch = !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
         return levelMatch && textMatch;
       });
-      tbody.innerHTML = rows.map((c, i) => {
-        const lv = getLevelById(c.level_id); // tìm theo UUID
+      tbody.innerHTML = rows.map((c) => {
+        const lv = getLevelById(c.level_id);
         const color = lv ? lv.color : '#888';
-        const levelName = lv ? lv.name : (c.level || '—'); // hiển thị tên
-        // Status từ Supabase: active | unsubscribed | bounced
+        const levelName = lv ? lv.name : (c.level || '—');
         const dbStatus = c.dbStatus || 'active';
         const hasSent = c.last && c.last !== '—';
         const statusIcon = dbStatus === 'unsubscribed' ? 's-err' : dbStatus === 'bounced' ? 's-err' : hasSent ? 's-ok' : 's-pend';
         const statusLabel = dbStatus === 'unsubscribed' ? 'Unsub' : dbStatus === 'bounced' ? 'Bounced' : hasSent ? 'Đã gửi' : 'Active';
-        return `<tr data-idx="${i}">
+        const cid = esc(c.id); // dùng UUID thay index — an toàn khi filter active
+        return `<tr data-id="${cid}">
       <td><input type="checkbox" onchange="onRowCheck()"></td>
-      <td style="font-weight:500">${c.name}</td>
-      <td class="col-em">${c.email}</td>
-      <td><span class="lt" style="background:${hexToRgba(color, .12)};color:${color};border:1px solid ${hexToRgba(color, .25)}">● ${levelName}</span></td>
-      <td style="max-width:200px">${(c.tags||[]).map(t=>`<span class="tag-chip" onclick="removeTagFromContact(${i},'${t}')">${t} ×</span>`).join('')}<input class="tag-inline" type="text" placeholder="+ tag" onkeydown="if(event.key==='Enter'){addTagToContact(${i},this.value);this.value='';}" style="width:50px;border:none;background:transparent;color:var(--text);font-size:10px;outline:none"></td>
+      <td style="font-weight:500">${esc(c.name)}</td>
+      <td class="col-em">${esc(c.email)}</td>
+      <td><span class="lt" style="background:${hexToRgba(color, .12)};color:${color};border:1px solid ${hexToRgba(color, .25)}">\u25cf ${levelName}</span></td>
+      <td style="max-width:200px">${(c.tags||[]).map(t=>`<span class="tag-chip" onclick="removeTagFromContact('${cid}','${esc(t)}')">${esc(t)} \u00d7</span>`).join('')}<input class="tag-inline" type="text" placeholder="+ tag" onkeydown="if(event.key==='Enter'){addTagToContact('${cid}',this.value);this.value='';}" style="width:50px;border:none;background:transparent;color:var(--text);font-size:10px;outline:none"></td>
       <td><span class="sdot ${statusIcon}"></span>${statusLabel}</td>
       <td style="color:var(--muted);font-size:12px">${c.last}</td>
       <td>
-        <button class="abtn" onclick="viewContactHistory('${c.email}','${c.name.replace(/'/g,"\\'")}')"
-          style="font-size:10px;padding:2px 8px" title="Xem lịch sử email">📧 Lịch sử</button>
-        <select class="lsel" onchange="changeContactLevel(${i}, this.value)">
-          ${levels.map(l => `<option value="${l.id}"${l.id === c.level_id ? ' selected' : ''}>${l.name}</option>`).join('')}
+        <button class="abtn" onclick="viewContactHistory('${esc(c.email)}','${esc(c.name)}')"
+          style="font-size:10px;padding:2px 8px" title="Xem l\u1ecbch s\u1eed email">📧 L\u1ecbch s\u1eed</button>
+        <select class="lsel" onchange="changeContactLevel('${cid}', this.value)">
+          ${levels.map(l => `<option value="${l.id}"${l.id === c.level_id ? ' selected' : ''}>${esc(l.name)}</option>`).join('')}
         </select>
-        <button class="abtn" onclick="removeContact(${i})" style="margin-left:4px;color:var(--err)">✕</button>
+        <button class="abtn" onclick="removeContact('${cid}')" style="margin-left:4px;color:var(--err)">\u2715</button>
       </td>
     </tr>`;
-      }).join('') || `<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--muted)">Không có contact nào</td></tr>`;
+      }).join('') || `<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--muted)">Kh\u00f4ng c\u00f3 contact n\u00e0o</td></tr>`;
       document.getElementById('table-count').textContent = rows.length + ' contacts';
     }
 
@@ -501,68 +502,80 @@
         }
       }
     }
-    async function changeContactLevel(i, levelId) {
+    async function changeContactLevel(contactId, levelId) {
+      const c = contacts.find(c => c.id === contactId);
+      if (!c) return;
       const lv = getLevelById(levelId);
-      contacts[i].level_id = levelId;
-      contacts[i].level = lv ? lv.name : '';
-      renderContactTable();
+      c.level_id = levelId;
+      c.level = lv ? lv.name : '';
+      renderContactTable('', true);
       toast(`Đã cập nhật level → ${lv ? lv.name : levelId}`);
-      if (window._backendConnected && contacts[i].id) {
-        try { await apiFetch('/api/contacts?action=level', { method: 'PATCH', body: JSON.stringify({ id: contacts[i].id, levelId }) }); }
+      if (window._backendConnected && c.id) {
+        try { await apiFetch('/api/contacts?action=level', { method: 'PATCH', body: JSON.stringify({ id: c.id, levelId }) }); }
         catch (e) { toast('Lỗi lưu level: ' + e.message, 'err'); }
       }
     }
-    function removeContact(i) { contacts.splice(i, 1); renderContactTable(); toast('Đã xoá contact', 'warn'); }
+    async function removeContact(contactId) {
+      const idx = contacts.findIndex(c => c.id === contactId);
+      if (idx === -1) return;
+      const c = contacts[idx];
+      contacts.splice(idx, 1);
+      renderContactTable('', true);
+      toast('Đã xoá contact', 'warn');
+      if (window._backendConnected && c.id) {
+        try {
+          await apiFetch('/api/contacts?id=' + c.id, { method: 'DELETE' });
+          clearCache();
+        } catch (e) { toast('Lỗi xóa trên server: ' + e.message, 'err'); }
+      }
+    }
 
     // ════════════════════════════════════════
     // TAG MANAGEMENT
     // ════════════════════════════════════════
     async function loadAllTags() {
       if (!window._backendConnected) return;
-      // Load tags từ bảng tags (có màu, mô tả)
-      try {
-        const tagData = await apiFetch('/api/contacts?action=tags');
-        if (Array.isArray(tagData)) allTags = tagData;
+      // Load tags và segments song song — nhanh hơn 2x so với tuần tự
+      const [tagsRes, segsRes] = await Promise.allSettled([
+        apiFetch('/api/contacts?action=tags'),
+        apiFetch('/api/contacts?action=segments'),
+      ]);
+      if (tagsRes.status === 'fulfilled' && Array.isArray(tagsRes.value)) {
+        allTags = tagsRes.value;
         renderFilterChips();
         renderSidebarTags();
-      } catch (e) {
-        console.warn('[loadAllTags] Không tải được tags:', e.message);
-        // Nếu bảng tags chưa tạo (migration chưa chạy), thử fallback từ contacts.tags[]
-        try {
-          const fallback = await apiFetch('/api/contacts?action=tags');
-          if (Array.isArray(fallback)) allTags = fallback;
-          renderFilterChips(); renderSidebarTags();
-        } catch (_) {}
+      } else {
+        console.warn('[loadAllTags] Không tải được tags:', tagsRes.reason?.message);
       }
-      // Load segments
-      try {
-        const segs = await apiFetch('/api/contacts?action=segments');
-        if (Array.isArray(segs)) allSegments = segs;
+      if (segsRes.status === 'fulfilled' && Array.isArray(segsRes.value)) {
+        allSegments = segsRes.value;
         renderSidebarSegments();
-      } catch (e) { console.warn('[loadAllTags] Không tải được segments:', e.message); }
+      } else {
+        console.warn('[loadAllTags] Không tải được segments:', segsRes.reason?.message);
+      }
     }
 
-    async function addTagToContact(i, tag) {
+    async function addTagToContact(contactId, tag) {
       tag = tag.trim();
-      if (!tag || !contacts[i]) return;
-      const c = contacts[i];
+      const c = contacts.find(c => c.id === contactId);
+      if (!tag || !c) return;
       if (!c.tags) c.tags = [];
       if (c.tags.includes(tag)) return;
       c.tags.push(tag);
-      renderContactTable();
+      renderContactTable('', true);
       if (window._backendConnected && c.id) {
         try {
           await apiFetch('/api/contacts?action=contact-tags', { method: 'PATCH', body: JSON.stringify({ id: c.id, tags: c.tags }) });
-          loadAllTags(); // refresh tag list
+          loadAllTags();
         } catch (e) { toast('Lỗi lưu tag: ' + e.message, 'err'); }
       }
     }
 
-    async function removeTagFromContact(i, tag) {
-      if (!contacts[i]) return;
-      const c = contacts[i];
+    async function removeTagFromContact(contactId, tag) {
+      const c = contacts.find(c => c.id === contactId);
+      if (!c) return;
       c.tags = (c.tags || []).filter(t => t !== tag);
-      renderContactTable();
+      renderContactTable('', true);
       if (window._backendConnected && c.id) {
         try {
           await apiFetch('/api/contacts?action=contact-tags', { method: 'PATCH', body: JSON.stringify({ id: c.id, tags: c.tags }) });
