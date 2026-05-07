@@ -2,13 +2,15 @@ import { makeDB } from '../lib/supabase.js';
 import { ok, err, allowCors, getDB, getEmailConfig } from './_utils.js';
 import { Resend } from 'resend';
 
+const RATE_LIMIT_MS = 120;
+
 /**
  * Tracking API
  *
  * GET  ?campaign_id=xxx       → Tracking stats cho 1 campaign
  * GET  ?campaign_id=xxx&logs  → Chi tiết event logs
  * GET  ?summary               → Tổng quan tất cả campaigns
- * POST ?backfill=campaign_id  → Lấy trạng thái email cũ từ Resend API và ghi vào email_events
+ * POST ?backfill=campaign_id  → Đồng bộ từ Resend: tìm email theo subject, tạo send_logs + events
  */
 export default async function handler(req, res) {
   allowCors(res);
@@ -17,7 +19,7 @@ export default async function handler(req, res) {
   try {
     const db = makeDB(getDB(req));
 
-    // ── POST: Backfill trạng thái email cũ từ Resend ──
+    // ── POST: Backfill từ Resend ──
     if (req.method === 'POST') {
       const { backfill } = req.query;
       if (!backfill) return err(res, 'Thiếu backfill=campaign_id');
@@ -25,38 +27,7 @@ export default async function handler(req, res) {
       const { resendKey } = getEmailConfig(req);
       if (!resendKey) return err(res, 'Chưa cấu hình Resend API Key');
 
-      const resend = new Resend(resendKey);
-
-      // Lấy tất cả send_logs có resend_id cho campaign này
-      const { logs } = await db.getCampaignEvents(backfill);
-      const withResendId = (logs || []).filter(l => l.resend_id);
-
-      let synced = 0, errors = 0;
-      for (const log of withResendId) {
-        try {
-          // Gọi Resend API để lấy trạng thái email
-          const emailData = await resend.emails.get(log.resend_id);
-
-          if (emailData?.data?.last_event) {
-            const event = emailData.data.last_event; // delivered, opened, clicked, bounced, complained
-            // Ghi event vào email_events (tránh duplicate bằng cách check trước)
-            await db.logEmailEvent({
-              resend_email_id: log.resend_id,
-              event_type: event,
-              recipient_email: log.email,
-              metadata: { source: 'backfill', raw_status: emailData.data.last_event },
-            });
-            synced++;
-          }
-        } catch (e) {
-          errors++;
-          console.error(`[backfill] Error for ${log.resend_id}:`, e.message);
-        }
-        // Rate limit: Resend cho phép ~10 req/s
-        await new Promise(r => setTimeout(r, 120));
-      }
-
-      return ok(res, { total: withResendId.length, synced, errors });
+      return await handleBackfill(res, db, new Resend(resendKey), backfill);
     }
 
     // ── GET endpoints ──
@@ -64,21 +35,176 @@ export default async function handler(req, res) {
 
     const { campaign_id, logs, summary } = req.query;
 
-    if (summary !== undefined) {
-      const data = await db.getTrackingSummary();
-      return ok(res, data);
-    }
-
+    if (summary !== undefined) return ok(res, await db.getTrackingSummary());
     if (!campaign_id) return err(res, 'Thiếu campaign_id');
+    if (logs !== undefined) return ok(res, await db.getCampaignEvents(campaign_id));
+    return ok(res, await db.getCampaignTrackingStats(campaign_id));
 
-    if (logs !== undefined) {
-      const data = await db.getCampaignEvents(campaign_id);
-      return ok(res, data);
-    }
-
-    const data = await db.getCampaignTrackingStats(campaign_id);
-    ok(res, data);
-  } catch (e) {
-    err(res, e.message, 500);
-  }
+  } catch (e) { err(res, e.message, 500); }
 }
+
+/**
+ * Backfill thông minh:
+ * 1. Nếu campaign CÓ send_logs (có resend_id) → fetch trạng thái từng email từ Resend
+ * 2. Nếu campaign KHÔNG CÓ send_logs → tìm trên Resend bằng subject, tạo send_logs mới
+ */
+async function handleBackfill(res, db, resend, campaignId) {
+  // Lấy campaign info
+  const campaigns = await db.getCampaigns();
+  const campaign = campaigns.find(c => c.id === campaignId);
+  if (!campaign) return err(res, 'Campaign không tồn tại');
+
+  // Lấy send_logs hiện tại
+  const existingLogs = await db.getCampaignLogs(campaignId);
+  const logsWithResendId = (existingLogs || []).filter(l => l.resend_id);
+
+  // ── CASE 1: Đã có send_logs → chỉ cần update trạng thái ──
+  if (logsWithResendId.length > 0) {
+    return await backfillFromExistingLogs(res, db, resend, logsWithResendId);
+  }
+
+  // ── CASE 2: KHÔNG có send_logs → tìm trên Resend bằng subject ──
+  return await backfillBySearching(res, db, resend, campaign, campaignId);
+}
+
+/**
+ * Case 1: Đã có send_logs → fetch trạng thái từ Resend API
+ */
+async function backfillFromExistingLogs(res, db, resend, logs) {
+  let synced = 0, errors = 0;
+  for (const log of logs) {
+    try {
+      const emailData = await resend.emails.get(log.resend_id);
+      if (emailData?.data?.last_event) {
+        await db.logEmailEvent({
+          resend_email_id: log.resend_id,
+          event_type: emailData.data.last_event,
+          recipient_email: log.email,
+          metadata: { source: 'backfill' },
+        });
+        synced++;
+      }
+    } catch (e) {
+      errors++;
+      console.error(`[backfill] ${log.resend_id}:`, e.message);
+    }
+    await sleep(RATE_LIMIT_MS);
+  }
+  return ok(res, { mode: 'existing_logs', total: logs.length, synced, errors });
+}
+
+/**
+ * Case 2: Không có send_logs → List emails từ Resend, match theo subject
+ * Tạo send_logs mới + ghi events
+ */
+async function backfillBySearching(res, db, resend, campaign, campaignId) {
+  const subject = campaign.subject;
+  if (!subject) return err(res, 'Campaign không có subject');
+
+  // List emails từ Resend API (max 100/page, pagination bằng cursor)
+  const allEmails = [];
+  let lastId = undefined;
+  const MAX_PAGES = 30; // 30 * 100 = 3000 emails max
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    try {
+      const params = { limit: 100 };
+      if (lastId) params.after = lastId;
+      const { data: result } = await resend.emails.list(params);
+      const emails = result?.data || [];
+      if (!emails.length) break;
+
+      // Filter theo subject (match chính xác hoặc rendered subject)
+      for (const email of emails) {
+        if (email.subject === subject || email.subject?.includes(subject.split('{{')[0]?.trim())) {
+          allEmails.push(email);
+        }
+      }
+
+      lastId = emails[emails.length - 1]?.id;
+      if (emails.length < 100) break; // hết data
+
+      await sleep(RATE_LIMIT_MS);
+    } catch (e) {
+      console.error('[backfill search]', e.message);
+      break;
+    }
+  }
+
+  if (!allEmails.length) {
+    return ok(res, { mode: 'search', found: 0, message: `Không tìm thấy email nào trên Resend với subject: "${subject}"` });
+  }
+
+  // Loại bỏ duplicate (cùng recipient, giữ email đầu tiên)
+  const seenRecipients = new Set();
+  const uniqueEmails = [];
+  for (const email of allEmails) {
+    const to = email.to?.[0] || '';
+    if (!seenRecipients.has(to)) {
+      seenRecipients.add(to);
+      uniqueEmails.push(email);
+    }
+  }
+
+  // Lấy contacts để map email → contact_id
+  const contacts = campaign.target_levels?.length
+    ? await db.getContactsByLevelIds(campaign.target_levels)
+    : [];
+  const contactMap = {};
+  contacts.forEach(c => { contactMap[c.email] = c; });
+
+  // Tạo send_logs + events cho từng email tìm được
+  let created = 0, eventsCreated = 0, errors = 0;
+  for (const email of uniqueEmails) {
+    const to = email.to?.[0] || '';
+    const contact = contactMap[to];
+    try {
+      // Tạo send_log
+      await db.logSend({
+        campaign_id: campaignId,
+        contact_id: contact?.id || null,
+        email: to,
+        level: contact?.levels?.name || '',
+        status: 'sent',
+        resend_id: email.id,
+      });
+      created++;
+
+      // Fetch chi tiết trạng thái và ghi event
+      try {
+        const detail = await resend.emails.get(email.id);
+        if (detail?.data?.last_event) {
+          await db.logEmailEvent({
+            resend_email_id: email.id,
+            event_type: detail.data.last_event,
+            recipient_email: to,
+            metadata: { source: 'backfill_search' },
+          });
+          eventsCreated++;
+        }
+      } catch (e) { /* skip event if fetch fails */ }
+
+      await sleep(RATE_LIMIT_MS);
+    } catch (e) {
+      errors++;
+      console.error(`[backfill create]`, e.message);
+    }
+  }
+
+  // Cập nhật campaign status
+  await db.updateCampaignStatus(campaignId, {
+    status: 'completed', sent_count: created, failed_count: 0,
+  });
+
+  return ok(res, {
+    mode: 'search',
+    found: allEmails.length,
+    unique: uniqueEmails.length,
+    duplicates: allEmails.length - uniqueEmails.length,
+    send_logs_created: created,
+    events_created: eventsCreated,
+    errors,
+  });
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
