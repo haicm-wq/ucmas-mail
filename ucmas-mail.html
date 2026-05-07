@@ -2608,6 +2608,113 @@
     .toast-icon {
       font-size: 16px
     }
+
+    /* ═══ TRACKING COMPONENTS ═══ */
+    .trk-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px 16px;
+      text-align: center;
+      transition: all .2s
+    }
+    .trk-card:hover {
+      border-color: var(--border2);
+      transform: translateY(-1px)
+    }
+    .trk-card-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 8px;
+      font-size: 14px
+    }
+    .trk-card-val {
+      font-family: var(--fm);
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.2
+    }
+    .trk-card-lbl {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      font-family: var(--fm);
+      letter-spacing: .3px
+    }
+
+    .trk-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      font-family: var(--fm);
+      font-size: 11.5px;
+      color: var(--text);
+      white-space: nowrap
+    }
+    .trk-pill-icon {
+      font-size: 12px
+    }
+
+    .trk-stat-mini {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center
+    }
+    .trk-stat-v {
+      font-family: var(--fm);
+      font-size: 20px;
+      font-weight: 700
+    }
+    .trk-stat-l {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+      font-family: var(--fm);
+      text-transform: uppercase;
+      letter-spacing: .5px
+    }
+
+    .trk-rate-bar {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px
+    }
+    .trk-rate-hd {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-family: var(--fm);
+      margin-bottom: 6px;
+      color: var(--muted)
+    }
+    .trk-rate-hd span:last-child {
+      font-weight: 700;
+      font-size: 13px
+    }
+    .trk-rate-bg {
+      height: 6px;
+      background: var(--surface3);
+      border-radius: 3px;
+      overflow: hidden
+    }
+    .trk-rate-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width .6s ease
+    }
+
+    @keyframes spin { to { transform: rotate(360deg) } }
   </style>
 </head>
 
@@ -3523,16 +3630,76 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
   <div id="page-history" class="page">
     <div class="ph">
       <div>
-        <div class="ph-title">Campaign History</div>
-        <div class="ph-sub">Lịch sử gửi và log chi tiết</div>
+        <div class="ph-title">Campaign History & Analytics</div>
+        <div class="ph-sub">Theo dõi hiệu suất email: gửi, nhận, mở, click, bounce, spam</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="refreshTracking()" style="font-size:12px">🔄 Làm mới</button>
       </div>
     </div>
+
+    <!-- Tracking Overview Cards -->
+    <div id="tracking-overview" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px">
+      <div class="trk-card">
+        <div class="trk-card-icon" style="background:rgba(91,168,255,.12);color:#5ba8ff">✉</div>
+        <div class="trk-card-val" id="trk-total-sent" style="color:#5ba8ff">—</div>
+        <div class="trk-card-lbl">Đã gửi</div>
+      </div>
+      <div class="trk-card">
+        <div class="trk-card-icon" style="background:rgba(61,232,160,.12);color:#3de8a0">✓</div>
+        <div class="trk-card-val" id="trk-total-delivered" style="color:#3de8a0">—</div>
+        <div class="trk-card-lbl">Delivered</div>
+      </div>
+      <div class="trk-card">
+        <div class="trk-card-icon" style="background:rgba(79,108,255,.12);color:#4f6cff">👁</div>
+        <div class="trk-card-val" id="trk-total-opened" style="color:#4f6cff">—</div>
+        <div class="trk-card-lbl">Đã mở</div>
+      </div>
+      <div class="trk-card">
+        <div class="trk-card-icon" style="background:rgba(201,126,245,.12);color:#c97ef5">🔗</div>
+        <div class="trk-card-val" id="trk-total-clicked" style="color:#c97ef5">—</div>
+        <div class="trk-card-lbl">Click link</div>
+      </div>
+      <div class="trk-card">
+        <div class="trk-card-icon" style="background:rgba(255,126,179,.12);color:#ff7eb3">⚠</div>
+        <div class="trk-card-val" id="trk-total-bounced" style="color:#ff7eb3">—</div>
+        <div class="trk-card-lbl">Bounce</div>
+      </div>
+      <div class="trk-card">
+        <div class="trk-card-icon" style="background:rgba(255,87,87,.12);color:#ff5757">🚫</div>
+        <div class="trk-card-val" id="trk-total-spam" style="color:#ff5757">—</div>
+        <div class="trk-card-lbl">Spam</div>
+      </div>
+    </div>
+
+    <!-- Webhook Setup Banner -->
+    <div id="webhook-banner" class="info-box warn" style="margin-bottom:16px;display:none">
+      <strong>⚡ Cài đặt Webhook để tracking mở/click:</strong>
+      Vào <a href="https://resend.com/webhooks" target="_blank" style="color:var(--accent2)">Resend Dashboard → Webhooks</a>
+      → Add Endpoint → URL: <code id="webhook-url-display" style="background:var(--surface2);padding:2px 8px;border-radius:4px;font-size:11px"></code>
+      → Chọn events: <code>email.delivered, email.opened, email.clicked, email.bounced, email.complained</code>
+    </div>
+
     <div class="card">
       <div class="card-header">
         <div class="card-title">All Campaigns</div>
+        <span style="font-size:11px;color:var(--muted)" id="history-campaign-count"></span>
       </div>
-      <div class="card-body" style="padding:0 18px">
+      <div class="card-body" style="padding:0 18px" id="history-campaigns-body">
         <div style="padding:28px;color:var(--muted);text-align:center">Đang tải...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Campaign Tracking Detail -->
+  <div class="modal-overlay" id="modal-tracking">
+    <div class="modal" style="max-width:720px;width:95vw">
+      <div class="modal-header">
+        <div class="modal-title" id="trk-modal-title">📊 Campaign Tracking</div>
+        <button class="modal-close" onclick="closeModal('modal-tracking')">✕</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto" id="trk-modal-body">
+        <div style="text-align:center;padding:20px;color:var(--muted)">Đang tải...</div>
       </div>
     </div>
   </div>
@@ -4600,6 +4767,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000</pre>
       if (id === 'templates') { renderTemplates(); setTimeout(() => setEditorMode('visual'), 100); }
       if (id === 'contacts') renderContactTable();
       if (id === 'database') gotoDbPanel('setup');
+      if (id === 'history' && window._backendConnected) refreshTracking();
     }
 
     // ════════════════════════════════════════
@@ -6743,28 +6911,218 @@ ${html}
     }
 
     function renderHistoryFromApi(campaigns) {
-      const body = document.querySelector('#page-history .card-body');
-      if (!body || !campaigns.length) return;
+      const body = document.getElementById('history-campaigns-body');
+      if (!body) return;
+      if (!campaigns || !campaigns.length) {
+        body.innerHTML = '<div style="padding:20px;color:var(--muted);text-align:center">Chưa có campaign nào</div>';
+        return;
+      }
+      const countEl = document.getElementById('history-campaign-count');
+      if (countEl) countEl.textContent = campaigns.length + ' campaigns';
+
       const statusIcon = s => s === 'completed' ? 'ok' : s === 'failed' ? 'err' : 'partial';
       body.innerHTML = campaigns.map(c => {
-        const pct = c.sent_count + c.failed_count > 0
-          ? Math.round(c.sent_count / (c.sent_count + c.failed_count) * 100) : 0;
-        return `<div class="h-item">
+        const total = (c.sent_count || 0) + (c.failed_count || 0);
+        const pct = total > 0 ? Math.round(c.sent_count / total * 100) : 0;
+        const trk = c.tracking || {};
+        const openRate = c.sent_count > 0 ? Math.round((trk.opened || 0) / c.sent_count * 100) : 0;
+        const clickRate = c.sent_count > 0 ? Math.round((trk.clicked || 0) / c.sent_count * 100) : 0;
+        const hasTracking = trk.delivered > 0 || trk.opened > 0 || trk.clicked > 0 || trk.bounced > 0 || trk.complained > 0;
+
+        return `<div class="h-item" style="flex-wrap:wrap;gap:10px;padding:14px 0;border-bottom:1px solid var(--border)">
       <div class="h-icon ${statusIcon(c.status)}">✉</div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:180px">
         <div class="h-title">${c.name}</div>
         <div class="h-meta">
           ${(c.target_levels || []).map((l, i) => `<span class="lt lt${(i % 4) + 1}">${l}</span>`).join('')}
           · ${c.sent_at ? new Date(c.sent_at).toLocaleDateString('vi-VN') : 'Chưa gửi'}
         </div>
       </div>
-      <div class="h-stats">
-        <div class="h-sent" style="color:var(--${c.status === 'completed' ? 'ok' : 'warn'})">${c.sent_count}/${c.sent_count + c.failed_count}</div>
-        <div class="h-rate">${pct}% · ${c.failed_count} failed</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="trk-pill" title="Gửi thành công"><span class="trk-pill-icon" style="color:#3de8a0">✓</span>${c.sent_count}/${total}</div>
+        ${hasTracking ? `
+        <div class="trk-pill" title="Delivered"><span class="trk-pill-icon" style="color:#5ba8ff">📬</span>${trk.delivered || 0}</div>
+        <div class="trk-pill" title="Đã mở (${openRate}%)"><span class="trk-pill-icon" style="color:#4f6cff">👁</span>${trk.opened || 0} <small style="color:var(--muted)">${openRate}%</small></div>
+        <div class="trk-pill" title="Click link (${clickRate}%)"><span class="trk-pill-icon" style="color:#c97ef5">🔗</span>${trk.clicked || 0} <small style="color:var(--muted)">${clickRate}%</small></div>
+        ${trk.bounced ? `<div class="trk-pill" title="Bounce" style="border-color:#ff7eb3"><span class="trk-pill-icon" style="color:#ff7eb3">⚠</span>${trk.bounced}</div>` : ''}
+        ${trk.complained ? `<div class="trk-pill" title="Spam" style="border-color:#ff5757"><span class="trk-pill-icon" style="color:#ff5757">🚫</span>${trk.complained}</div>` : ''}
+        ` : `<span style="font-size:11px;color:var(--muted);font-style:italic">Chưa có tracking data</span>`}
       </div>
-      <button class="abtn" style="margin-left:12px" onclick="exportCampaignLogs('${c.id}')">Export</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="abtn" style="font-size:11px;padding:3px 10px" onclick="openTrackingDetail('${c.id}','${c.name.replace(/'/g,"\\'")}')">📊 Chi tiết</button>
+        <button class="abtn" style="font-size:11px;padding:3px 10px" onclick="exportCampaignLogs('${c.id}')">⬇ Export</button>
+      </div>
+      ${hasTracking ? `<div style="width:100%;display:flex;gap:2px;height:4px;border-radius:2px;overflow:hidden;margin-top:4px">
+        <div style="flex:${trk.delivered || 0};background:#3de8a0;min-width:${trk.delivered ? '2px' : '0'}" title="Delivered: ${trk.delivered}"></div>
+        <div style="flex:${trk.opened || 0};background:#4f6cff;min-width:${trk.opened ? '2px' : '0'}" title="Opened: ${trk.opened}"></div>
+        <div style="flex:${trk.clicked || 0};background:#c97ef5;min-width:${trk.clicked ? '2px' : '0'}" title="Clicked: ${trk.clicked}"></div>
+        <div style="flex:${trk.bounced || 0};background:#ff7eb3;min-width:${trk.bounced ? '2px' : '0'}" title="Bounced: ${trk.bounced}"></div>
+        <div style="flex:${trk.complained || 0};background:#ff5757;min-width:${trk.complained ? '2px' : '0'}" title="Spam: ${trk.complained}"></div>
+      </div>` : ''}
     </div>`;
-      }).join('') || '<div style="padding:20px;color:var(--muted);text-align:center">Chưa có campaign nào</div>';
+      }).join('');
+
+      // Update overview cards
+      updateTrackingOverview(campaigns);
+    }
+
+    function updateTrackingOverview(campaigns) {
+      let totalSent = 0, totalDelivered = 0, totalOpened = 0, totalClicked = 0, totalBounced = 0, totalSpam = 0;
+      (campaigns || []).forEach(c => {
+        totalSent += c.sent_count || 0;
+        const t = c.tracking || {};
+        totalDelivered += t.delivered || 0;
+        totalOpened += t.opened || 0;
+        totalClicked += t.clicked || 0;
+        totalBounced += t.bounced || 0;
+        totalSpam += t.complained || 0;
+      });
+      const el = id => document.getElementById(id);
+      el('trk-total-sent').textContent = totalSent;
+      el('trk-total-delivered').textContent = totalDelivered;
+      el('trk-total-opened').textContent = totalOpened;
+      el('trk-total-clicked').textContent = totalClicked;
+      el('trk-total-bounced').textContent = totalBounced;
+      el('trk-total-spam').textContent = totalSpam;
+
+      // Show webhook banner if no tracking data
+      const noTracking = totalDelivered === 0 && totalOpened === 0;
+      const banner = document.getElementById('webhook-banner');
+      if (banner) {
+        banner.style.display = (totalSent > 0 && noTracking) ? '' : 'none';
+        const urlDisplay = document.getElementById('webhook-url-display');
+        if (urlDisplay) urlDisplay.textContent = window.location.origin + '/api/webhooks';
+      }
+    }
+
+    async function openTrackingDetail(campaignId, campaignName) {
+      document.getElementById('trk-modal-title').textContent = '📊 ' + campaignName;
+      document.getElementById('trk-modal-body').innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)"><div class="spin" style="width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent2);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px"></div>Đang tải tracking data...</div>';
+      document.getElementById('modal-tracking').classList.add('open');
+
+      try {
+        // Load tracking stats
+        const stats = await apiFetch(`/api/tracking?campaign_id=${campaignId}`);
+        // Load event logs
+        const { logs, events } = await apiFetch(`/api/tracking?campaign_id=${campaignId}&logs`);
+
+        renderTrackingModal(stats, logs, events, campaignName);
+      } catch (e) {
+        document.getElementById('trk-modal-body').innerHTML = `<div style="text-align:center;padding:30px;color:var(--err)">❌ Lỗi tải dữ liệu: ${e.message}<br><br><span style="color:var(--muted);font-size:12px">Kiểm tra xem bạn đã tạo bảng <code>email_events</code> trong Supabase chưa.</span></div>`;
+      }
+    }
+
+    function renderTrackingModal(stats, logs, events, name) {
+      const body = document.getElementById('trk-modal-body');
+      const openRate = stats.open_rate || 0;
+      const clickRate = stats.click_rate || 0;
+      const deliveryRate = stats.total_sent ? Math.round(stats.delivered / stats.total_sent * 100) : 0;
+
+      // Build per-email status map
+      const emailMap = {};
+      (logs || []).forEach(l => {
+        emailMap[l.email] = { email: l.email, level: l.level, status: l.status, events: [] };
+      });
+      (events || []).forEach(ev => {
+        const email = ev.recipient_email;
+        if (!emailMap[email]) emailMap[email] = { email, level: '—', status: '—', events: [] };
+        emailMap[email].events.push(ev);
+      });
+      const emailList = Object.values(emailMap);
+
+      body.innerHTML = `
+        <!-- Stats Cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:16px">
+          <div class="trk-stat-mini"><div class="trk-stat-v" style="color:#5ba8ff">${stats.total_sent}</div><div class="trk-stat-l">Gửi</div></div>
+          <div class="trk-stat-mini"><div class="trk-stat-v" style="color:#3de8a0">${stats.delivered}</div><div class="trk-stat-l">Delivered</div></div>
+          <div class="trk-stat-mini"><div class="trk-stat-v" style="color:#4f6cff">${stats.unique_opens}</div><div class="trk-stat-l">Unique Opens</div></div>
+          <div class="trk-stat-mini"><div class="trk-stat-v" style="color:#c97ef5">${stats.unique_clicks}</div><div class="trk-stat-l">Unique Clicks</div></div>
+          <div class="trk-stat-mini"><div class="trk-stat-v" style="color:#ff7eb3">${stats.bounced}</div><div class="trk-stat-l">Bounced</div></div>
+          <div class="trk-stat-mini"><div class="trk-stat-v" style="color:#ff5757">${stats.complained}</div><div class="trk-stat-l">Spam</div></div>
+        </div>
+
+        <!-- Rate Bars -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+          <div class="trk-rate-bar">
+            <div class="trk-rate-hd"><span>Delivery Rate</span><span style="color:#3de8a0">${deliveryRate}%</span></div>
+            <div class="trk-rate-bg"><div class="trk-rate-fill" style="width:${deliveryRate}%;background:#3de8a0"></div></div>
+          </div>
+          <div class="trk-rate-bar">
+            <div class="trk-rate-hd"><span>Open Rate</span><span style="color:#4f6cff">${openRate}%</span></div>
+            <div class="trk-rate-bg"><div class="trk-rate-fill" style="width:${openRate}%;background:#4f6cff"></div></div>
+          </div>
+          <div class="trk-rate-bar">
+            <div class="trk-rate-hd"><span>Click Rate</span><span style="color:#c97ef5">${clickRate}%</span></div>
+            <div class="trk-rate-bg"><div class="trk-rate-fill" style="width:${clickRate}%;background:#c97ef5"></div></div>
+          </div>
+        </div>
+
+        ${stats.total_failed > 0 ? `<div class="info-box warn" style="margin-bottom:12px">⚠ ${stats.total_failed} email gửi thất bại</div>` : ''}
+        ${stats.bounced > 0 ? `<div class="info-box warn" style="margin-bottom:12px">⚠ ${stats.bounced} email bị bounce — xem xét loại bỏ các email này khỏi danh sách</div>` : ''}
+        ${stats.complained > 0 ? `<div class="info-box warn" style="margin-bottom:12px;border-color:#ff5757">🚫 ${stats.complained} người đánh dấu spam — nên ngưng gửi cho họ</div>` : ''}
+
+        <!-- Per-email detail -->
+        <div style="margin-top:12px">
+          <div style="font-weight:600;font-size:13px;margin-bottom:8px">📋 Chi tiết từng email (${emailList.length})</div>
+          <div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
+            <table style="width:100%;font-size:12px;border-collapse:collapse">
+              <thead>
+                <tr style="background:var(--surface2);position:sticky;top:0">
+                  <th style="padding:8px 10px;text-align:left;font-weight:600;border-bottom:1px solid var(--border)">Email</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:600;border-bottom:1px solid var(--border)">Level</th>
+                  <th style="padding:8px 10px;text-align:center;font-weight:600;border-bottom:1px solid var(--border)">Sent</th>
+                  <th style="padding:8px 10px;text-align:center;font-weight:600;border-bottom:1px solid var(--border)">Delivered</th>
+                  <th style="padding:8px 10px;text-align:center;font-weight:600;border-bottom:1px solid var(--border)">Opened</th>
+                  <th style="padding:8px 10px;text-align:center;font-weight:600;border-bottom:1px solid var(--border)">Clicked</th>
+                  <th style="padding:8px 10px;text-align:center;font-weight:600;border-bottom:1px solid var(--border)">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${emailList.map(em => {
+                  const evTypes = em.events.map(e => e.event_type);
+                  const hasDelivered = evTypes.includes('delivered');
+                  const hasOpened = evTypes.includes('opened');
+                  const hasClicked = evTypes.includes('clicked');
+                  const hasBounced = evTypes.includes('bounced');
+                  const hasComplained = evTypes.includes('complained');
+                  const statusBadge = hasBounced ? '<span style="color:#ff7eb3">Bounced</span>'
+                    : hasComplained ? '<span style="color:#ff5757">Spam</span>'
+                    : em.status === 'failed' ? '<span style="color:var(--err)">Failed</span>'
+                    : '<span style="color:var(--ok)">OK</span>';
+                  return `<tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:6px 10px;font-family:var(--fm)">${em.email}</td>
+                    <td style="padding:6px 10px">${em.level || '—'}</td>
+                    <td style="padding:6px 10px;text-align:center">${em.status === 'sent' ? '✅' : em.status === 'failed' ? '❌' : '—'}</td>
+                    <td style="padding:6px 10px;text-align:center">${hasDelivered ? '📬' : '—'}</td>
+                    <td style="padding:6px 10px;text-align:center">${hasOpened ? '👁' : '—'}</td>
+                    <td style="padding:6px 10px;text-align:center">${hasClicked ? '🔗' : '—'}</td>
+                    <td style="padding:6px 10px;text-align:center">${statusBadge}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    async function refreshTracking() {
+      toast('Đang tải tracking data...');
+      try {
+        const data = await apiFetch('/api/tracking?summary');
+        if (data) {
+          // Merge tracking data into existing campaigns or render directly
+          renderHistoryFromApi(data);
+          toast('Đã cập nhật tracking data');
+        }
+      } catch (e) {
+        toast('Lỗi: ' + e.message + ' — Bạn cần tạo bảng email_events trước.', 'err');
+        // Fallback: reload campaigns without tracking
+        try {
+          const ca = await apiFetch('/api/campaigns');
+          renderHistoryFromApi(ca);
+        } catch (_) {}
+      }
     }
 
     async function exportCampaignLogs(campaignId) {

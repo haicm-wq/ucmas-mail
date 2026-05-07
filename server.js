@@ -8,7 +8,7 @@ import fs from 'fs';
 
 import * as db from './lib/supabase.js';
 import { sendCampaign, sendTestEmail } from './lib/email.js';
-import { parseContactFile } from './lib/csvParser.js';
+import { parseContactBuffer as parseContactFile } from './lib/csvParser.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app  = express();
@@ -278,6 +278,73 @@ app.post('/api/campaigns/send', async (req, res) => {
 app.get('/api/stats', async (req, res) => {
   try { ok(res, await db.getDashStats()); }
   catch (e) { err(res, e.message, 500); }
+});
+
+// ════════════════════════════════════════
+// WEBHOOK — Resend email events
+// ════════════════════════════════════════
+
+app.post('/api/webhooks', async (req, res) => {
+  try {
+    const event = req.body;
+    if (!event || !event.type) return res.status(400).json({ error: 'Invalid payload' });
+
+    const eventMap = {
+      'email.sent': 'sent', 'email.delivered': 'delivered',
+      'email.delivery_delayed': 'delayed', 'email.opened': 'opened',
+      'email.clicked': 'clicked', 'email.bounced': 'bounced',
+      'email.complained': 'complained',
+    };
+    const eventType = eventMap[event.type];
+    if (!eventType) return res.status(200).json({ received: true, ignored: true });
+
+    const data = event.data || {};
+    const record = {
+      resend_email_id: data.email_id || data.id || null,
+      event_type: eventType,
+      recipient_email: data.to?.[0] || data.to || data.email || '',
+      metadata: {},
+      created_at: data.created_at || new Date().toISOString(),
+    };
+
+    if (eventType === 'clicked' && data.click) {
+      record.metadata = { url: data.click.link || '', user_agent: data.click.user_agent || '' };
+    }
+    if (eventType === 'opened' && data.open) {
+      record.metadata = { user_agent: data.open.user_agent || '' };
+    }
+    if (eventType === 'bounced' && data.bounce) {
+      record.metadata = { bounce_type: data.bounce.type || '', bounce_message: data.bounce.message || '' };
+    }
+    if (eventType === 'complained') {
+      record.metadata = { complaint_type: 'spam' };
+    }
+
+    await db.logEmailEvent(record);
+
+    if ((eventType === 'bounced' || eventType === 'complained') && record.resend_email_id) {
+      await db.updateSendLogByResendId(record.resend_email_id, eventType === 'bounced' ? 'bounced' : 'complained');
+    }
+
+    res.status(200).json({ received: true, event_type: eventType });
+  } catch (e) {
+    console.error('[Webhook]', e.message);
+    res.status(200).json({ received: true, error: e.message });
+  }
+});
+
+// ════════════════════════════════════════
+// TRACKING — Email analytics
+// ════════════════════════════════════════
+
+app.get('/api/tracking', async (req, res) => {
+  try {
+    const { campaign_id, logs, summary } = req.query;
+    if (summary !== undefined) return ok(res, await db.getTrackingSummary());
+    if (!campaign_id) return err(res, 'Thiếu campaign_id');
+    if (logs !== undefined) return ok(res, await db.getCampaignEvents(campaign_id));
+    ok(res, await db.getCampaignTrackingStats(campaign_id));
+  } catch (e) { err(res, e.message, 500); }
 });
 
 // ─── Khởi động server ────────────────────────────────
