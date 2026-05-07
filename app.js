@@ -2757,12 +2757,22 @@ ${html}
     }
 
     function applyData({ levels: lv, contacts: ct, templates: tm, campaigns: ca }) {
-      if (lv?.length) { levels = lv; rebuildLevelMap(); } // ← BẮT BUỘC: rebuild map sau khi set levels
-      if (ct) contacts = ct;
+      if (lv?.length) { levels = lv; rebuildLevelMap(); }
       if (tm?.length) templates = tm;
       refreshUI();
-      renderContactTable(); renderTemplates(); renderCampaignTargets();
+      renderTemplates(); renderCampaignTargets();
       if (ca) { renderHistoryFromApi(ca); renderDashCampaigns(ca); }
+
+      // Contacts: nếu backend connected → dùng refreshContacts() để đảm bảo luôn dùng đúng filter
+      // Nếu offline hoặc data từ cache (không có filter) → dùng data truyền vào
+      if (window._backendConnected) {
+        // Reload contacts với filter hiện tại — tránh race condition của background refresh
+        refreshContacts();
+      } else {
+        if (ct) contacts = ct;
+        renderContactTable();
+      }
+
       if (totalContacts > 0) updatePaginationUI(totalContacts);
       loadAllTags();
       renderDashLiveStats();
@@ -2814,9 +2824,11 @@ ${html}
         if (!silent) showLoading('Đang tải dữ liệu...');
 
         // 🛡️ allSettled: 1 API fail KHÔNG làm các API khác bị hủy
+        // Contacts: load theo filter hiện tại nếu có (tránh ghi đè khi user đang xem level cụ thể)
+        const contactFilter = (currentFilter && currentFilter !== 'all') ? `&levelId=${currentFilter}` : '';
         const [lvRes, ctRes, tmRes, caRes] = await Promise.allSettled([
           apiFetch('/api/levels'),
-          apiFetch(`/api/contacts?page=0&per_page=${perPage}`),
+          apiFetch(`/api/contacts?page=${currentPage}&per_page=${perPage}${contactFilter}`),
           apiFetch('/api/templates'),
           apiFetch('/api/campaigns'),
         ]);
