@@ -1297,17 +1297,46 @@
           document.getElementById('ch-history-list').innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Chưa nhận email nào</div>';
           return;
         }
+
+        const eventIcons = {
+          sent: { icon: '📤', label: 'Đã gửi', color: 'var(--accent2)' },
+          delivered: { icon: '✅', label: 'Đã nhận', color: 'var(--ok)' },
+          opened: { icon: '👁', label: 'Đã mở', color: '#60a5fa' },
+          clicked: { icon: '🔗', label: 'Đã click', color: '#a78bfa' },
+          bounced: { icon: '⛔', label: 'Bounced', color: 'var(--err)' },
+          complained: { icon: '🚫', label: 'Spam', color: 'var(--err)' },
+          delayed: { icon: '⏳', label: 'Trì hoãn', color: 'var(--warn)' },
+        };
+
         document.getElementById('ch-history-list').innerHTML = logs.map(l => {
           const date = l.sent_at ? new Date(l.sent_at).toLocaleString('vi-VN') : '—';
-          const statusColor = l.status === 'sent' ? 'var(--ok)' : 'var(--err)';
-          const statusLabel = l.status === 'sent' ? '✓ Đã gửi' : '✕ Lỗi';
-          return `<div class="h-item" style="padding:10px 0;border-bottom:1px solid var(--border)">
-            <div class="h-icon ${l.status === 'sent' ? 'ok' : 'err'}" style="width:32px;height:32px;font-size:14px">✉</div>
+          const isFailed = l.status === 'failed';
+
+          // Tracking events timeline
+          const tracking = l.tracking || [];
+          const bestEvent = tracking.length > 0
+            ? (['clicked', 'opened', 'delivered', 'bounced', 'complained'].find(t => tracking.some(e => e.event_type === t)) || 'sent')
+            : (isFailed ? 'failed' : 'sent');
+          const best = eventIcons[bestEvent] || eventIcons.sent;
+
+          const eventsHtml = tracking.length > 0
+            ? tracking.map(ev => {
+                const info = eventIcons[ev.event_type] || { icon: '•', label: ev.event_type, color: 'var(--muted)' };
+                const evDate = ev.created_at ? new Date(ev.created_at).toLocaleString('vi-VN') : '';
+                return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:${info.color};margin-right:8px" title="${evDate}">
+                  ${info.icon} ${info.label}
+                </span>`;
+              }).join('')
+            : '<span style="font-size:10px;color:var(--muted)">Chưa có tracking data</span>';
+
+          return `<div class="h-item" style="padding:12px 0;border-bottom:1px solid var(--border)">
+            <div class="h-icon ${isFailed ? 'err' : 'ok'}" style="width:36px;height:36px;font-size:16px">${best.icon}</div>
             <div style="flex:1;min-width:0">
-              <div style="font-weight:500;font-size:13px">${l.campaign_name || 'Campaign'}</div>
-              <div style="font-size:11px;color:var(--muted)">${date}</div>
+              <div style="font-weight:600;font-size:13px">${l.campaign_name || 'Campaign'}</div>
+              <div style="font-size:11px;color:var(--muted);margin:2px 0">${date}</div>
+              <div style="margin-top:4px">${eventsHtml}</div>
             </div>
-            <span style="font-size:11px;font-weight:500;color:${statusColor}">${statusLabel}</span>
+            <span style="font-size:11px;font-weight:600;color:${best.color};white-space:nowrap">${best.label}</span>
           </div>`;
         }).join('');
       } catch (e) {
