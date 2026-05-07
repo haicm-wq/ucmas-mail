@@ -3311,6 +3311,13 @@ ${html}
     }
 
     async function resumeCampaign(campaignId, isAutoResume) {
+      // ✅ FIX: Chặn chạy 2 luồng song song
+      if (window._sendingCampaignId && window._sendingCampaignId !== campaignId) {
+        toast('⚠ Đang có campaign khác đang gửi. Vui lòng chờ.', 'warn'); return;
+      }
+      if (window._sendingCampaignId === campaignId) {
+        toast('⚠ Campaign này đang được gửi rồi.', 'warn'); return;
+      }
       window._stopCampaign = false;
       window._sendingCampaignId = campaignId;
       if (!isAutoResume) toast('▶ Đang gửi tiếp campaign...');
@@ -3357,17 +3364,18 @@ ${html}
             if (data.type === 'error' && !data.resumable) { toast('❌ ' + data.error, 'err'); return; }
           }
         }
-      } catch (e) { /* connection lost — auto-retry below */ }
-      // Nếu bị dừng bởi user → không auto-resume
-      if (window._stopCampaign) { window._sendingCampaignId = null; return; }
-      // Auto-resume nếu chưa xong
-      if (!completed && lastTotal > 0 && lastSent < lastTotal) {
-        toast(`⏳ Gửi được ${lastSent}/${lastTotal}. Tự động gửi tiếp sau 3s...`);
-        await new Promise(r => setTimeout(r, 3000));
-        if (!window._stopCampaign) return resumeCampaign(campaignId, true);
+      } catch (e) {
+        // Kết nối bị ngắt — KHÔNG auto-resume vì sẽ gây gửi trùng
+        if (!window._stopCampaign) {
+          toast('⚠ Kết nối bị ngắt. Vào History → bấm "▶ Gửi tiếp" để tiếp tục.', 'warn');
+        }
+      } finally {
+        window._sendingCampaignId = null;
       }
-      if (!completed && lastSent === 0) {
-        toast('⚠ Không thể kết nối. Thử lại sau.', 'warn');
+      // ✅ FIX: Xóa toàn bộ auto-resume đệ quy
+      // Nếu chưa hoàn thành → user phải tự bấm Gửi tiếp trong History
+      if (!completed && !isAutoResume) {
+        refreshTracking();
       }
     }
 
@@ -3632,13 +3640,13 @@ ${html}
           }
         }
       } catch (e) {
-        // Auto-resume: tự gửi tiếp sau 3 giây
+        // ✅ FIX: KHÔNG auto-resume — tránh gửi trùng
+        prog.classList.remove('active');
         if (window._sendingCampaignId) {
-          toast('⏳ Kết nối bị ngắt. Tự động gửi tiếp sau 3 giây...');
-          const cid = window._sendingCampaignId;
-          setTimeout(async () => { prog.classList.remove('active'); await resumeCampaign(cid, true); }, AUTO_RESUME_DELAY);
+          toast('⚠ Kết nối bị ngắt. Vào History → bấm "▶ Gửi tiếp" để tiếp tục an toàn.', 'warn');
+          window._sendingCampaignId = null;
+          refreshTracking();
         } else {
-          prog.classList.remove('active');
           toast('⚠ Kết nối bị ngắt', 'warn');
         }
       }

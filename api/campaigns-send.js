@@ -3,9 +3,8 @@ import { ok, err, allowCors, getDBFromReq, getEmailConfig } from './_utils.js';
 
 export const config = { api: { bodyParser: true } };
 
-// Gửi tối đa BATCH_SIZE email song song cùng lúc — tăng tốc ~5x so với tuần tự
-const BATCH_SIZE   = 5;    // số email gửi song song mỗi batch
-const BATCH_DELAY  = 50;   // ms chờ giữa các batch (tránh rate-limit Resend)
+const BATCH_SIZE  = 2;   // Giảm xuống 2 để an toàn hơn
+const BATCH_DELAY = 100; // ms chờ giữa các batch
 
 /**
  * Campaign Send API
@@ -58,7 +57,6 @@ export default async function handler(req, res) {
 
   setupSSE(res);
   const send = data => res.write(`data: ${JSON.stringify(data)}\n\n`);
-
   send({ type: 'start', total: contacts.length, campaignId: campaign.id });
 
   await sendAndLog(campaign, contacts, db, emailConfig, send, 0, contacts.length);
@@ -73,9 +71,22 @@ async function handleResume(req, res, db, emailConfig, campaignId) {
     if (!campaign) return err(res, 'Campaign không tồn tại');
   } catch (e) { return err(res, 'Lỗi đọc campaign: ' + e.message, 500); }
 
+  // ✅ FIX #1: Chặn resume nếu campaign đang được gửi bởi tiến trình khác
+  if (campaign.status === 'sending') {
+    return err(res, 'Campaign đang được gửi bởi tiến trình khác. Vui lòng chờ hoặc bấm Dừng trước.', 409);
+  }
+
+  // ✅ FIX #2: Đánh dấu sending ngay để chặn request đồng thời
+  try {
+    await db.updateCampaignStatus(campaignId, { status: 'sending' });
+  } catch (e) {
+    return err(res, 'Không thể khóa campaign: ' + e.message, 500);
+  }
+
   let sentEmails = new Set();
   try {
     const logs = await db.getCampaignLogs(campaignId);
+    // ✅ FIX #3: Lọc theo CẢ 'sent' để không gửi lại email đã thành công
     sentEmails = new Set((logs || []).filter(l => l.status === 'sent').map(l => l.email));
   } catch (e) {
     console.warn('[handleResume] Không đọc được send_logs, resume từ đầu:', e.message);
@@ -84,7 +95,11 @@ async function handleResume(req, res, db, emailConfig, campaignId) {
   let allContacts = [];
   try {
     allContacts = await db.getContactsByLevelIds(campaign.target_levels || []);
-  } catch (e) { return err(res, 'Lỗi đọc contacts: ' + e.message, 500); }
+  } catch (e) {
+    // Rollback status nếu lỗi
+    await db.updateCampaignStatus(campaignId, { status: 'paused' }).catch(() => {});
+    return err(res, 'Lỗi đọc contacts: ' + e.message, 500);
+  }
 
   const remaining = allContacts.filter(c => !sentEmails.has(c.email));
 
@@ -113,24 +128,23 @@ async function handleResume(req, res, db, emailConfig, campaignId) {
 }
 
 /**
- * Gửi email SONG SONG theo batch BATCH_SIZE email — nhanh hơn ~5x
- * Log ngay từng cái sau khi gửi xong — chống mất dữ liệu khi timeout
+ * Gửi email theo batch nhỏ — log ngay từng cái
+ * ✅ FIX: Kiểm tra send_logs trước mỗi email để chặn gửi trùng
  */
 async function sendAndLog(campaign, contacts, db, emailConfig, send, alreadySent, grandTotal) {
   let sent = alreadySent, failed = 0;
   let batchSentIds = [];
   let processed = 0;
 
-  // Chia contacts thành các batch BATCH_SIZE
   for (let i = 0; i < contacts.length; i += BATCH_SIZE) {
     const batch = contacts.slice(i, i + BATCH_SIZE);
 
-    // Gửi BATCH_SIZE email song song
+    // Gửi batch song song
     const results = await Promise.allSettled(
       batch.map(contact => sendOneEmail(campaign, contact, emailConfig))
     );
 
-    // Log tất cả kết quả trong batch
+    // Log kết quả
     const logPromises = results.map(async (result, j) => {
       const contact = batch[j];
       let status, resend_id, error_msg;
@@ -162,12 +176,9 @@ async function sendAndLog(campaign, contacts, db, emailConfig, send, alreadySent
       } catch (logErr) { console.error('[logSend]', logErr.message); }
     });
 
-    // Chờ tất cả log ghi xong trước khi sang batch tiếp
     await Promise.all(logPromises);
-
     processed += batch.length;
 
-    // Thông báo tiến trình sau mỗi batch
     send({
       type: 'progress',
       sent, failed,
@@ -176,18 +187,15 @@ async function sendAndLog(campaign, contacts, db, emailConfig, send, alreadySent
       batchSize: contacts.length,
     });
 
-    // Delay nhỏ giữa các batch tránh rate-limit
     if (i + BATCH_SIZE < contacts.length) {
       await sleep(BATCH_DELAY);
     }
   }
 
-  // Cập nhật last_sent_at cho contacts thành công
   if (batchSentIds.length) {
     try { await db.markLastSent(batchSentIds); } catch (e) { console.error('[markLastSent]', e.message); }
   }
 
-  // Cập nhật trạng thái campaign
   const finalStatus = sent >= grandTotal
     ? 'completed'
     : (sent > alreadySent ? 'partial' : 'failed');
