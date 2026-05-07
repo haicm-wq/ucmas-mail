@@ -245,14 +245,15 @@
     // ════════════════════════════════════════
     // CONTACTS
     // ════════════════════════════════════════
-    function renderContactTable(query = '') {
+    // preFiltered=true: API đã filter level → chỉ filter text trên client
+    // preFiltered=false: contacts chưa filter → filter cả level lẫn text
+    function renderContactTable(query = '', preFiltered = false) {
       const tbody = document.getElementById('contact-tbody');
       let rows = contacts.filter(c => {
-        // Khi backend connected: API đã filter theo level rồi → chỉ filter text
-        // Khi offline: filter cả level lẫn text trên client
-        const levelMatch = window._backendConnected
-          ? true  // API đã lọc đúng level, không filter lại
-          : (currentFilter === 'all' || c.level_id === currentFilter || isChildOf(c.level_id, currentFilter));
+        const levelMatch = preFiltered
+          || currentFilter === 'all'
+          || c.level_id === currentFilter
+          || isChildOf(c.level_id, currentFilter);
         const q = query.toLowerCase();
         const textMatch = !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
         return levelMatch && textMatch;
@@ -377,14 +378,10 @@
         const result = await apiFetch(url);
         const { data, total } = result;
         totalContacts = total;
-        contacts = (data || []).map(c => ({
-          id: c.id, name: c.name, email: c.email,
-          level: c.levels?.name || '', level_id: c.level_id, company: c.company || '',
-          tags: c.tags || [],
-          dbStatus: c.status || 'active',
-          last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
-        }));
-        renderContactTable();
+        // Dùng transformContact() — nhất quán, không drop tags
+        contacts = (data || []).map(transformContact);
+        // preFiltered = true: API đã lọc level → renderContactTable không filter lại
+        renderContactTable(search, true);
         updatePaginationUI(total);
       } catch (e) {
         console.error('[loadContactsPage]', e.message);
