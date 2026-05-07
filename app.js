@@ -31,6 +31,18 @@
     let editorMode = 'split';
     let selectedColor = '#f5c842';
     let selectedColorQuick = '#f5c842';
+    let _workflowInited = false;
+
+    // Batch render — gộp nhiều render calls vào 1 animation frame
+    let _refreshPending = false;
+    function refreshUI() {
+      renderSidebar(); renderDashStats(); renderFilterChips();
+    }
+    function scheduleRefresh() {
+      if (_refreshPending) return;
+      _refreshPending = true;
+      requestAnimationFrame(() => { refreshUI(); _refreshPending = false; });
+    }
 
     // ════════════════════════════════════════
     // NAVIGATION
@@ -58,6 +70,7 @@
       if (id === 'contacts') renderContactTable();
       if (id === 'database') gotoDbPanel('setup');
       if (id === 'history' && window._backendConnected) refreshTracking();
+      if (id === 'workflows' && !_workflowInited) { initWorkflows(); _workflowInited = true; }
     }
 
     // ════════════════════════════════════════
@@ -327,7 +340,7 @@
       // Xoá optimistic trước
       const toDeleteSet = new Set(idxs);
       contacts = contacts.filter((_, i) => !toDeleteSet.has(i));
-      renderContactTable(); renderSidebar(); renderDashStats();
+      renderContactTable(); scheduleRefresh();
       updateBulkBar();
       toast(`Đã xoá ${toDelete.length} contacts`, 'warn');
 
@@ -349,7 +362,7 @@
       idxs.forEach(i => {
         if (contacts[i]) { contacts[i].level_id = levelId; contacts[i].level = lv?.name || ''; }
       });
-      renderContactTable(); renderSidebar(); renderDashStats();
+      renderContactTable(); scheduleRefresh();
       toast(`Đã đổi level ${idxs.length} contacts → ${lv?.name}`);
 
       // Cập nhật trên Supabase
@@ -413,7 +426,7 @@
     function deleteLevel(id) {
       if (!confirm(`Xoá level "${id}"? Contacts thuộc level này sẽ không bị xoá.`)) return;
       levels = levels.filter(l => l.id !== id && l.parent !== id);
-      renderLevelPage(); renderSidebar(); renderDashStats(); toast(`Đã xoá level ${id}`, 'warn');
+      scheduleRefresh(); renderLevelPage(); toast(`Đã xoá level ${id}`, 'warn');
     }
     function editLevel(id) { toast('Tính năng edit level sẽ có trong bản tiếp theo', 'warn'); }
 
@@ -459,7 +472,7 @@
       const desc = document.getElementById('ml-desc').value.trim();
       levels.push({ id: name, name, color: selectedColor, parent, desc, count: 0 });
       closeModal('modal-level');
-      renderSidebar(); renderDashStats(); renderLevelPage();
+      scheduleRefresh(); renderLevelPage();
       toast(`Đã tạo level "${name}"`);
     }
 
@@ -472,7 +485,7 @@
       levels.push({ id: name, name, color: selectedColorQuick, parent, desc, count: 0 });
       document.getElementById('ql-name').value = '';
       document.getElementById('ql-desc').value = '';
-      renderSidebar(); renderDashStats(); renderLevelPage(); renderCampaignTargets();
+      scheduleRefresh(); renderLevelPage(); renderCampaignTargets();
       toast(`Đã tạo level "${name}"`);
     }
     function updateQuickPreview() { /* removed — stub not needed */ }
@@ -1826,7 +1839,7 @@ ${html}
           status: c.status === 'active' ? 'pending' : c.status,
           last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
         }));
-        renderContactTable(); renderSidebar(); renderDashStats();
+        renderContactTable(); scheduleRefresh();
       } catch (e) { toast('Lỗi: ' + e.message, 'err'); }
     }
 
@@ -1888,7 +1901,7 @@ ${html}
             last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
           }));
         }
-        renderContactTable(); renderSidebar(); renderDashStats();
+        renderContactTable(); scheduleRefresh();
 
         // Lưu URL
         const cfg = getSheetsConfig();
@@ -2055,9 +2068,12 @@ ${html}
       return h;
     }
 
+    const API_TIMEOUT = 10000; // 10s timeout cho mỗi API call
+
     async function apiFetch(path, options = {}) {
       const res = await fetch(API + path, {
         ...options,
+        signal: options.signal || AbortSignal.timeout(API_TIMEOUT),
         headers: { 'Content-Type': 'application/json', ...cfgHeaders(), ...(options.headers || {}) },
       });
       const json = await res.json();
@@ -2084,8 +2100,8 @@ ${html}
       if (lv?.length) levels = lv;
       if (ct) contacts = ct;
       if (tm?.length) templates = tm;
-      renderSidebar(); renderDashStats(); renderFilterChips();
-      renderContactTable(); renderTemplates(); renderCampaignTargets(); initWorkflows();
+      refreshUI();
+      renderContactTable(); renderTemplates(); renderCampaignTargets();
       if (ca) { renderHistoryFromApi(ca); renderDashCampaigns(ca); }
       // Cập nhật pagination UI
       if (totalContacts > 0) updatePaginationUI(totalContacts);
@@ -2120,27 +2136,28 @@ ${html}
 
     async function fetchFreshData(silent = false) {
       try {
+        // Quick health check trước khi load
         const res = await fetch('/api/stats', { headers: cfgHeaders(), signal: AbortSignal.timeout(5000) });
         if (!res.ok) { hideLoading(); return; }
-        const stats = await res.json();
-        if (!stats.success) { hideLoading(); return; }
+        const statsCheck = await res.json();
+        if (!statsCheck.success) { hideLoading(); return; }
 
         if (!silent) showLoading('Đang tải dữ liệu...');
-        // Load levels + contact counts cùng lúc
-        const [lvRaw, statsRaw] = await Promise.all([
+
+        // 🚀 Load TẤT CẢ song song — nhanh hơn 3-4x so với tuần tự
+        const [lvRaw, ctRaw, tmRaw, ca] = await Promise.all([
           apiFetch('/api/levels'),
-          apiFetch('/api/stats').catch(() => null),
+          apiFetch(`/api/contacts?page=0&per_page=${perPage}`),
+          apiFetch('/api/templates'),
+          apiFetch('/api/campaigns'),
         ]);
+
+        // Transform data
         const lv = lvRaw?.length ? lvRaw.map(l => ({
           id: l.id, name: l.name, color: l.color,
           parent: l.parent_id || null, desc: l.description || '', count: l.count || 0,
         })) : null;
-        // Cập nhật totalContacts từ stats
-        if (statsRaw?.totalContacts != null) totalContacts = statsRaw.totalContacts;
 
-        if (!silent) showLoading('Đang tải contacts...');
-        if (!silent) showLoading('Đang tải contacts...');
-        const ctRaw = await apiFetch(`/api/contacts?page=0&per_page=${perPage}`);
         const ct = ctRaw?.data ? ctRaw.data.map(c => ({
           id: c.id, name: c.name, email: c.email,
           level: c.levels?.name || '', level_id: c.level_id, company: c.company || '',
@@ -2149,15 +2166,13 @@ ${html}
         })) : null;
         if (ctRaw?.total != null) totalContacts = ctRaw.total;
 
-        if (!silent) showLoading('Đang tải templates...');
-        const tmRaw = await apiFetch('/api/templates');
         const tm = tmRaw?.length ? tmRaw.map(t => ({
           id: t.id, name: t.name, icon: t.icon || '📄',
           desc: t.description || '', tags: t.tags || [], body: t.body,
         })) : null;
 
-        if (!silent) showLoading('Đang tải campaigns...');
-        const ca = await apiFetch('/api/campaigns');
+        // Cập nhật totalContacts từ stats health check
+        if (statsCheck.data?.totalContacts != null) totalContacts = statsCheck.data.totalContacts;
 
         // Lưu cache
         saveCache({ levels: lv, contacts: ct, templates: tm, campaigns: ca });
@@ -2502,7 +2517,7 @@ ${html}
           status: c.status === 'active' ? 'pending' : c.status,
           last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
         }));
-        renderContactTable(); renderSidebar(); renderDashStats();
+        renderContactTable(); scheduleRefresh();
       } catch (err) { toast('Lỗi import: ' + err.message, 'err'); }
     }
 
@@ -2523,7 +2538,7 @@ ${html}
         closeModal('modal-level');
         const lvData = await apiFetch('/api/levels');
         levels = lvData.map(l => ({ id: l.id, name: l.name, color: l.color, parent: l.parent_id || null, desc: l.description || '', count: l.count || 0 }));
-        renderSidebar(); renderDashStats(); renderLevelPage();
+        scheduleRefresh(); renderLevelPage();
         toast(`Đã tạo level "${name}"`);
       } catch (e) { toast('Lỗi: ' + e.message, 'err'); }
     };
@@ -2546,7 +2561,7 @@ ${html}
         document.getElementById('ql-desc').value = '';
         const lvData = await apiFetch('/api/levels');
         levels = lvData.map(l => ({ id: l.id, name: l.name, color: l.color, parent: l.parent_id || null, desc: l.description || '', count: l.count || 0 }));
-        renderSidebar(); renderDashStats(); renderLevelPage(); renderCampaignTargets();
+        scheduleRefresh(); renderLevelPage(); renderCampaignTargets();
         toast(`Đã tạo level "${name}"`);
       } catch (e) { toast('Lỗi: ' + e.message, 'err'); }
     };

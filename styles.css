@@ -1356,9 +1356,6 @@
       color: #f5c842
     }
 
-    .js-var {
-      color: #c97ef5
-    }
 
     .schema-table {
       width: 100%;
@@ -1460,10 +1457,6 @@
       min-width: 220px
     }
 
-    .env-val {
-      color: var(--muted);
-      flex: 1
-    }
 
     .env-input {
       flex: 1;
@@ -1619,25 +1612,8 @@
       gap: 16px
     }
 
-    .level-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--rl);
-      overflow: hidden;
-      margin-bottom: 12px
-    }
 
-    .level-card-header {
-      padding: 11px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 10px
-    }
 
-    .level-card-body {
-      padding: 0
-    }
 
     .level-row {
       display: flex;
@@ -1923,9 +1899,6 @@
     }
 
     /* CAMPAIGN PREVIEW */
-    .c-body-wrap {
-      position: relative
-    }
 
     .c-body-tabs {
       display: flex;
@@ -2065,12 +2038,6 @@
       overflow: hidden
     }
 
-    .var-pills {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-top: 10px
-    }
 
     .var-pill {
       padding: 3px 10px;
@@ -2147,14 +2114,6 @@
       height: 28px
     }
 
-    .ve-label {
-      font-family: var(--fm);
-      font-size: 10px;
-      color: var(--muted);
-      letter-spacing: .5px;
-      text-transform: uppercase;
-      padding: 0 4px
-    }
 
     .ve-iframe {
       width: 100%;
@@ -2497,13 +2456,6 @@
       margin: 8px 0
     }
 
-    .stat-skeleton {
-      border-radius: var(--rl);
-      background: linear-gradient(90deg, var(--surface2) 25%, var(--surface3) 50%, var(--surface2) 75%);
-      background-size: 800px 100%;
-      animation: shimmer 1.4s infinite;
-      height: 90px
-    }
 
     /* LOADING OVERLAY */
     .page-loading {
@@ -2651,26 +2603,6 @@
       font-size: 12px
     }
 
-    .trk-stat-mini {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 8px;
-      text-align: center
-    }
-    .trk-stat-v {
-      font-family: var(--fm);
-      font-size: 20px;
-      font-weight: 700
-    }
-    .trk-stat-l {
-      font-size: 10px;
-      color: var(--muted);
-      margin-top: 2px;
-      font-family: var(--fm);
-      text-transform: uppercase;
-      letter-spacing: .5px
-    }
 
     .trk-rate-bar {
       background: var(--surface2);
