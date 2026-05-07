@@ -16,11 +16,40 @@ export const config = { api: { bodyParser: true } };
 export default async function handler(req, res) {
   allowCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const db          = getDBFromReq(req);
   const emailConfig = getEmailConfig(req);
-  const { resume, stop } = req.query;
+  const { resume, stop, emergency } = req.query;
+
+  // ── EMERGENCY STOP TOÀN HỆ THỐNG ──
+  // GET  ?emergency=status  → kiểm tra trạng thái kill switch
+  // POST ?emergency=stop    → khoá hệ thống, dừng tất cả
+  // POST ?emergency=resume  → mở khoá
+  if (emergency) {
+    if (req.method === 'GET' && emergency === 'status') {
+      try {
+        const active = await db.getKillSwitch();
+        return ok(res, { killSwitchActive: active });
+      } catch (e) { return err(res, e.message, 500); }
+    }
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    if (emergency === 'stop') {
+      try {
+        await db.setKillSwitch(true);
+        const paused = await db.pauseAllSendingCampaigns();
+        return ok(res, { killSwitchActive: true, campaignsPaused: paused });
+      } catch (e) { return err(res, e.message, 500); }
+    }
+    if (emergency === 'resume') {
+      try {
+        await db.setKillSwitch(false);
+        return ok(res, { killSwitchActive: false });
+      } catch (e) { return err(res, e.message, 500); }
+    }
+    return err(res, 'emergency phải là stop|resume|status');
+  }
+
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // ── DỪNG CAMPAIGN ──
   if (stop) {

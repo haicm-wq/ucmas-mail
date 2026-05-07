@@ -1,4 +1,4 @@
-    // ════════════════════════════════════════
+﻿    // ════════════════════════════════════════
     // CONSTANTS
     // ════════════════════════════════════════
     const TOAST_DURATION = 3500;
@@ -3327,7 +3327,7 @@ ${html}
 
       try {
         const action = active ? 'stop' : 'resume';
-        const result = await apiFetch(`/api/emergency-stop?action=${action}`, { method: 'POST' });
+        const result = await apiFetch(`/api/campaigns-send?emergency=${action}`, { method: 'POST' });
 
         applyKillSwitchUI(active);
 
@@ -3350,7 +3350,7 @@ ${html}
     // Kiểm tra trạng thái kill switch khi tải trang
     async function checkKillSwitchOnLoad() {
       try {
-        const result = await apiFetch('/api/emergency-stop');
+        const result = await apiFetch('/api/campaigns-send?emergency=status');
         if (result.killSwitchActive) applyKillSwitchUI(true);
       } catch (_) { /* bỏ qua nếu API chưa có */ }
     }
