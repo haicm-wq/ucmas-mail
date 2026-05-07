@@ -7033,7 +7033,10 @@ ${html}
       }).join('')}</tbody>
     </table>
   </div>
-  <div style="margin-top:10px;text-align:right"><button class="abtn" style="font-size:11px" onclick="exportCampaignLogs('${campId}')">⬇ Export CSV</button></div>
+  <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+    <button class="abtn" style="font-size:11px;color:var(--accent2);border-color:var(--accent2)" onclick="backfillCampaign('${campId}',this)">🔄 Đồng bộ trạng thái từ Resend</button>
+    <button class="abtn" style="font-size:11px" onclick="exportCampaignLogs('${campId}')">⬇ Export CSV</button>
+  </div>
 </div>`;
     }
 
@@ -7060,6 +7063,18 @@ ${html}
       } else {
         if (statusEl) statusEl.textContent = '';
       }
+    }
+
+    async function backfillCampaign(campaignId, btn) {
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang đồng bộ...'; }
+      try {
+        const result = await apiFetch(`/api/tracking?backfill=${campaignId}`, { method: 'POST' });
+        toast(`✅ Đồng bộ xong: ${result.synced}/${result.total} email đã cập nhật`);
+        // Reload detail
+        toggleCampaignDetail(campaignId); // close
+        setTimeout(() => toggleCampaignDetail(campaignId), 300); // reopen with fresh data
+      } catch (e) { toast('Lỗi: ' + e.message, 'err'); }
+      finally { if (btn) { btn.disabled = false; btn.textContent = '🔄 Đồng bộ trạng thái từ Resend'; } }
     }
 
     async function refreshTracking(silent) {
