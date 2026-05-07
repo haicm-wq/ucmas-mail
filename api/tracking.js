@@ -98,13 +98,31 @@ async function backfillFromExistingLogs(res, db, resend, logs) {
  * Tạo send_logs mới + ghi events
  */
 async function backfillBySearching(res, db, resend, campaign, campaignId) {
-  const subject = campaign.subject;
-  if (!subject) return err(res, 'Campaign không có subject');
+  const subject = campaign.subject || '';
+  const campaignFrom = campaign.from_email || '';
 
-  // List emails từ Resend API (max 100/page, pagination bằng cursor)
+  // Lấy contacts cho campaign này (để lọc theo email)
+  let campaignContacts = [];
+  if (campaign.target_levels?.length) {
+    try { campaignContacts = await db.getContactsByLevelIds(campaign.target_levels); }
+    catch (e) { /* ignore */ }
+  }
+  const contactEmails = new Set(campaignContacts.map(c => c.email?.toLowerCase()));
+
+  // List emails từ Resend API — lấy tối đa 3000 email gần nhất
   const allEmails = [];
   let lastId = undefined;
-  const MAX_PAGES = 30; // 30 * 100 = 3000 emails max
+  const MAX_PAGES = 30;
+  let totalScanned = 0;
+  let sampleSubjects = []; // debug: lưu vài subject đầu để so sánh
+
+  // Normalize: loại tất cả emoji, lowercase, trim
+  const stripEmoji = s => (s || '').replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
+  const normalize = s => stripEmoji(s).toLowerCase().replace(/\s+/g, ' ');
+  
+  // Lấy vài từ đầu tiên của subject (trước {{ hoặc emoji)
+  const subjectClean = normalize(subject);
+  const subjectWords = subjectClean.split(' ').filter(w => w.length > 1).slice(0, 4).join(' ');
 
   for (let page = 0; page < MAX_PAGES; page++) {
     try {
@@ -113,26 +131,49 @@ async function backfillBySearching(res, db, resend, campaign, campaignId) {
       const { data: result } = await resend.emails.list(params);
       const emails = result?.data || [];
       if (!emails.length) break;
+      totalScanned += emails.length;
 
-      // Filter theo subject (match chính xác hoặc rendered subject)
+      // Debug: lưu mẫu 3 subject đầu tiên
+      if (sampleSubjects.length < 3) {
+        emails.slice(0, 3).forEach(e => sampleSubjects.push(e.subject));
+      }
+
       for (const email of emails) {
-        if (email.subject === subject || email.subject?.includes(subject.split('{{')[0]?.trim())) {
+        const emailSubjectClean = normalize(email.subject);
+        const emailTo = email.to?.[0]?.toLowerCase() || '';
+
+        // Match nếu:
+        // 1. Subject normalized giống nhau (chính xác)
+        // 2. Subject chứa vài từ đầu (khi có emoji/variable)
+        // 3. Recipient nằm trong contact list CỦA campaign
+        const subjectMatch = emailSubjectClean === subjectClean
+          || (subjectWords.length >= 5 && emailSubjectClean.includes(subjectWords));
+        const recipientMatch = contactEmails.size > 0 && contactEmails.has(emailTo);
+
+        if (subjectMatch || recipientMatch) {
           allEmails.push(email);
         }
       }
 
       lastId = emails[emails.length - 1]?.id;
-      if (emails.length < 100) break; // hết data
-
+      if (emails.length < 100) break;
       await sleep(RATE_LIMIT_MS);
     } catch (e) {
-      console.error('[backfill search]', e.message);
+      console.error('[backfill search page]', e.message);
       break;
     }
   }
 
   if (!allEmails.length) {
-    return ok(res, { mode: 'search', found: 0, message: `Không tìm thấy email nào trên Resend với subject: "${subject}"` });
+    return ok(res, {
+      mode: 'search', found: 0, scanned: totalScanned,
+      contactsInCampaign: contactEmails.size,
+      subjectTemplate: subject,
+      subjectNormalized: subjectClean,
+      subjectWords,
+      sampleSubjectsFromResend: sampleSubjects,
+      message: `Không tìm thấy email nào khớp. Đã quét ${totalScanned} email trên Resend.`
+    });
   }
 
   // Loại bỏ duplicate (cùng recipient, giữ email đầu tiên)

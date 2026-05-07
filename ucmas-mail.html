@@ -7146,10 +7146,20 @@ ${html}
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang đồng bộ...'; }
       try {
         const result = await apiFetch(`/api/tracking?backfill=${campaignId}`, { method: 'POST' });
-        toast(`✅ Đồng bộ xong: ${result.synced}/${result.total} email đã cập nhật`);
-        // Reload detail
-        toggleCampaignDetail(campaignId); // close
-        setTimeout(() => toggleCampaignDetail(campaignId), 300); // reopen with fresh data
+        console.log('[backfill result]', result);
+        if (result.mode === 'search') {
+          if (result.found > 0) {
+            toast(`✅ Tìm thấy ${result.found} email (${result.unique} unique, ${result.duplicates} trùng). Đã tạo ${result.send_logs_created} bản ghi.`);
+          } else {
+            toast(`⚠ Không tìm thấy email trên Resend. Đã quét ${result.scanned} email. Kiểm tra console (F12) để debug.`, 'warn');
+          }
+        } else {
+          toast(`✅ Đồng bộ xong: ${result.synced}/${result.total} email đã cập nhật`);
+        }
+        // Reload history page
+        refreshTracking(true);
+        toggleCampaignDetail(campaignId);
+        setTimeout(() => toggleCampaignDetail(campaignId), 300);
       } catch (e) { toast('Lỗi: ' + e.message, 'err'); }
       finally { if (btn) { btn.disabled = false; btn.textContent = '🔄 Đồng bộ trạng thái từ Resend'; } }
     }
