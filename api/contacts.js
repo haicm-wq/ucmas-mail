@@ -92,6 +92,12 @@ export default async function handler(req, res) {
       const tagMode = req.query.tagMode || 'and';
       ok(res, await db.getContactsPaged({ levelId, search, status, tags, tagMode, offset, limit: parseInt(per_page) }));
 
+    } else if (req.method === 'DELETE' && action === 'bulk-delete') {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || !ids.length) return err(res, 'Danh sách ids rỗng');
+      const deleted = await db.bulkDeleteContacts(ids);
+      ok(res, { deleted });
+
     } else if (req.method === 'DELETE') {
       const id = req.query.id;
       if (!id) return err(res, 'Thiếu id');

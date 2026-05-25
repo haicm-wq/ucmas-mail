@@ -456,24 +456,33 @@
     }
 
     async function bulkDelete() {
-      const idxs = getCheckedIndices();
-      if (!idxs.length) return;
-      if (!confirm(`Xoá ${idxs.length} contacts đã chọn?`)) return;
+      const ids = getCheckedContactIds();
+      if (!ids.length) return;
+      if (!confirm(`Xoá ${ids.length} contacts đã chọn? Hành động này không thể hoàn tác!`)) return;
 
-      const toDelete = idxs.map(i => contacts[i]).filter(Boolean);
-      const ids = toDelete.map(c => c.id).filter(Boolean);
-
-      // Xoá optimistic trước
-      const toDeleteSet = new Set(idxs);
-      contacts = contacts.filter((_, i) => !toDeleteSet.has(i));
-      renderContactTable(); scheduleRefresh();
+      // Xoá optimistic trước — loại bỏ contacts đã chọn khỏi danh sách hiện tại
+      const idSet = new Set(ids);
+      contacts = contacts.filter(c => !idSet.has(c.id));
+      renderContactTable('', true);
       updateBulkBar();
-      toast(`Đã xoá ${toDelete.length} contacts`, 'warn');
+      toast(`Đang xoá ${ids.length} contacts...`, 'warn');
 
-      // Xoá trên Supabase
+      // Xoá trên Supabase bằng API bulk-delete — 1 request thay vì n request
       if (window._backendConnected && ids.length) {
-        for (const id of ids) {
-          try { await apiFetch('/api/contacts?id=' + id, { method: 'DELETE' }); } catch (_) { }
+        try {
+          const result = await apiFetch('/api/contacts?action=bulk-delete', {
+            method: 'DELETE',
+            body: JSON.stringify({ ids })
+          });
+          clearCache();
+          toast(`✓ Đã xoá ${result.deleted || ids.length} contacts khỏi database`, 'ok');
+          // Refresh lại từ server để đồng bộ
+          refreshContacts();
+          scheduleRefresh();
+        } catch (e) {
+          toast('Lỗi xoá trên server: ' + e.message, 'err');
+          // Reload lại contacts từ server
+          refreshContacts();
         }
       }
     }
