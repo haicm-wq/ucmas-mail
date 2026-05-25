@@ -420,7 +420,7 @@
     function onRowCheck() { updateBulkBar(); }
 
     function updateBulkBar() {
-      const checked = getCheckedIndices();
+      const checked = getCheckedContactIds();
       const bar = document.getElementById('bulk-bar');
       const countEl = document.getElementById('bulk-count');
       const chkAll = document.getElementById('chk-all');
@@ -440,16 +440,6 @@
       if (chkAll) chkAll.checked = total > 0 && checked.length === total;
     }
 
-    function getCheckedIndices() {
-      const rows = document.querySelectorAll('#contact-tbody tr');
-      const result = [];
-      rows.forEach((tr, i) => {
-        const cb = tr.querySelector('input[type=checkbox]');
-        if (cb?.checked) result.push(parseInt(tr.dataset.idx));
-      });
-      return result.filter(i => !isNaN(i));
-    }
-
     function clearSelection() {
       document.querySelectorAll('#contact-tbody input[type=checkbox]').forEach(c => c.checked = false);
       updateBulkBar();
@@ -460,12 +450,15 @@
       if (!ids.length) return;
       if (!confirm(`Xoá ${ids.length} contacts đã chọn? Hành động này không thể hoàn tác!`)) return;
 
+      const deleteCount = ids.length;
       // Xoá optimistic trước — loại bỏ contacts đã chọn khỏi danh sách hiện tại
       const idSet = new Set(ids);
       contacts = contacts.filter(c => !idSet.has(c.id));
+      totalContacts = Math.max(0, totalContacts - deleteCount);
       renderContactTable('', true);
       updateBulkBar();
-      toast(`Đang xoá ${ids.length} contacts...`, 'warn');
+      renderSidebar();
+      toast(`Đang xoá ${deleteCount} contacts...`, 'warn');
 
       // Xoá trên Supabase bằng API bulk-delete — 1 request thay vì n request
       if (window._backendConnected && ids.length) {
@@ -475,39 +468,36 @@
             body: JSON.stringify({ ids })
           });
           clearCache();
-          toast(`✓ Đã xoá ${result.deleted || ids.length} contacts khỏi database`, 'ok');
-          // Refresh lại từ server để đồng bộ
+          toast(`✓ Đã xoá ${result.deleted || deleteCount} contacts khỏi database`, 'ok');
+          // Refresh lại từ server để đồng bộ số lượng chính xác
           refreshContacts();
           scheduleRefresh();
         } catch (e) {
           toast('Lỗi xoá trên server: ' + e.message, 'err');
-          // Reload lại contacts từ server
           refreshContacts();
         }
       }
     }
 
     async function bulkChangeLevel() {
-      const idxs = getCheckedIndices();
+      const ids = getCheckedContactIds();
       const levelId = document.getElementById('bulk-level-sel').value;
-      if (!idxs.length) return;
+      if (!ids.length) return;
       if (!levelId) { toast('Chọn level muốn đổi!', 'err'); return; }
 
       const lv = getLevelById(levelId);
-      idxs.forEach(i => {
-        if (contacts[i]) { contacts[i].level_id = levelId; contacts[i].level = lv?.name || ''; }
+      const idSet = new Set(ids);
+      contacts.forEach(c => {
+        if (idSet.has(c.id)) { c.level_id = levelId; c.level = lv?.name || ''; }
       });
-      renderContactTable(); scheduleRefresh();
-      toast(`Đã đổi level ${idxs.length} contacts → ${lv?.name}`);
+      renderContactTable('', true); scheduleRefresh();
+      toast(`Đã đổi level ${ids.length} contacts → ${lv?.name}`);
 
       // Cập nhật trên Supabase
       if (window._backendConnected) {
-        for (const i of idxs) {
-          const c = contacts[i];
-          if (c?.id) {
-            try { await apiFetch('/api/contacts?action=level', { method: 'PATCH', body: JSON.stringify({ id: c.id, levelId }) }); }
-            catch (_) { }
-          }
+        for (const id of ids) {
+          try { await apiFetch('/api/contacts?action=level', { method: 'PATCH', body: JSON.stringify({ id, levelId }) }); }
+          catch (_) { }
         }
       }
     }
@@ -529,12 +519,16 @@
       if (idx === -1) return;
       const c = contacts[idx];
       contacts.splice(idx, 1);
+      totalContacts = Math.max(0, totalContacts - 1);
       renderContactTable('', true);
+      renderSidebar();
       toast('Đã xoá contact', 'warn');
       if (window._backendConnected && c.id) {
         try {
           await apiFetch('/api/contacts?id=' + c.id, { method: 'DELETE' });
           clearCache();
+          refreshContacts();
+          scheduleRefresh();
         } catch (e) { toast('Lỗi xóa trên server: ' + e.message, 'err'); }
       }
     }
@@ -594,20 +588,20 @@
     }
 
     async function bulkAddTagAction() {
-      const idxs = getCheckedIndices();
+      const ids = getCheckedContactIds();
       const tag = document.getElementById('bulk-tag-input').value.trim();
-      if (!idxs.length) return;
+      if (!ids.length) return;
       if (!tag) { toast('Nhập tag muốn gắn!', 'err'); return; }
 
-      const ids = idxs.map(i => contacts[i]?.id).filter(Boolean);
-      idxs.forEach(i => {
-        if (contacts[i]) {
-          if (!contacts[i].tags) contacts[i].tags = [];
-          if (!contacts[i].tags.includes(tag)) contacts[i].tags.push(tag);
+      const idSet = new Set(ids);
+      contacts.forEach(c => {
+        if (idSet.has(c.id)) {
+          if (!c.tags) c.tags = [];
+          if (!c.tags.includes(tag)) c.tags.push(tag);
         }
       });
-      renderContactTable();
-      toast(`Đã gắn tag "${tag}" cho ${idxs.length} contacts`);
+      renderContactTable('', true);
+      toast(`Đã gắn tag "${tag}" cho ${ids.length} contacts`);
 
       if (window._backendConnected && ids.length) {
         try {
@@ -618,17 +612,17 @@
     }
 
     async function bulkRemoveTagAction() {
-      const idxs = getCheckedIndices();
+      const ids = getCheckedContactIds();
       const tag = document.getElementById('bulk-tag-input').value.trim();
-      if (!idxs.length) return;
+      if (!ids.length) return;
       if (!tag) { toast('Nhập tag muốn gỡ!', 'err'); return; }
 
-      const ids = idxs.map(i => contacts[i]?.id).filter(Boolean);
-      idxs.forEach(i => {
-        if (contacts[i]) contacts[i].tags = (contacts[i].tags || []).filter(t => t !== tag);
+      const idSet = new Set(ids);
+      contacts.forEach(c => {
+        if (idSet.has(c.id)) c.tags = (c.tags || []).filter(t => t !== tag);
       });
-      renderContactTable();
-      toast(`Đã gỡ tag "${tag}" khỏi ${idxs.length} contacts`, 'warn');
+      renderContactTable('', true);
+      toast(`Đã gỡ tag "${tag}" khỏi ${ids.length} contacts`, 'warn');
 
       if (window._backendConnected && ids.length) {
         try {
