@@ -61,6 +61,9 @@
     let selectedTags = []; // tags đang filter
     let tagFilterMode = 'or'; // 'and' | 'or' cho tags
     let segmentLogic = 'and'; // 'and' | 'or' giữa level và tags
+    // Select all filtered state
+    let _selectAllFiltered = false;  // true = đang chọn TẤT CẢ contacts theo bộ lọc
+    let _allFilteredIds = [];        // danh sách IDs khi chọn tất cả
     // Segment form state
     let _sfLogic = 'and', _sfTagMode = 'or', _sfColor = '#60a5fa', _tfColor = '#a78bfa';
     let _sfLevelRules = [], _sfTagRules = [];
@@ -414,21 +417,38 @@
     }
     function selectAll(cb) {
       document.querySelectorAll('#contact-tbody input[type=checkbox]').forEach(c => c.checked = cb.checked);
+      // Khi bỏ chọn tất cả → reset trạng thái select all filtered
+      if (!cb.checked) { _selectAllFiltered = false; _allFilteredIds = []; }
       updateBulkBar();
     }
 
-    function onRowCheck() { updateBulkBar(); }
+    function onRowCheck() {
+      // Khi user bỏ chọn 1 row riêng lẻ → thoát chế độ select all filtered
+      _selectAllFiltered = false;
+      _allFilteredIds = [];
+      updateBulkBar();
+    }
 
     function updateBulkBar() {
-      const checked = getCheckedContactIds();
+      const pageChecked = [];
+      document.querySelectorAll('#contact-tbody tr').forEach(tr => {
+        const cb = tr.querySelector('input[type=checkbox]');
+        if (cb?.checked && tr.dataset.id) pageChecked.push(tr.dataset.id);
+      });
       const bar = document.getElementById('bulk-bar');
       const countEl = document.getElementById('bulk-count');
       const chkAll = document.getElementById('chk-all');
-      const total = document.querySelectorAll('#contact-tbody input[type=checkbox]').length;
+      const totalOnPage = document.querySelectorAll('#contact-tbody input[type=checkbox]').length;
+      const allPageChecked = totalOnPage > 0 && pageChecked.length === totalOnPage;
 
-      if (checked.length > 0) {
+      if (pageChecked.length > 0 || _selectAllFiltered) {
         bar.style.display = 'flex';
-        countEl.textContent = `${checked.length} đã chọn`;
+        // Hiện số lượng đã chọn
+        if (_selectAllFiltered) {
+          countEl.innerHTML = `<strong>${_allFilteredIds.length.toLocaleString()}</strong> contacts (tất cả theo bộ lọc)`;
+        } else {
+          countEl.textContent = `${pageChecked.length} đã chọn`;
+        }
         // Điền level options vào bulk select
         const sel = document.getElementById('bulk-level-sel');
         sel.innerHTML = '<option value="">Đổi level → chọn level</option>' +
@@ -436,12 +456,50 @@
       } else {
         bar.style.display = 'none';
       }
-      if (chkAll) chkAll.indeterminate = checked.length > 0 && checked.length < total;
-      if (chkAll) chkAll.checked = total > 0 && checked.length === total;
+      if (chkAll) chkAll.indeterminate = pageChecked.length > 0 && pageChecked.length < totalOnPage;
+      if (chkAll) chkAll.checked = totalOnPage > 0 && pageChecked.length === totalOnPage;
+
+      // Hiện banner "Chọn tất cả X contacts theo bộ lọc" khi đã chọn hết trang
+      let banner = document.getElementById('select-all-filtered-banner');
+      if (allPageChecked && !_selectAllFiltered && totalContacts > totalOnPage) {
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.id = 'select-all-filtered-banner';
+          banner.style.cssText = 'width:100%;text-align:center;padding:8px 0;font-size:13px;color:var(--text);margin-top:4px;';
+          bar.appendChild(banner);
+        }
+        banner.innerHTML = `Đã chọn <strong>${pageChecked.length}</strong> contacts trên trang này. ` +
+          `<a href="#" onclick="selectAllFiltered();return false" style="color:var(--accent2);font-weight:700;text-decoration:underline">` +
+          `Chọn tất cả ${totalContacts.toLocaleString()} contacts theo bộ lọc hiện tại</a>`;
+        banner.style.display = '';
+      } else if (banner) {
+        banner.style.display = 'none';
+      }
+    }
+
+    async function selectAllFiltered() {
+      toast('Đang tải tất cả contacts theo bộ lọc...', 'ok');
+      try {
+        const levelId = currentFilter === 'all' ? undefined : currentFilter;
+        const search = document.querySelector('.tbl-search')?.value || '';
+        const tagsParam = selectedTags.length ? selectedTags.join(',') : undefined;
+        let url = '/api/contacts?action=all-ids';
+        if (levelId) url += `&levelId=${levelId}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (tagsParam) url += `&tags=${encodeURIComponent(tagsParam)}&tagMode=${tagFilterMode}`;
+        _allFilteredIds = await apiFetch(url);
+        _selectAllFiltered = true;
+        updateBulkBar();
+        toast(`✓ Đã chọn tất cả ${_allFilteredIds.length.toLocaleString()} contacts theo bộ lọc`, 'ok');
+      } catch (e) {
+        toast('Lỗi tải danh sách: ' + e.message, 'err');
+      }
     }
 
     function clearSelection() {
       document.querySelectorAll('#contact-tbody input[type=checkbox]').forEach(c => c.checked = false);
+      _selectAllFiltered = false;
+      _allFilteredIds = [];
       updateBulkBar();
     }
 
@@ -694,8 +752,11 @@
       _bsegColor = el.dataset.color;
     }
 
-    // Get UUIDs of all checked rows
+    // Get UUIDs of all checked rows — hoặc tất cả filtered IDs nếu đang ở chế độ select all
     function getCheckedContactIds() {
+      if (_selectAllFiltered && _allFilteredIds.length > 0) {
+        return _allFilteredIds;
+      }
       const ids = [];
       document.querySelectorAll('#contact-tbody tr').forEach(tr => {
         const cb = tr.querySelector('input[type=checkbox]');

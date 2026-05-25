@@ -85,6 +85,12 @@ export default async function handler(req, res) {
       await db.bulkRemoveTag(ids, tag.trim());
       ok(res, { updated: ids.length });
 
+    } else if (req.method === 'GET' && action === 'all-ids') {
+      const { levelId, search, status } = req.query;
+      const tags = req.query.tags ? req.query.tags.split(',').filter(Boolean) : undefined;
+      const tagMode = req.query.tagMode || 'and';
+      ok(res, await db.getFilteredContactIds({ levelId, search, status, tags, tagMode }));
+
     } else if (req.method === 'GET') {
       const { levelId, search, status, page = 0, per_page = 200 } = req.query;
       const offset = parseInt(page) * parseInt(per_page);
