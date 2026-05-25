@@ -274,6 +274,7 @@
         return `<tr data-id="${cid}">
       <td><input type="checkbox" onchange="onRowCheck()"></td>
       <td style="font-weight:500">${esc(c.name)}</td>
+      <td style="font-size:12px;color:var(--muted)">${esc(c.child_name || '')}</td>
       <td class="col-em">${esc(c.email)}</td>
       <td><span class="lt" style="background:${hexToRgba(color, .12)};color:${color};border:1px solid ${hexToRgba(color, .25)}">\u25cf ${levelName}</span></td>
       <td style="max-width:200px">${(c.tags||[]).map(t=>`<span class="tag-chip" onclick="removeTagFromContact('${cid}','${esc(t)}')">${esc(t)} \u00d7</span>`).join('')}<input class="tag-inline" type="text" placeholder="+ tag" onkeydown="if(event.key==='Enter'){addTagToContact('${cid}',this.value);this.value='';}" style="width:50px;border:none;background:transparent;color:var(--text);font-size:10px;outline:none"></td>
@@ -288,7 +289,7 @@
         <button class="abtn" onclick="removeContact('${cid}')" style="margin-left:4px;color:var(--err)">\u2715</button>
       </td>
     </tr>`;
-      }).join('') || `<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--muted)">Kh\u00f4ng c\u00f3 contact n\u00e0o</td></tr>`;
+      }).join('') || `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--muted)">Kh\u00f4ng c\u00f3 contact n\u00e0o</td></tr>`;
       document.getElementById('table-count').textContent = rows.length + ' contacts';
     }
 
@@ -373,7 +374,7 @@
       const tagsParam = selectedTags.length ? selectedTags.join(',') : undefined;
       // Hiện loading row
       const tbody = document.getElementById('contact-tbody');
-      if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)"><span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> Đang tải...</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted)"><span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> Đang tải...</td></tr>`;
       try {
         let url = `/api/contacts?page=${currentPage}&per_page=${perPage}`;
         if (levelId) url += `&levelId=${levelId}`;
@@ -389,7 +390,7 @@
         updatePaginationUI(total);
       } catch (e) {
         console.error('[loadContactsPage]', e.message);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--err)">⚠ Lỗi tải contacts: ${e.message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--err)">⚠ Lỗi tải contacts: ${e.message}</td></tr>`;
       }
     }
 
@@ -2868,11 +2869,11 @@ ${html}
     // ── Download file mẫu CSV ───────────────
     function downloadSampleCSV() {
       const csv = [
-        'name,email,level,company,phone',
-        'Nguyễn Văn A,nguyenvana@email.com,L1,UCMAS Hà Nội,0901234567',
-        'Trần Thị B,tranthib@email.com,L2,UCMAS HCM,0907654321',
-        'Lê Văn C,levanc@email.com,L3,,',
-        'Phạm Thị D,phamthid@email.com,L4,UCMAS Đà Nẵng,',
+        'name,email,level,company,phone,child_name',
+        'Nguyễn Văn A,nguyenvana@email.com,L1,UCMAS Hà Nội,0901234567,Bé Nguyễn Văn B',
+        'Trần Thị B,tranthib@email.com,L2,UCMAS HCM,0907654321,Bé Trần Văn C',
+        'Lê Văn C,levanc@email.com,L3,,,',
+        'Phạm Thị D,phamthid@email.com,L4,UCMAS Đà Nẵng,,Bé Phạm Thị E',
       ].join('\n');
       const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }); // BOM cho Excel đọc được tiếng Việt
       const a = document.createElement('a');
