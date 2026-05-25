@@ -1615,7 +1615,7 @@
     }
 
     // Shared preview renderer — dùng chung cho template editor và campaign
-    const PREVIEW_SAMPLE = { name: 'Nguyễn Văn A', email: 'sample@ucmas.vn', level: 'L1', company: 'UCMAS', date: new Date().toLocaleDateString('vi-VN') };
+    const PREVIEW_SAMPLE = { name: 'Nguyễn Văn A', email: 'sample@ucmas.vn', level: 'L1', company: 'UCMAS', child_name: 'Bé Nguyễn Văn B', ten_con: 'Bé Nguyễn Văn B', date: new Date().toLocaleDateString('vi-VN') };
     function renderEmailPreview(code, frame) {
       if (!frame || !code?.trim()) {
         if (frame) frame.srcdoc = '<p style="color:#aaa;font-family:Arial;padding:16px">Chưa có nội dung</p>';
@@ -2695,7 +2695,8 @@ ${html}
           const email = parts[0] || '';
           const name = parts[1] || email.split('@')[0]; // fallback tên = phần trước @
           const company = parts[2] || '';
-          return { email: email.toLowerCase(), name, company };
+          const child_name = parts[3] || '';
+          return { email: email.toLowerCase(), name, company, child_name };
         })
         .filter(r => r.email.includes('@'));
     }
@@ -2728,6 +2729,7 @@ ${html}
       const lv = getLevelById(levelId);
       const toUpsert = rows.map(r => ({
         name: r.name, email: r.email, company: r.company,
+        child_name: r.child_name || '',
         level_id: levelId, status: 'active',
       }));
 
@@ -2975,6 +2977,7 @@ ${html}
         level: c.levels?.name || '',
         level_id: c.level_id,
         company: c.company || '',
+        child_name: c.child_name || '',
         tags: c.tags || [],           // QUAN TRỌNG: không được bỏ qua
         dbStatus: c.status || 'active', // dùng dbStatus, không phải status
         last: c.last_sent_at
@@ -3626,6 +3629,7 @@ ${html}
           id: c.id, name: c.name, email: c.email,
           level: c.levels?.name || '', level_id: c.level_id,
           company: c.company || '',
+          child_name: c.child_name || '',
           status: c.status === 'active' ? 'pending' : c.status,
           last: c.last_sent_at ? new Date(c.last_sent_at).toLocaleDateString('vi-VN') : '—',
         }));

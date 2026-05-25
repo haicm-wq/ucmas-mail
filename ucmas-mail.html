@@ -281,8 +281,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
         </div>
         <div class="info-box" style="font-size:12px">
           Định dạng mỗi dòng: <span style="color:var(--l2);font-family:var(--fm)">email</span> hoặc <span
-            style="color:var(--l2);font-family:var(--fm)">email, tên</span> hoặc <span
-            style="color:var(--l2);font-family:var(--fm)">email, tên, công ty</span>
+            style="color:var(--l2);font-family:var(--fm)">email, tên, công ty, tên con</span>
         </div>
         <div id="qa-preview" style="display:none;margin-top:8px">
           <div
@@ -616,7 +615,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
           <div class="upload-title">Kéo thả file hoặc click để chọn</div>
           <div class="upload-hint">Cột bắt buộc: <strong style="color:var(--l2)">name</strong> · <strong
               style="color:var(--l2)">email</strong> · <strong style="color:var(--l2)">level</strong> &nbsp;·&nbsp; Cột
-            tuỳ chọn: company, phone</div>
+            tuỳ chọn: child_name (tên con), company, phone</div>
           <div class="fmt-chips"><span class="fmt-chip">.csv</span><span class="fmt-chip">.xlsx</span><span
               class="fmt-chip">.xls</span><span class="fmt-chip">Google Sheet</span></div>
         </div>
@@ -667,6 +666,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
               <tr>
                 <th><input type="checkbox" id="chk-all" onchange="selectAll(this)"></th>
                 <th>Name</th>
+                <th>Tên con</th>
                 <th>Email</th>
                 <th>Level</th>
                 <th>Tags</th>
