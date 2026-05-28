@@ -97,32 +97,41 @@ export default async function handler(req, res) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 async function handleResume(req, res, db, emailConfig, campaignId) {
-  // 1. Lấy thông tin campaign
-  let campaign;
+  // 1. Kiểm tra trạng thái campaign (nhẹ, không gọi getCampaigns nặng)
+  let campStatus;
   try {
-    const list = await db.getCampaigns();
-    campaign = list.find(c => c.id === campaignId);
-    if (!campaign) return err(res, 'Campaign không tồn tại');
+    campStatus = await db.getCampaignStatus(campaignId);
+    if (!campStatus) return err(res, 'Campaign không tồn tại');
   } catch (e) { return err(res, 'Lỗi đọc campaign: ' + e.message, 500); }
 
   // Chặn nếu đang được gửi bởi request khác
-  if (campaign.status === 'sending') {
-    return err(res,
-      'Campaign này đang được gửi. Chờ hoặc bấm Dừng trước.',
-      409);
+  if (campStatus === 'sending') {
+    return err(res, 'Campaign này đang được gửi. Chờ hoặc bấm Dừng trước.', 409);
   }
 
-  // 2. Đọc toàn bộ send_logs — lấy TẤT CẢ email đã gửi thành công
-  //    Đây là nguồn sự thật duy nhất: ai có trong log với status='sent' → KHÔNG gửi lại
+  // Lấy thông tin campaign đầy đủ (nhẹ, chỉ 1 record)
+  let campaign;
+  try {
+    const { data, error: cErr } = await db._sb().from('campaigns')
+      .select('*').eq('id', campaignId).maybeSingle();
+    if (cErr) throw cErr;
+    campaign = data;
+    if (!campaign) return err(res, 'Campaign không tồn tại');
+  } catch (e) { return err(res, 'Lỗi đọc campaign: ' + e.message, 500); }
+
+  // 2. Đọc toàn bộ send_logs — lấy TẤT CẢ email đã được xử lý (sent HOẶC failed)
+  //    Email failed vẫn có thể đã được Resend gửi thành công → không gửi lại
   let sentEmails = new Set();
   try {
     const logs = await db.getCampaignLogs(campaignId);
     for (const log of (logs || [])) {
-      if (log.status === 'sent') sentEmails.add(log.email);
+      // Thêm TẤT CẢ email đã xử lý vào Set (không chỉ 'sent')
+      sentEmails.add(log.email);
     }
   } catch (e) {
-    console.warn('[resume] Không đọc được logs, bắt đầu lại từ đầu:', e.message);
-    // Vẫn tiếp tục với sentEmails rỗng — an toàn hơn là không gửi gì
+    console.warn('[resume] Không đọc được logs:', e.message);
+    // QUAN TRỌNG: Nếu không đọc được logs, DỪNG LẠI để tránh gửi trùng
+    return err(res, 'Không đọc được send_logs. Thử lại sau.', 500);
   }
 
   // 3. Lấy toàn bộ contacts của campaign
@@ -131,7 +140,7 @@ async function handleResume(req, res, db, emailConfig, campaignId) {
     allContacts = await db.getContactsByLevelIds(campaign.target_levels || []);
   } catch (e) { return err(res, 'Lỗi đọc contacts: ' + e.message, 500); }
 
-  // 4. Lọc những người CHƯA được gửi
+  // 4. Lọc những người CHƯA được gửi (không có trong send_logs)
   const remaining = allContacts.filter(c => !sentEmails.has(c.email));
 
   // Nếu tất cả đã gửi → hoàn thành
@@ -146,8 +155,12 @@ async function handleResume(req, res, db, emailConfig, campaignId) {
     });
   }
 
-  // 5. Đánh dấu đang gửi (lock — ngăn request đồng thời)
+  // 5. Đánh dấu đang gửi (lock) — kiểm tra lại trước khi lock (tránh race condition)
   try {
+    const recheck = await db.getCampaignStatus(campaignId);
+    if (recheck === 'sending') {
+      return err(res, 'Campaign vừa được bắt đầu bởi request khác.', 409);
+    }
     await db.updateCampaignStatus(campaignId, { status: 'sending' });
   } catch (e) { return err(res, 'Không thể bắt đầu: ' + e.message, 500); }
 
@@ -200,11 +213,22 @@ async function sendSequential(campaign, contacts, db, emailConfig, emit, sentEma
       }
     }
 
-    // Bảo vệ extra: bỏ qua nếu email này đã được gửi thành công
+    // Bảo vệ extra: bỏ qua nếu email này đã được xử lý (sent hoặc failed)
     if (sentEmailsSet.has(contact.email)) {
-      console.log(`[skip] ${contact.email} đã gửi rồi`);
+      console.log(`[skip] ${contact.email} đã có trong logs`);
       continue;
     }
+
+    // Kiểm tra lần cuối trước khi gửi: query DB để chắc chắn chưa gửi
+    try {
+      const { data: existLog } = await db._sb().from('send_logs')
+        .select('id').eq('campaign_id', campaign.id).eq('email', contact.email).limit(1);
+      if (existLog?.length) {
+        console.log(`[skip-db] ${contact.email} đã có log trong DB`);
+        sentEmailsSet.add(contact.email);
+        continue;
+      }
+    } catch (_) { /* bỏ qua lỗi query, tiếp tục gửi */ }
 
     let status = 'failed', resend_id = null, error_msg = null;
 
