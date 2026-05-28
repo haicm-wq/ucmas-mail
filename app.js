@@ -3177,6 +3177,7 @@ ${html}
       }
       const statusColor = s => s === 'completed' ? 'var(--ok)' : s === 'failed' ? 'var(--err)' : 'var(--warn)';
       const statusIcon = s => s === 'completed' ? 'ok' : s === 'failed' ? 'err' : 'partial';
+      const statusLabel = s => s === 'completed' ? 'hoàn thành' : s === 'sending' ? 'đang gửi' : s === 'paused' ? 'dừng' : s === 'failed' ? 'thất bại' : s;
       body.innerHTML = recent.map(c => {
         const total = (c.sent_count || 0) + (c.failed_count || 0);
         const pct = total > 0 ? Math.round(c.sent_count / total * 100) : 0;
@@ -3192,8 +3193,8 @@ ${html}
         </div>
       </div>
       <div class="h-stats">
-        <div class="h-sent" style="color:${statusColor(c.status)}">${c.sent_count}/${total || '?'}</div>
-        <div class="h-rate">${total > 0 ? pct + '%' : c.status}</div>
+        <div class="h-sent" style="color:${statusColor(c.status)}">${c.sent_count || 0}/${total || '?'}</div>
+        <div class="h-rate">${total > 0 ? pct + '%' : statusLabel(c.status)}</div>
       </div>
     </div>`;
       }).join('');
