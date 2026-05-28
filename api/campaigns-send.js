@@ -182,13 +182,20 @@ async function sendSequential(campaign, contacts, db, emailConfig, emit, sentEma
   for (let i = 0; i < contacts.length; i++) {
     const contact = contacts[i];
 
-    // Kiểm tra kill switch trước mỗi email (cứ 10 email check 1 lần để tiết kiệm query)
-    if (i % 10 === 0) {
+    // Kiểm tra kill switch + campaign status mỗi 5 email
+    if (i % 5 === 0) {
       const killed = await db.getKillSwitch().catch(() => false);
       if (killed) {
         console.log('[sendSequential] Kill switch active — dừng gửi');
         await db.updateCampaignStatus(campaign.id, { status: 'paused', sent_count: sent, failed_count: failed }).catch(() => {});
         emit({ type: 'done', sent, failed, total: grandTotal, campaignId: campaign.id, killed: true });
+        return;
+      }
+      // Kiểm tra campaign đã bị dừng từ frontend chưa
+      const campStatus = await db.getCampaignStatus(campaign.id).catch(() => null);
+      if (campStatus === 'paused') {
+        console.log('[sendSequential] Campaign paused by user — dừng gửi');
+        emit({ type: 'done', sent, failed, total: grandTotal, campaignId: campaign.id, paused: true });
         return;
       }
     }
@@ -235,6 +242,13 @@ async function sendSequential(campaign, contacts, db, emailConfig, emit, sentEma
       total:   grandTotal,
       current: i + 1,
     });
+
+    // Lưu tiến trình mỗi 10 email — phòng mất kết nối
+    if ((sent + failed) % 10 === 0 && (sent + failed) > 0) {
+      await db.updateCampaignStatus(campaign.id, {
+        status: 'sending', sent_count: sent, failed_count: failed,
+      }).catch(() => {});
+    }
   }
 
   // Cập nhật last_sent_at

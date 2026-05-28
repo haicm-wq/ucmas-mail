@@ -3223,15 +3223,24 @@ ${html}
         const sd = c.sent_at ? new Date(c.sent_at) : null;
         const active = sd && (Date.now()-sd.getTime()) < TRK_MAX_AGE;
         const tl = active ? '<span style="color:var(--ok);font-size:10px">● tracking</span>' : (sd ? '<span style="font-size:10px;color:var(--muted)">hết hạn</span>' : '');
-        const isPartial  = c.status === 'sending' || c.status === 'paused'; // không có 'partial' trong DB enum
+        const isPartial  = c.status === 'sending' || c.status === 'paused';
         const isSending  = c.status === 'sending';
-        const canResume  = c.status === 'paused';                            // chỉ 'paused' mới có nút Resume
+        const canResume  = c.status === 'paused';
+        const isComplete = c.status === 'completed';
+        // Badge trạng thái
+        const statusBadge = isComplete
+          ? ` <span style="color:#3de8a0;font-size:10px;font-weight:600">✅ hoàn thành (${c.sent_count} đã gửi)</span>`
+          : isSending
+          ? ` <span class="sending-badge" style="color:#f5a623;font-size:10px;font-weight:600">⟳ đang gửi...</span>`
+          : isPartial
+          ? ` <span style="color:#f5a623;font-size:10px;font-weight:600">⏸ đang dở (${c.sent_count} đã gửi)</span>`
+          : '';
         return `<div class="trk-campaign" id="trk-camp-${c.id}">
   <div class="trk-campaign-row" onclick="toggleCampaignDetail('${c.id}')">
     <div class="h-icon ${sI(c.status)}">✉</div>
     <div style="flex:1;min-width:140px">
       <div class="h-title">${c.name}</div>
-      <div class="h-meta">${(c.target_levels||[]).map((l,i)=>`<span class="lt lt${(i%4)+1}">${l}</span>`).join('')} · ${sd?sd.toLocaleDateString('vi-VN'):'—'} ${tl}${isPartial ? ' <span style="color:#f5a623;font-size:10px;font-weight:600">⏸ đang dở (' + c.sent_count + ' đã gửi)</span>' : ''}</div>
+      <div class="h-meta">${(c.target_levels||[]).map((l,i)=>`<span class="lt lt${(i%4)+1}">${l}</span>`).join('')} · ${sd?sd.toLocaleDateString('vi-VN'):'—'} ${tl}${statusBadge}</div>
     </div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
       <div class="trk-pill"><span class="trk-pill-icon" style="color:#3de8a0">✓</span>${c.sent_count}/${total}</div>
@@ -3280,24 +3289,42 @@ ${html}
         emailMap[e.recipient_email].ev.push(e.event_type);
       });
       const list = Object.values(emailMap);
+
+      // Gán filter tags cho mỗi email
+      list.forEach(em => {
+        em.filters = [];
+        if (em.status === 'sent') em.filters.push('sent');
+        if (em.status === 'failed') em.filters.push('failed');
+        if (em.ev.includes('delivered')) em.filters.push('delivered');
+        if (em.ev.includes('opened')) em.filters.push('opened');
+        if (em.ev.includes('clicked')) em.filters.push('clicked');
+        if (em.ev.includes('bounced')) em.filters.push('bounced');
+        if (em.ev.includes('complained')) em.filters.push('spam');
+      });
+
+      const tblId = 'trk-tbl-' + campId;
+      const filterId = 'trk-filter-' + campId;
+      const countId = 'trk-fcount-' + campId;
+
       container.innerHTML = `<div class="trk-detail-inner">
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
     <div class="trk-rate-bar"><div class="trk-rate-hd"><span>Delivery</span><span style="color:#3de8a0">${dR}%</span></div><div class="trk-rate-bg"><div class="trk-rate-fill" style="width:${dR}%;background:#3de8a0"></div></div></div>
     <div class="trk-rate-bar"><div class="trk-rate-hd"><span>Open Rate</span><span style="color:#4f6cff">${oR}%</span></div><div class="trk-rate-bg"><div class="trk-rate-fill" style="width:${oR}%;background:#4f6cff"></div></div></div>
     <div class="trk-rate-bar"><div class="trk-rate-hd"><span>Click Rate</span><span style="color:#c97ef5">${cR}%</span></div><div class="trk-rate-bg"><div class="trk-rate-fill" style="width:${cR}%;background:#c97ef5"></div></div></div>
   </div>
-  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;font-family:var(--fm)">
-    <span>📨 Gửi: <b>${stats.total_sent}</b></span>
-    <span>📬 Delivered: <b style="color:#3de8a0">${stats.delivered}</b></span>
-    <span>👁 Opens: <b style="color:#4f6cff">${stats.unique_opens}</b></span>
-    <span>🔗 Clicks: <b style="color:#c97ef5">${stats.unique_clicks}</b></span>
-    ${stats.bounced?`<span>⚠ Bounce: <b style="color:#ff7eb3">${stats.bounced}</b></span>`:''}
-    ${stats.complained?`<span>🚫 Spam: <b style="color:#ff5757">${stats.complained}</b></span>`:''}
-    ${stats.total_failed?`<span>❌ Failed: <b style="color:var(--err)">${stats.total_failed}</b></span>`:''}
+  <div id="${filterId}" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;font-family:var(--fm)">
+    <span class="trk-stat-btn active" data-filter="all" onclick="filterCampaignEmails('${campId}','all',this)" style="cursor:pointer;padding:3px 10px;border-radius:12px;border:1px solid var(--border);transition:all .2s">📋 Tất cả: <b>${list.length}</b></span>
+    <span class="trk-stat-btn" data-filter="sent" onclick="filterCampaignEmails('${campId}','sent',this)" style="cursor:pointer;padding:3px 10px;border-radius:12px;border:1px solid var(--border);transition:all .2s">📨 Gửi: <b>${stats.total_sent}</b></span>
+    <span class="trk-stat-btn" data-filter="delivered" onclick="filterCampaignEmails('${campId}','delivered',this)" style="cursor:pointer;padding:3px 10px;border-radius:12px;border:1px solid var(--border);transition:all .2s">📬 Delivered: <b style="color:#3de8a0">${stats.delivered}</b></span>
+    <span class="trk-stat-btn" data-filter="opened" onclick="filterCampaignEmails('${campId}','opened',this)" style="cursor:pointer;padding:3px 10px;border-radius:12px;border:1px solid var(--border);transition:all .2s">👁 Opens: <b style="color:#4f6cff">${stats.unique_opens}</b></span>
+    <span class="trk-stat-btn" data-filter="clicked" onclick="filterCampaignEmails('${campId}','clicked',this)" style="cursor:pointer;padding:3px 10px;border-radius:12px;border:1px solid var(--border);transition:all .2s">🔗 Clicks: <b style="color:#c97ef5">${stats.unique_clicks}</b></span>
+    ${stats.bounced?`<span class="trk-stat-btn" data-filter="bounced" onclick="filterCampaignEmails('${campId}','bounced',this)" style="cursor:pointer;padding:3px 10px;border-radius:12px;border:1px solid var(--border);transition:all .2s">⚠ Bounce: <b style="color:#ff7eb3">${stats.bounced}</b></span>`:''}
+    ${stats.complained?`<span class="trk-stat-btn" data-filter="spam" onclick="filterCampaignEmails('${campId}','spam',this)" style="cursor:pointer;padding:3px 10px;border-radius:12px;border:1px solid var(--border);transition:all .2s">🚫 Spam: <b style="color:#ff5757">${stats.complained}</b></span>`:''}
+    ${stats.total_failed?`<span class="trk-stat-btn" data-filter="failed" onclick="filterCampaignEmails('${campId}','failed',this)" style="cursor:pointer;padding:3px 10px;border-radius:12px;border:1px solid var(--border);transition:all .2s">❌ Failed: <b style="color:var(--err)">${stats.total_failed}</b></span>`:''}
   </div>
-  <div style="font-weight:600;font-size:12px;margin-bottom:6px">📋 Chi tiết từng email (${list.length})</div>
+  <div style="font-weight:600;font-size:12px;margin-bottom:6px">📋 <span id="${countId}">Chi tiết từng email (${list.length})</span></div>
   <div style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:6px">
-    <table style="width:100%;font-size:11px;border-collapse:collapse">
+    <table style="width:100%;font-size:11px;border-collapse:collapse" id="${tblId}">
       <thead><tr style="background:var(--surface3);position:sticky;top:0">
         <th style="padding:6px 8px;text-align:left">Email</th><th style="padding:6px;text-align:left">Level</th>
         <th style="padding:6px;text-align:center">Sent</th><th style="padding:6px;text-align:center">📬</th>
@@ -3308,7 +3335,7 @@ ${html}
         const d=em.ev.includes('delivered'), o=em.ev.includes('opened'), c=em.ev.includes('clicked');
         const b=em.ev.includes('bounced'), sp=em.ev.includes('complained');
         const badge = b?'<span style="color:#ff7eb3">Bounce</span>':sp?'<span style="color:#ff5757">Spam</span>':em.status==='failed'?'<span style="color:var(--err)">Failed</span>':'<span style="color:var(--ok)">OK</span>';
-        return `<tr style="border-top:1px solid var(--border)">
+        return `<tr style="border-top:1px solid var(--border)" data-filters="${em.filters.join(',')}">
           <td style="padding:5px 8px;font-family:var(--fm)">${em.email}</td><td style="padding:5px 6px">${em.level||'—'}</td>
           <td style="text-align:center">${em.status==='sent'?'✅':em.status==='failed'?'❌':'—'}</td>
           <td style="text-align:center">${d?'📬':'—'}</td><td style="text-align:center">${o?'👁':'—'}</td>
@@ -3321,6 +3348,58 @@ ${html}
     <button class="abtn" style="font-size:11px" onclick="exportCampaignLogs('${campId}')">⬇ Export CSV</button>
   </div>
 </div>`;
+
+      // Highlight nút "Tất cả" mặc định
+      const allBtn = container.querySelector('.trk-stat-btn.active');
+      if (allBtn) { allBtn.style.background = 'var(--accent)'; allBtn.style.color = '#fff'; allBtn.style.borderColor = 'var(--accent)'; }
+    }
+
+    // ── Lọc email trong campaign detail theo trạng thái ──
+    const _filterColors = {
+      all:'var(--accent)', sent:'#5ba8ff', delivered:'#3de8a0',
+      opened:'#4f6cff', clicked:'#c97ef5', bounced:'#ff7eb3',
+      spam:'#ff5757', failed:'#ef4444',
+    };
+    function filterCampaignEmails(campId, filter, btn) {
+      const tbl = document.getElementById('trk-tbl-' + campId);
+      const countEl = document.getElementById('trk-fcount-' + campId);
+      const filterBar = document.getElementById('trk-filter-' + campId);
+      if (!tbl) return;
+
+      // Reset tất cả nút filter
+      if (filterBar) {
+        filterBar.querySelectorAll('.trk-stat-btn').forEach(b => {
+          b.classList.remove('active');
+          b.style.background = ''; b.style.color = ''; b.style.borderColor = 'var(--border)';
+        });
+      }
+      // Highlight nút active
+      if (btn) {
+        btn.classList.add('active');
+        const col = _filterColors[filter] || 'var(--accent)';
+        btn.style.background = col; btn.style.color = '#fff'; btn.style.borderColor = col;
+      }
+
+      const rows = tbl.querySelectorAll('tbody tr');
+      let shown = 0;
+      rows.forEach(row => {
+        if (filter === 'all') {
+          row.style.display = '';
+          shown++;
+        } else {
+          const filters = (row.getAttribute('data-filters') || '').split(',');
+          if (filters.includes(filter)) {
+            row.style.display = '';
+            shown++;
+          } else {
+            row.style.display = 'none';
+          }
+        }
+      });
+
+      // Cập nhật label
+      const filterNames = {all:'Tất cả',sent:'Đã gửi',delivered:'Delivered',opened:'Đã mở',clicked:'Đã click',bounced:'Bounce',spam:'Spam',failed:'Failed'};
+      if (countEl) countEl.textContent = `${filterNames[filter]||filter} (${shown})`;
     }
 
     function updateTrackingOverview(campaigns) {
@@ -3431,8 +3510,35 @@ ${html}
         await apiFetch(`/api/campaigns-send?stop=${cid}`, { method: 'POST' });
         toast('⏸ Đã dừng gửi campaign');
       } catch (e) { toast('Lỗi dừng: ' + e.message, 'err'); }
+      // Lưu campaignId để có thể resume từ trang Campaign
+      window._lastPausedCampaignId = cid;
       window._sendingCampaignId = null;
+      // Cập nhật UI: ẩn nút Dừng, hiện nút Tiếp tục
+      const btnStop = document.getElementById('btn-stop-campaign');
+      const btnResume = document.getElementById('btn-resume-campaign');
+      if (btnStop) btnStop.style.display = 'none';
+      if (btnResume) btnResume.style.display = '';
+      // Cập nhật label progress
+      const progLbl = document.querySelector('.prog-lbl');
+      if (progLbl) progLbl.textContent = '⏸ Đã dừng — bấm Tiếp tục để gửi tiếp';
       refreshTracking();
+    }
+
+    // Tiếp tục gửi từ trang Campaign (bấm nút trên progress bar)
+    function resumeFromCampaignPage() {
+      const cid = window._lastPausedCampaignId;
+      if (!cid) { toast('Không tìm thấy campaign để gửi tiếp. Vào History → Gửi tiếp.', 'err'); return; }
+      // Reset UI progress bar
+      const btnStop = document.getElementById('btn-stop-campaign');
+      const btnResume = document.getElementById('btn-resume-campaign');
+      if (btnStop) btnStop.style.display = '';
+      if (btnResume) btnResume.style.display = 'none';
+      const progLbl = document.querySelector('.prog-lbl');
+      if (progLbl) progLbl.textContent = 'Đang gửi tiếp campaign...';
+      const prog = document.getElementById('send-progress');
+      if (prog) { prog.classList.add('active'); prog.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+      // Gọi resumeCampaign
+      resumeCampaign(cid);
     }
 
     // Dừng campaign trực tiếp từ History (theo ID — không cần đang gửi trong tab hiện tại)
@@ -3470,6 +3576,9 @@ ${html}
       clearTimeout(window._resumeTimer);
 
       if (!isAutoResume) toast('▶ Đang gửi tiếp campaign...');
+
+      // ── Cập nhật History UI ngay lập tức → hiện trạng thái "đang gửi" ──
+      updateCampaignCardUI(campaignId, 'sending');
 
       let lastSent = 0, lastTotal = 0, completed = false;
 
@@ -3544,7 +3653,9 @@ ${html}
 
       if (window._stopCampaign) {
         window._sendingCampaignId = null;
+        window._lastPausedCampaignId = campaignId;
         toast('⏸ Đã dừng gửi.');
+        updateCampaignCardUI(campaignId, 'paused');
         refreshTracking();
         return;
       }
@@ -3557,7 +3668,79 @@ ${html}
         }, 3000);
       } else if (!completed) {
         toast('⚠ Không thể kết nối. Vào History → bấm Gửi tiếp khi sẵn sàng.', 'warn');
+        updateCampaignCardUI(campaignId, 'paused');
         refreshTracking();
+      }
+    }
+
+    /**
+     * Cập nhật UI campaign card trong History ngay lập tức (không cần chờ API refresh).
+     * Giải quyết lỗi: bấm Gửi tiếp nhưng UI không đổi → bấm lại → báo trùng.
+     */
+    function updateCampaignCardUI(campaignId, newStatus) {
+      const card = document.getElementById('trk-camp-' + campaignId);
+      if (!card) return;
+      const row = card.querySelector('.trk-campaign-row');
+      if (!row) return;
+
+      // Tìm và xoá các nút cũ (Gửi tiếp / Dừng)
+      const oldBtns = row.querySelectorAll('.campaign-action-btn');
+      oldBtns.forEach(b => b.remove());
+
+      // Tìm expand icon để insert trước nó
+      const expandIcon = row.querySelector('.trk-expand-icon');
+
+      if (newStatus === 'sending') {
+        // Đang gửi → hiện nút Dừng + badge "đang gửi"
+        const stopBtn = document.createElement('button');
+        stopBtn.className = 'abtn campaign-action-btn';
+        stopBtn.style.cssText = 'font-size:10px;padding:2px 8px;color:#ff7eb3;border-color:#ff7eb3';
+        stopBtn.innerHTML = '⏹ Dừng';
+        stopBtn.onclick = (e) => { e.stopPropagation(); stopCampaignById(campaignId); };
+        if (expandIcon) row.insertBefore(stopBtn, expandIcon);
+        else row.appendChild(stopBtn);
+
+        // Cập nhật icon status
+        const icon = card.querySelector('.h-icon');
+        if (icon) { icon.className = 'h-icon run'; }
+
+        // Cập nhật meta text
+        const meta = card.querySelector('.h-meta');
+        if (meta) {
+          // Xoá badge trạng thái cũ nếu có
+          const oldBadge = meta.querySelector('.sending-badge');
+          if (oldBadge) oldBadge.remove();
+          const badge = document.createElement('span');
+          badge.className = 'sending-badge';
+          badge.style.cssText = 'color:#f5a623;font-size:10px;font-weight:600;margin-left:4px';
+          badge.innerHTML = '⟳ đang gửi...';
+          meta.appendChild(badge);
+        }
+      } else if (newStatus === 'paused') {
+        // Đã dừng → hiện nút Gửi tiếp
+        const resumeBtn = document.createElement('button');
+        resumeBtn.className = 'abtn campaign-action-btn';
+        resumeBtn.style.cssText = 'font-size:10px;padding:2px 8px;color:#f5a623;border-color:#f5a623';
+        resumeBtn.innerHTML = '▶ Gửi tiếp';
+        resumeBtn.onclick = (e) => { e.stopPropagation(); resumeCampaign(campaignId); };
+        if (expandIcon) row.insertBefore(resumeBtn, expandIcon);
+        else row.appendChild(resumeBtn);
+
+        // Cập nhật icon
+        const icon = card.querySelector('.h-icon');
+        if (icon) { icon.className = 'h-icon partial'; }
+
+        // Cập nhật badge
+        const meta = card.querySelector('.h-meta');
+        if (meta) {
+          const oldBadge = meta.querySelector('.sending-badge');
+          if (oldBadge) oldBadge.remove();
+          const badge = document.createElement('span');
+          badge.className = 'sending-badge';
+          badge.style.cssText = 'color:#f5a623;font-size:10px;font-weight:600;margin-left:4px';
+          badge.innerHTML = '⏸ đang dở';
+          meta.appendChild(badge);
+        }
       }
     }
 
@@ -3755,6 +3938,15 @@ ${html}
       prog.classList.add('active');
       prog.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
+      // Reset trạng thái stop/resume
+      window._stopCampaign = false;
+      const btnStop = document.getElementById('btn-stop-campaign');
+      const btnResume = document.getElementById('btn-resume-campaign');
+      if (btnStop) btnStop.style.display = '';
+      if (btnResume) btnResume.style.display = 'none';
+      const progLbl = document.querySelector('.prog-lbl');
+      if (progLbl) progLbl.textContent = 'Đang gửi campaign...';
+
       document.getElementById('ps1').className = 'pstep run';
       document.getElementById('ps2').className = 'pstep';
       document.getElementById('ps3').className = 'pstep';
@@ -3775,6 +3967,7 @@ ${html}
         let buffer = '';
 
         while (true) {
+          if (window._stopCampaign) { reader.cancel(); break; }
           const { done, value } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
@@ -3800,14 +3993,30 @@ ${html}
               }
             }
             if (data.type === 'done') {
-              ['ps1', 'ps2', 'ps3', 'ps4'].forEach(s => document.getElementById(s).className = 'pstep done');
-              document.getElementById('prog-fill').style.width = '100%';
-              document.getElementById('prog-pct').textContent = '100%';
-              setTimeout(() => {
-                prog.classList.remove('active');
-                toast(`Đã gửi xong! ${data.sent}/${data.total} thành công.`);
-                gotoPage('history');
-              }, 600);
+              if (data.paused || data.killed) {
+                // Campaign bị dừng giữa chừng → hiện nút tiếp tục
+                window._lastPausedCampaignId = data.campaignId;
+                window._sendingCampaignId = null;
+                const pct = data.total > 0 ? Math.round(data.sent / data.total * 100) : 0;
+                document.getElementById('prog-fill').style.width = pct + '%';
+                document.getElementById('prog-pct').textContent = pct + '%';
+                const bStop = document.getElementById('btn-stop-campaign');
+                const bResume = document.getElementById('btn-resume-campaign');
+                if (bStop) bStop.style.display = 'none';
+                if (bResume) bResume.style.display = '';
+                const pLbl = document.querySelector('.prog-lbl');
+                if (pLbl) pLbl.textContent = `⏸ Đã dừng — ${data.sent}/${data.total} đã gửi`;
+                toast(`⏸ Đã dừng: ${data.sent}/${data.total} đã gửi. Bấm Tiếp tục để gửi tiếp.`);
+              } else {
+                ['ps1', 'ps2', 'ps3', 'ps4'].forEach(s => document.getElementById(s).className = 'pstep done');
+                document.getElementById('prog-fill').style.width = '100%';
+                document.getElementById('prog-pct').textContent = '100%';
+                setTimeout(() => {
+                  prog.classList.remove('active');
+                  toast(`Đã gửi xong! ${data.sent}/${data.total} thành công.`);
+                  gotoPage('history');
+                }, 600);
+              }
             }
             if (data.type === 'error') {
               if (data.resumable) {

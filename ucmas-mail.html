@@ -1036,8 +1036,9 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
         <span class="pstep" id="ps3">Sending emails</span>
         <span class="pstep" id="ps4">Logging results</span>
       </div>
-      <div style="text-align:center;margin-top:8px">
-        <button class="abtn" onclick="stopCampaign()" style="color:#ff6b6b;border-color:#ff6b6b;font-size:12px;padding:4px 16px">⏹ Dừng gửi</button>
+      <div style="text-align:center;margin-top:8px" id="send-action-buttons">
+        <button class="abtn" id="btn-stop-campaign" onclick="stopCampaign()" style="color:#ff6b6b;border-color:#ff6b6b;font-size:12px;padding:4px 16px">⏹ Dừng gửi</button>
+        <button class="abtn" id="btn-resume-campaign" onclick="resumeFromCampaignPage()" style="display:none;color:#3de8a0;border-color:#3de8a0;font-size:12px;padding:4px 16px">▶ Tiếp tục gửi</button>
       </div>
     </div>
     <div class="cg">
