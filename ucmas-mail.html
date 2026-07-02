@@ -20,7 +20,7 @@
   <div class="gjs-overlay hidden" id="gjs-overlay">
     <div class="gjs-topbar">
       <div class="gjs-topbar-title">🏗 Email Builder</div>
-      <div style="display:flex;gap:4px;background:#1e2230;border-radius:7px;padding:3px">
+      <div style="display:flex;gap:4px;background:var(--surface2);border-radius:7px;padding:3px">
         <button id="gjsBtn-desktop" onclick="gjsSetDevice('Desktop')"
           style="padding:4px 10px;border-radius:5px;border:none;background:#4f6cff;color:#fff;cursor:pointer;font-size:13px">🖥
           Desktop</button>
@@ -33,19 +33,19 @@
       </div>
       <div style="width:1px;height:24px;background:#1e2338"></div>
       <button onclick="gjsUndo()"
-        style="padding:5px 10px;border-radius:6px;border:1px solid #1e2338;background:#181c26;color:#e6e8f2;cursor:pointer;font-size:13px">↩
+        style="padding:5px 10px;border-radius:6px;border:1px solid #1e2338;background:var(--surface);color:#e6e8f2;cursor:pointer;font-size:13px">↩
         Undo</button>
       <button onclick="gjsRedo()"
-        style="padding:5px 10px;border-radius:6px;border:1px solid #1e2338;background:#181c26;color:#e6e8f2;cursor:pointer;font-size:13px">↪
+        style="padding:5px 10px;border-radius:6px;border:1px solid #1e2338;background:var(--surface);color:#e6e8f2;cursor:pointer;font-size:13px">↪
         Redo</button>
       <button onclick="gjsClearCanvas()"
-        style="padding:5px 10px;border-radius:6px;border:1px solid #1e2338;background:#181c26;color:#f55c5c;cursor:pointer;font-size:13px">🗑
+        style="padding:5px 10px;border-radius:6px;border:1px solid #1e2338;background:var(--surface);color:#f55c5c;cursor:pointer;font-size:13px">🗑
         Xoá</button>
       <div style="width:1px;height:24px;background:#1e2338"></div>
       <input id="gjs-tmpl-name" placeholder="Tên template..."
-        style="padding:5px 12px;border-radius:6px;border:1px solid #1e2338;background:#181c26;color:#e6e8f2;font-family:'Montserrat',sans-serif;font-size:13px;width:190px;outline:none">
+        style="padding:5px 12px;border-radius:6px;border:1px solid #1e2338;background:var(--surface);color:#e6e8f2;font-family:'Montserrat',sans-serif;font-size:13px;width:190px;outline:none">
       <button onclick="closeBuilder()"
-        style="padding:5px 12px;border-radius:6px;border:1px solid #1e2338;background:#181c26;color:#5e6585;cursor:pointer;font-size:13px">✕
+        style="padding:5px 12px;border-radius:6px;border:1px solid #1e2338;background:var(--surface);color:#5e6585;cursor:pointer;font-size:13px">✕
         Đóng</button>
       <button onclick="saveFromBuilder()"
         style="padding:5px 16px;border-radius:6px;border:none;background:#4f6cff;color:#fff;cursor:pointer;font-size:13px;font-weight:600">💾
@@ -1038,8 +1038,8 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
         <span class="pstep" id="ps4">Logging results</span>
       </div>
       <div style="text-align:center;margin-top:8px" id="send-action-buttons">
-        <button class="abtn" id="btn-stop-campaign" onclick="stopCampaign()" style="color:#ff6b6b;border-color:#ff6b6b;font-size:12px;padding:4px 16px">⏹ Dừng gửi</button>
-        <button class="abtn" id="btn-resume-campaign" onclick="resumeFromCampaignPage()" style="display:none;color:#3de8a0;border-color:#3de8a0;font-size:12px;padding:4px 16px">▶ Tiếp tục gửi</button>
+        <button class="btn" id="btn-stop-campaign" onclick="stopCampaign()" class="btn btn-danger">⏹ Dừng gửi</button>
+        <button class="btn" id="btn-resume-campaign" onclick="resumeFromCampaignPage()" style="display:none;">▶ Tiếp tục gửi</button>
       </div>
     </div>
     <div class="cg">
@@ -1089,10 +1089,10 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
             <span
               style="font-family:var(--fm);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);line-height:28px">Chèn
               biến:</span>
-            <button class="abtn" onclick="insertCampaignVar('{{name}}')">{{name}}</button>
-            <button class="abtn" onclick="insertCampaignVar('{{email}}')">{{email}}</button>
-            <button class="abtn" onclick="insertCampaignVar('{{level}}')">{{level}}</button>
-            <button class="abtn" onclick="insertCampaignVar('{{company}}')">{{company}}</button>
+            <button class="btn" onclick="insertCampaignVar('{{name}}')">{{name}}</button>
+            <button class="btn" onclick="insertCampaignVar('{{email}}')">{{email}}</button>
+            <button class="btn" onclick="insertCampaignVar('{{level}}')">{{level}}</button>
+            <button class="btn" onclick="insertCampaignVar('{{company}}')">{{company}}</button>
           </div>
         </div>
       </div>
@@ -1132,7 +1132,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
               <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Chọn thời gian gửi (theo giờ máy chủ)</div>
             </div>
             <div style="display:flex;gap:8px">
-              <button class="send-btn" id="btn-send-campaign" onclick="startSend()" style="flex:2">✉ Send Campaign</button>
+              <button class="btn btn-primary" id="btn-send-campaign" onclick="startSend()" style="flex:2">✉ Send Campaign</button>
               <button class="btn" id="btn-save-campaign" onclick="saveCampaignDraft()" style="flex:1">💾 Lưu nháp</button>
             </div>
           </div>
@@ -1174,7 +1174,7 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
             </select>
             <div class="spacer"></div>
             <button class="btn" onclick="saveWorkflow()" style="font-size:11.5px">💾 Lưu</button>
-            <button class="abtn" onclick="deleteWorkflow()" style="color:var(--err);font-size:11.5px">🗑 Xoá</button>
+            <button class="btn" onclick="deleteWorkflow()" style="color:var(--err);font-size:11.5px">🗑 Xoá</button>
           </div>
           <div class="wf-flow" id="wf-flow"></div>
         </div>
