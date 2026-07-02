@@ -1144,6 +1144,53 @@
 
     startup();
 
+
+// --- AUTO COMPRESS IMAGES ---
+function compressBase64Image(base64, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    img.src = base64;
+  });
+}
+
+async function compressImagesInHtml(html) {
+  if (!html.includes('data:image/')) return html;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const imgs = doc.querySelectorAll('img[src^="data:image/"]');
+  
+  for (let img of imgs) {
+    const src = img.getAttribute('src');
+    if (src.length > 300000) { 
+       try {
+         const compressedSrc = await compressBase64Image(src, 1000, 0.75);
+         img.setAttribute('src', compressedSrc);
+       } catch (e) {
+         console.warn('Cannot compress image', e);
+       }
+    }
+  }
+  return doc.body.innerHTML;
+}
+// ----------------------------
+
     async function saveCampaignDraft() {
       if (!window._backendConnected) { toast('Lưu nháp chỉ hoạt động khi kết nối backend', 'err'); return; }
       
