@@ -1250,10 +1250,10 @@ async function compressImagesInHtml(html) {
       
       // Nén ảnh Base64 trước khi gửi lên server
       body = await compressImagesInHtml(body);
-      // Kiểm tra kích thước sau khi nén
+      // Kiểm tra kích thước sau khi upload
       const bodySize = new Blob([body]).size;
       if (bodySize > 9 * 1024 * 1024) {
-        toast('⚠ Nội dung vẫn quá lớn sau khi nén (' + Math.round(bodySize/1024/1024) + 'MB). Hãy dùng link URL cho ảnh.', 'err');
+        toast('⚠ Nội dung vẫn quá lớn (' + Math.round(bodySize/1024/1024) + 'MB). Hãy giảm số lượng ảnh.', 'err');
         return;
       }
       
