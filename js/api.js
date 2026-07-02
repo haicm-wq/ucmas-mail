@@ -29,6 +29,7 @@
         email: c.email,
         level: c.levels?.name || '',
         level_id: c.level_id,
+        level_ids: c.level_ids || (c.level_id ? [c.level_id] : []),
         company: c.company || '',
         child_name: c.child_name || '',
         tags: c.tags || [],           // QUAN TRỌNG: không được bỏ qua

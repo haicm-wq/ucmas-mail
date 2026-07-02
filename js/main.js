@@ -55,18 +55,22 @@
     function renderContactTable(query = '', preFiltered = false) {
       const tbody = document.getElementById('contact-tbody');
       let rows = contacts.filter(c => {
+        const cLevelIds = c.level_ids || (c.level_id ? [c.level_id] : []);
         const levelMatch = preFiltered
           || currentFilter === 'all'
-          || c.level_id === currentFilter
-          || isChildOf(c.level_id, currentFilter);
+          || cLevelIds.includes(currentFilter)
+          || cLevelIds.some(lid => isChildOf(lid, currentFilter));
         const q = query.toLowerCase();
         const textMatch = !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
         return levelMatch && textMatch;
       });
       tbody.innerHTML = rows.map((c) => {
-        const lv = getLevelById(c.level_id);
-        const color = lv ? lv.color : '#888';
-        const levelName = lv ? lv.name : (c.level || '—');
+        const cLevelIds = c.level_ids || (c.level_id ? [c.level_id] : []);
+        const levelBadges = cLevelIds.map(lid => {
+          const lv = getLevelById(lid);
+          if (!lv) return '';
+          return `<span class="lt" style="background:${hexToRgba(lv.color || '#888', .12)};color:${lv.color || '#888'};border:1px solid ${hexToRgba(lv.color || '#888', .25)};margin:1px">● ${esc(lv.name)}</span>`;
+        }).filter(Boolean).join('') || '<span style="color:var(--muted)">—</span>';
         const dbStatus = c.dbStatus || 'active';
         const hasSent = c.last && c.last !== '—';
         const statusIcon = dbStatus === 'unsubscribed' ? 's-err' : dbStatus === 'bounced' ? 's-err' : hasSent ? 's-ok' : 's-pend';
@@ -77,7 +81,7 @@
       <td style="font-weight:500">${esc(c.name)}</td>
       <td style="font-size:12px;color:var(--muted)">${esc(c.child_name || '')}</td>
       <td class="col-em">${esc(c.email)}</td>
-      <td><span class="lt" style="background:${hexToRgba(color, .12)};color:${color};border:1px solid ${hexToRgba(color, .25)}">\u25cf ${levelName}</span></td>
+      <td style="max-width:180px">${levelBadges}</td>
       <td style="max-width:200px">${(c.tags||[]).map(t=>`<span class="tag-chip" onclick="removeTagFromContact('${cid}','${esc(t)}')">${esc(t)} \u00d7</span>`).join('')}<input class="tag-inline" type="text" placeholder="+ tag" onkeydown="if(event.key==='Enter'){addTagToContact('${cid}',this.value);this.value='';}" style="width:50px;border:none;background:transparent;color:var(--text);font-size:10px;outline:none"></td>
       <td><span class="sdot ${statusIcon}"></span>${statusLabel}</td>
       <td style="color:var(--muted);font-size:12px">${c.last}</td>

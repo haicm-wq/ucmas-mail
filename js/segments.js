@@ -195,7 +195,7 @@
         el.textContent = '~' + contacts.filter(c => {
           const levelIds = _sfLevelRules.map(r => r.value);
           const tags = _sfTagRules.map(r => r.value);
-          const hasLevel = !levelIds.length || levelIds.includes(c.level_id);
+          const hasLevel = !levelIds.length || levelIds.some(lid => (c.level_ids || [c.level_id]).includes(lid));
           const hasTags = !tags.length || (_sfTagMode === 'and'
             ? tags.every(t => (c.tags||[]).includes(t))
             : tags.some(t => (c.tags||[]).includes(t)));
