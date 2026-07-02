@@ -1420,7 +1420,7 @@
     }
 
     .sql-kw {
-      color: #7b93ff
+      color: var(--accent2)
     }
 
     .sql-str {
@@ -1440,7 +1440,7 @@
     }
 
     .js-kw {
-      color: #7b93ff
+      color: var(--accent2)
     }
 
     .js-str {
@@ -2373,7 +2373,7 @@
       position: fixed;
       inset: 0;
       z-index: 8000;
-      background: #1a1a2e;
+      background: rgba(0, 0, 0, 0.5);
       display: flex;
       flex-direction: column
     }
@@ -2384,8 +2384,8 @@
 
     .gjs-topbar {
       height: 52px;
-      background: #111319;
-      border-bottom: 1px solid #1e2338;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       padding: 0 16px;
@@ -2397,7 +2397,7 @@
       font-family: 'Montserrat', sans-serif;
       font-weight: 700;
       font-size: 15px;
-      color: #e6e8f2;
+      color: var(--text);
       flex: 1
     }
 
@@ -2412,61 +2412,61 @@
 
     /* Override GrapeJS colors to match dark theme */
     .gjs-one-bg {
-      background: #111319 !important
+      background: var(--surface) !important
     }
 
     .gjs-two-bg {
-      background: #181c26 !important
+      background: var(--surface2) !important
     }
 
     .gjs-three-bg {
-      background: #1e2230 !important
+      background: var(--surface3) !important
     }
 
     .gjs-four-bg {
-      background: #28304a !important
+      background: var(--border2) !important
     }
 
     .gjs-color-warn {
-      color: #f5a623 !important
+      color: var(--warn) !important
     }
 
     .gjs-color-hl {
-      color: #7b93ff !important
+      color: var(--accent2) !important
     }
 
     .gjs-pn-panel {
-      background: #111319 !important;
-      border-right: 1px solid #1e2338 !important
+      background: var(--surface) !important;
+      border-right: 1px solid var(--border) !important
     }
 
     .gjs-block {
-      background: #181c26 !important;
-      border: 1px solid #1e2338 !important;
-      color: #e6e8f2 !important;
+      background: var(--surface2) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text) !important;
       border-radius: 7px !important
     }
 
     .gjs-block:hover {
-      background: #1e2230 !important;
-      border-color: #4f6cff !important
+      background: var(--surface3) !important;
+      border-color: var(--accent) !important
     }
 
     .gjs-block__media {
-      color: #7b93ff !important
+      color: var(--accent2) !important
     }
 
     .gjs-pn-btn {
-      color: #5e6585 !important
+      color: var(--muted) !important
     }
 
     .gjs-pn-btn:hover,
     .gjs-pn-btn.gjs-pn-active {
-      color: #7b93ff !important
+      color: var(--accent2) !important
     }
 
     .gjs-cv-canvas {
-      background: #0d0d1a !important
+      background: var(--surface3) !important
     }
 
     .gjs-frame-wrapper {
@@ -2475,7 +2475,7 @@
     }
 
     .gjs-toolbar {
-      background: #4f6cff !important;
+      background: var(--accent) !important;
       border-radius: 6px !important
     }
 
@@ -2484,36 +2484,36 @@
     }
 
     .gjs-rte-toolbar {
-      background: #181c26 !important;
-      border: 1px solid #1e2338 !important;
+      background: var(--surface2) !important;
+      border: 1px solid var(--border) !important;
       border-radius: 6px !important
     }
 
     .gjs-layer {
-      background: #181c26 !important;
-      color: #e6e8f2 !important
+      background: var(--surface2) !important;
+      color: var(--text) !important
     }
 
     .gjs-layer:hover {
-      background: #1e2230 !important
+      background: var(--surface3) !important
     }
 
     .gjs-layer.gjs-selected {
-      background: #4f6cff22 !important;
-      border-color: #4f6cff !important
+      background: var(--accent-glow) !important;
+      border-color: var(--accent) !important
     }
 
     .gjs-sm-sector-title,
     .gjs-clm-tags-header,
     .gjs-sm-header {
-      background: #1e2230 !important;
-      color: #5e6585 !important
+      background: var(--surface3) !important;
+      color: var(--muted) !important
     }
 
     .gjs-sm-property .gjs-field {
-      background: #181c26 !important;
-      border: 1px solid #1e2338 !important;
-      color: #e6e8f2 !important;
+      background: var(--surface2) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text) !important;
       border-radius: 5px !important
     }
 
@@ -2522,7 +2522,7 @@
     .gjs-clm-tags,
     .gjs-sm-properties,
     .gjs-trt-trait__header {
-      background: #111319 !important
+      background: var(--surface) !important
     }
 
     .gjs-mdl-container {
@@ -2530,8 +2530,8 @@
     }
 
     .gjs-mdl-dialog {
-      background: #111319 !important;
-      border: 1px solid #28304a !important;
+      background: var(--surface) !important;
+      border: 1px solid var(--border2) !important;
       border-radius: 12px !important
     }
 
@@ -2549,7 +2549,7 @@
     .dash-skeleton {
       height: 54px;
       border-radius: 8px;
-      background: linear-gradient(90deg, var(--surface2) 25%, var(--surface3) 50%, var(--surface2) 75%);
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
       background-size: 800px 100%;
       animation: shimmer 1.4s infinite;
       margin: 8px 0
