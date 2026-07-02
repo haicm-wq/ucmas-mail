@@ -1,7 +1,7 @@
 import { sendOneEmail } from '../lib/email.js';
 import { ok, err, allowCors, getDBFromReq, getEmailConfig } from './_utils.js';
 
-export const config = { api: { bodyParser: true } };
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
 /**
  * Cơ chế hoạt động (đơn giản nhất, chắc chắn nhất):
@@ -231,16 +231,8 @@ async function sendSequential(campaign, contacts, db, emailConfig, emit, sentEma
       continue;
     }
 
-    // Kiểm tra lần cuối trước khi gửi: query DB để chắc chắn chưa gửi
-    try {
-      const { data: existLog } = await db._sb().from('send_logs')
-        .select('id').eq('campaign_id', campaign.id).eq('email', contact.email).limit(1);
-      if (existLog?.length) {
-        console.log(`[skip-db] ${contact.email} đã có log trong DB`);
-        sentEmailsSet.add(contact.email);
-        continue;
-      }
-    } catch (_) { /* bỏ qua lỗi query, tiếp tục gửi */ }
+    // sentEmailsSet đã được preload đầy đủ từ send_logs trước khi gọi hàm này
+    // → không cần query DB từng email nữa (tránh N+1 query, tăng tốc gửi)
 
     let status = 'failed', resend_id = null, error_msg = null;
 

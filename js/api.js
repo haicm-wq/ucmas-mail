@@ -51,6 +51,22 @@
             signal: options.signal || AbortSignal.timeout(API_TIMEOUT),
             headers: { 'Content-Type': 'application/json', ...cfgHeaders(), ...(options.headers || {}) },
           });
+          // ── Bắt lỗi HTTP trước khi parse JSON ──
+          if (!res.ok) {
+            if (res.status === 413) {
+              throw new Error('Nội dung quá lớn (vượt 10MB). Hãy giảm kích thước ảnh hoặc dùng link URL thay vì paste trực tiếp.');
+            }
+            const errText = await res.text();
+            let errMsg = 'Lỗi hệ thống (' + res.status + ')';
+            try {
+              const errJson = JSON.parse(errText);
+              errMsg = errJson.error || errMsg;
+            } catch (_) {
+              if (errText && errText.length < 200) errMsg = errText;
+            }
+            throw new Error(errMsg);
+          }
+
           const json = await res.json();
           if (!json.success) throw new Error(json.error || 'Lỗi API');
           return json.data;
@@ -665,7 +681,15 @@
         let buffer = '';
 
         while (true) {
-          if (window._stopCampaign) { reader.cancel(); break; }
+          if (window._stopCampaign) {
+            reader.cancel();
+            // Gọi API stop để server cũng dừng
+            const cid = window._sendingCampaignId;
+            if (cid) {
+              fetch('/api/campaigns-send?stop=' + cid, { method: 'POST', headers: cfgHeaders() }).catch(() => {});
+            }
+            break;
+          }
           const { done, value } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
@@ -955,10 +979,13 @@
 
       const name = document.getElementById('c-name').value.trim();
       const subject = document.getElementById('c-subject').value.trim();
-      const body = document.getElementById('c-body').value.trim();
+      let body = document.getElementById('c-body').value.trim();
       const from = document.getElementById('c-from').value.trim();
 
       if (!name || !subject || !body) { toast('Điền đầy đủ Campaign Name, Subject và Nội dung!', 'err'); return; }
+      
+      // Nén ảnh Base64 trước khi gửi
+      body = await compressImagesInHtml(body);
 
       // Check schedule
       const isScheduled = document.getElementById('c-schedule-check')?.checked;
@@ -1018,15 +1045,26 @@
         });
 
         if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || 'Lỗi API Backend');
+          if (response.status === 413) throw new Error('Nội dung quá lớn (vượt 10MB). Hãy giảm kích thước ảnh.');
+          const errText = await response.text();
+          let errMsg = 'Lỗi hệ thống (' + response.status + ')';
+          try { errMsg = JSON.parse(errText).error || errMsg; } catch(_) { if (errText && errText.length < 200) errMsg = errText; }
+          throw new Error(errMsg);
         }
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
 
         while (true) {
-          if (window._stopCampaign) { reader.cancel(); break; }
+          if (window._stopCampaign) {
+            reader.cancel();
+            // Gọi API stop để server cũng dừng
+            const cid = window._sendingCampaignId;
+            if (cid) {
+              fetch('/api/campaigns-send?stop=' + cid, { method: 'POST', headers: cfgHeaders() }).catch(() => {});
+            }
+            break;
+          }
           const { done, value } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
@@ -1035,7 +1073,9 @@
 
           for (const event of events) {
             if (!event.startsWith('data: ')) continue;
-            const data = JSON.parse(event.slice(6));
+            let data;
+            try { data = JSON.parse(event.slice(6)); }
+            catch (_) { console.warn('[SSE] JSON parse error:', event.slice(0,100)); continue; }
 
             if (data.type === 'start') {
               document.getElementById('ps1').className = 'pstep done';
@@ -1171,24 +1211,31 @@ function compressBase64Image(base64, maxWidth, quality) {
 }
 
 async function compressImagesInHtml(html) {
-  if (!html.includes('data:image/')) return html;
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const imgs = doc.querySelectorAll('img[src^="data:image/"]');
-  
-  for (let img of imgs) {
-    const src = img.getAttribute('src');
-    if (src.length > 50000) { // Nén tất cả ảnh > 35KB
-       try {
-         const compressedSrc = await compressBase64Image(src, 800, 0.6); // Giảm xuống 800px và 60% chất lượng
-         img.setAttribute('src', compressedSrc);
-       } catch (e) {
-         console.warn('Cannot compress image', e);
-       }
+      if (!html || !html.includes('data:image/')) return html;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const imgs = doc.querySelectorAll('img[src^="data:image/"]');
+      
+      for (let img of imgs) {
+        let src = img.getAttribute('src');
+        if (src.length > 50000) {
+          try {
+            // Nén lặp: giảm dần chất lượng cho đến khi < 500KB
+            let compressed = await compressBase64Image(src, 800, 0.6);
+            if (compressed.length > 700000) {
+              compressed = await compressBase64Image(src, 600, 0.4);
+            }
+            if (compressed.length > 700000) {
+              compressed = await compressBase64Image(src, 400, 0.3);
+            }
+            img.setAttribute('src', compressed);
+          } catch (e) {
+            console.warn('[compressImage] Không thể nén ảnh:', e);
+          }
+        }
+      }
+      return doc.body.innerHTML;
     }
-  }
-  return doc.body.innerHTML;
-}
 // ----------------------------
 
     async function saveCampaignDraft() {
@@ -1200,7 +1247,15 @@ async function compressImagesInHtml(html) {
       let body = document.getElementById('c-body').value.trim();
       
       if (!name) { toast('Chưa nhập tên Campaign!', 'err'); return; }
-      // Cho phép lưu nháp không cần tiêu đề, nội dung hoặc phân cấp
+      
+      // Nén ảnh Base64 trước khi gửi lên server
+      body = await compressImagesInHtml(body);
+      // Kiểm tra kích thước sau khi nén
+      const bodySize = new Blob([body]).size;
+      if (bodySize > 9 * 1024 * 1024) {
+        toast('⚠ Nội dung vẫn quá lớn sau khi nén (' + Math.round(bodySize/1024/1024) + 'MB). Hãy dùng link URL cho ảnh.', 'err');
+        return;
+      }
       
       const selectedLevelIds = [];
       document.querySelectorAll('.seg-cb').forEach(cb => {
