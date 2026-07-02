@@ -1178,9 +1178,9 @@ async function compressImagesInHtml(html) {
   
   for (let img of imgs) {
     const src = img.getAttribute('src');
-    if (src.length > 300000) { 
+    if (src.length > 50000) { // Nén tất cả ảnh > 35KB
        try {
-         const compressedSrc = await compressBase64Image(src, 1000, 0.75);
+         const compressedSrc = await compressBase64Image(src, 800, 0.6); // Giảm xuống 800px và 60% chất lượng
          img.setAttribute('src', compressedSrc);
        } catch (e) {
          console.warn('Cannot compress image', e);
