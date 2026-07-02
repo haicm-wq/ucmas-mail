@@ -1131,7 +1131,10 @@ levanc@work.com, Lê Văn C, Công ty ABC"></textarea>
               <input type="datetime-local" class="fi" id="c-schedule-time" style="font-size:12px;padding:6px 10px">
               <div style="font-size:10.5px;color:var(--muted);margin-top:4px">Chọn thời gian gửi (theo giờ máy chủ)</div>
             </div>
-            <button class="send-btn" id="btn-send-campaign" onclick="startSend()">✉ Send Campaign</button>
+            <div style="display:flex;gap:8px">
+              <button class="send-btn" id="btn-send-campaign" onclick="startSend()" style="flex:2">✉ Send Campaign</button>
+              <button class="btn" id="btn-save-campaign" onclick="saveCampaignDraft()" style="flex:1">💾 Lưu nháp</button>
+            </div>
           </div>
         </div>
       </div>

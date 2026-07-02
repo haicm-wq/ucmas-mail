@@ -81,9 +81,13 @@ export default async function handler(req, res) {
       from_email:    from_email || emailConfig.fromEmail,
       subject, body_text,
       target_levels: target_level_ids,
-      status:        'sending',
+      status:        req.query.save_draft ? 'paused' : 'sending',
     });
   } catch (e) { return err(res, e.message, 500); }
+
+  if (req.query.save_draft) {
+      return ok(res, { saved: true, campaignId: campaign.id, total: contacts.length });
+  }
 
   // Bắt đầu stream SSE
   setupSSE(res);
