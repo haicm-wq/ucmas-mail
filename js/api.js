@@ -1234,7 +1234,7 @@ async function compressImagesInHtml(html) {
         
         // Bước 2: Upload lên Supabase Storage → lấy URL công khai
         try {
-          const result = await apiFetch('/api/upload-image', {
+          const result = await apiFetch('/api/campaigns?action=upload-image', {
             method: 'POST',
             body: JSON.stringify({ base64: src }),
           });
