@@ -165,8 +165,8 @@
     }
 
     .btn-primary:hover {
-      background: #6080ff;
-      border-color: #6080ff;
+      background: var(--accent2);
+      border-color: var(--accent2);
       color: #fff
     }
 
@@ -768,9 +768,9 @@
       font-family: var(--fm);
       font-size: 10px;
       font-weight: 500;
-      background: rgba(139, 92, 246, .12);
-      color: #a78bfa;
-      border: 1px solid rgba(139, 92, 246, .2);
+      background: var(--l3b);
+      color: var(--l3);
+      border: 1px solid var(--l3b);
       cursor: pointer;
       margin: 1px 2px;
       transition: all .15s;
@@ -1090,9 +1090,9 @@
     }
 
     .send-btn:hover {
-      background: #6080ff;
+      background: var(--accent2);
       transform: translateY(-1px);
-      box-shadow: 0 4px 20px rgba(79, 108, 255, .35)
+      box-shadow: 0 4px 20px var(--accent-glow)
     }
 
     .send-btn:active {
@@ -1424,7 +1424,7 @@
     }
 
     .sql-str {
-      color: #3de8a0
+      color: #047857
     }
 
     .sql-cm {
@@ -1432,11 +1432,11 @@
     }
 
     .sql-type {
-      color: #f5c842
+      color: #b45309
     }
 
     .sql-fn {
-      color: #c97ef5
+      color: #7c3aed
     }
 
     .js-kw {
@@ -1444,7 +1444,7 @@
     }
 
     .js-str {
-      color: #3de8a0
+      color: #047857
     }
 
     .js-cm {
@@ -1452,7 +1452,7 @@
     }
 
     .js-fn {
-      color: #f5c842
+      color: #b45309
     }
 
 
@@ -2283,8 +2283,8 @@
     .wf-type-email .wf-node-icon { background: rgba(79,108,255,.2); color: var(--accent2); }
     .wf-type-wait .wf-node-hd { background: rgba(255,193,7,.1); color: var(--warn); }
     .wf-type-wait .wf-node-icon { background: rgba(255,193,7,.2); color: var(--warn); }
-    .wf-type-condition .wf-node-hd { background: rgba(168,85,247,.1); color: #a855f7; }
-    .wf-type-condition .wf-node-icon { background: rgba(168,85,247,.2); color: #a855f7; }
+    .wf-type-condition .wf-node-hd { background: var(--l3b); color: var(--l3); }
+    .wf-type-condition .wf-node-icon { background: var(--l3b); color: var(--l3); }
 
     /* Connector line */
     .wf-connector { width: 2px; height: 28px; background: var(--border2); position: relative; }
@@ -2803,7 +2803,7 @@
   border: none;
 }
 .btn-danger:hover {
-  background: #dc2626;
+  background: #991b1b;
 }
 .btn-sm {
   padding: 4px 10px;
