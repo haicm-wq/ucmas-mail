@@ -1017,6 +1017,10 @@
           }),
         });
 
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || 'Lỗi API Backend');
+        }
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
