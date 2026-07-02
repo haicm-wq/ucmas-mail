@@ -14,19 +14,19 @@
   --accent-glow: rgba(37, 99, 235, 0.15);
   
   /* Segment colors adapted for light theme */
-  --l1: #eab308;
-  --l1b: rgba(234, 179, 8, 0.12);
-  --l2: #10b981;
-  --l2b: rgba(16, 185, 129, 0.12);
-  --l3: #3b82f6;
-  --l3b: rgba(59, 130, 246, 0.12);
-  --l4: #a855f7;
-  --l4b: rgba(168, 85, 247, 0.12);
+  --l1: #0f172a;
+  --l1b: #e2e8f0;
+  --l2: #1d4ed8;
+  --l2b: #dbeafe;
+  --l3: #4338ca;
+  --l3b: #e0e7ff;
+  --l4: #334155;
+  --l4b: #f1f5f9;
   
   /* Status colors */
-  --ok: #10b981;
-  --err: #ef4444;
-  --warn: #f59e0b;
+  --ok: #15803d;
+  --err: #b91c1c;
+  --warn: #b45309;
   
   /* Fonts & Variables */
   --fh: 'Montserrat', sans-serif;
