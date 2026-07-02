@@ -1216,24 +1216,42 @@ async function compressImagesInHtml(html) {
       const doc = parser.parseFromString(html, 'text/html');
       const imgs = doc.querySelectorAll('img[src^="data:image/"]');
       
+      if (!imgs.length) return html;
+      
+      let uploadCount = 0;
+      
       for (let img of imgs) {
         let src = img.getAttribute('src');
+        
+        // Bước 1: Nén ảnh trước khi upload (giảm dung lượng storage)
         if (src.length > 50000) {
           try {
-            // Nén lặp: giảm dần chất lượng cho đến khi < 500KB
-            let compressed = await compressBase64Image(src, 800, 0.6);
-            if (compressed.length > 700000) {
-              compressed = await compressBase64Image(src, 600, 0.4);
-            }
-            if (compressed.length > 700000) {
-              compressed = await compressBase64Image(src, 400, 0.3);
-            }
-            img.setAttribute('src', compressed);
+            src = await compressBase64Image(src, 1000, 0.75);
           } catch (e) {
-            console.warn('[compressImage] Không thể nén ảnh:', e);
+            console.warn('[compress] Lỗi nén:', e);
           }
         }
+        
+        // Bước 2: Upload lên Supabase Storage → lấy URL công khai
+        try {
+          const result = await apiFetch('/api/upload-image', {
+            method: 'POST',
+            body: JSON.stringify({ base64: src }),
+          });
+          if (result?.url) {
+            img.setAttribute('src', result.url);
+            uploadCount++;
+          }
+        } catch (e) {
+          console.warn('[upload] Lỗi upload ảnh, giữ Base64:', e.message);
+          // Fallback: giữ nguyên ảnh nén (Base64) nếu upload thất bại
+        }
       }
+      
+      if (uploadCount > 0) {
+        toast('📸 Đã upload ' + uploadCount + ' ảnh lên server. Ảnh sẽ hiển thị bình thường trong email.');
+      }
+      
       return doc.body.innerHTML;
     }
 // ----------------------------
