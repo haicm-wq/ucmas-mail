@@ -64,14 +64,22 @@ export default async function handler(req, res) {
 
   // ── TẠO CAMPAIGN MỚI ──
   const { name, from_name, from_email, subject, body_text, target_level_ids } = req.body;
-  if (!name || !subject || !body_text || !target_level_ids?.length)
-    return err(res, 'Thiếu thông tin: name, subject, body_text, target_level_ids');
+  
+  const isDraft = req.query.save_draft;
+  
+  if (!name) return err(res, 'Thiếu thông tin: name');
+  if (!isDraft && (!subject || !body_text || !target_level_ids?.length)) {
+    return err(res, 'Thiếu thông tin: subject, body_text, target_level_ids');
+  }
 
   // Lấy danh sách contacts
-  let contacts;
-  try { contacts = await db.getContactsByLevelIds(target_level_ids); }
-  catch (e) { return err(res, e.message, 500); }
-  if (!contacts.length) return err(res, 'Không có contact nào trong các level đã chọn');
+  let contacts = [];
+  if (target_level_ids?.length > 0) {
+    try { contacts = await db.getContactsByLevelIds(target_level_ids); }
+    catch (e) { return err(res, e.message, 500); }
+  }
+  
+  if (!isDraft && !contacts.length) return err(res, 'Không có contact nào trong các level đã chọn');
 
   // Tạo campaign record trong DB
   let campaign;

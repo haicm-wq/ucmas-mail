@@ -1149,14 +1149,12 @@
       let body = document.getElementById('c-body').value.trim();
       
       if (!name) { toast('Chưa nhập tên Campaign!', 'err'); return; }
-      if (!subject) { toast('Chưa nhập tiêu đề!', 'err'); return; }
-      if (!body) { toast('Chưa nhập nội dung!', 'err'); return; }
+      // Cho phép lưu nháp không cần tiêu đề, nội dung hoặc phân cấp
       
       const selectedLevelIds = [];
       document.querySelectorAll('.seg-cb').forEach(cb => {
         if (cb.checked) selectedLevelIds.push(cb.value);
       });
-      if (selectedLevelIds.length === 0) { toast('Chưa chọn phân cấp khách hàng!', 'err'); return; }
 
       const btn = document.getElementById('btn-save-campaign');
       const oldTxt = btn.textContent;
