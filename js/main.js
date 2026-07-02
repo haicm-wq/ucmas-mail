@@ -396,84 +396,52 @@
     // ════════════════════════════════════════
     // VISUAL EDITOR
     // ════════════════════════════════════════
+    // QUIL JS INTEGRATION
+    let tmplQuill = null;
+    let campQuill = null;
     let _veReady = false;
     let _codeSyncTimer = null;
 
-    function getVeFrame() { return document.getElementById('ve-frame'); }
-    function getVeDoc() { return getVeFrame()?.contentDocument; }
-
     function initVisualEditor(html) {
-      const frame = getVeFrame();
-      if (!frame) return;
-      const doc = frame.contentDocument;
-      const rawContent = html || document.getElementById('tmpl-code').value || '<p>Bắt đầu soạn email...</p>';
+      if (!tmplQuill) {
+        tmplQuill = new Quill('#ve-quill', {
+          theme: 'snow',
+          modules: {
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'strike'],
+              [{ 'color': [] }, { 'background': [] }],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              [{ 'align': [] }],
+              ['link', 'image', 'clean']
+            ]
+          }
+        });
+        
+        tmplQuill.getModule('toolbar').addHandler('image', () => {
+          openImageDialog();
+        });
 
-      // Detect nếu là full HTML doc — extract body + styles
-      const isFullDoc = /^\s*<!DOCTYPE|^\s*<html/i.test(rawContent);
-      let bodyContent = rawContent;
-      let extraStyles = '';
-
-      if (isFullDoc) {
-        const bodyMatch = rawContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-        if (bodyMatch) bodyContent = bodyMatch[1];
-        const styleMatches = rawContent.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
-        if (styleMatches) {
-          extraStyles = styleMatches.map(s => {
-            const inner = s.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-            return inner ? inner[1] : '';
-          }).join('\n');
-        }
+        tmplQuill.on('text-change', () => {
+          clearTimeout(_codeSyncTimer);
+          _codeSyncTimer = setTimeout(syncVisualToCode, 300);
+        });
       }
 
-      doc.open();
-      doc.write(`<!DOCTYPE html><html><head>
-    <meta charset="UTF-8">
-    <style>
-      body{margin:0;padding:16px;font-family:Arial,sans-serif;font-size:15px;line-height:1.7;color:#222;min-height:460px;outline:none}
-      body:empty:before{content:'Nhấp để bắt đầu soạn...';color:#aaa}
-      a{color:#4f6cff}img{max-width:100%}
-      *{box-sizing:border-box}
-      ${extraStyles}
-    </style>
-  </head><body></body></html>`);
-      doc.close();
-      doc.body.innerHTML = bodyContent;
-      doc.designMode = 'on';
+      const rawContent = html || document.getElementById('tmpl-code').value || '';
+      tmplQuill.clipboard.dangerouslyPasteHTML(rawContent);
       _veReady = true;
-
-      // Sync visual → code khi user gõ
-      doc.addEventListener('input', () => {
-        clearTimeout(_codeSyncTimer);
-        _codeSyncTimer = setTimeout(syncVisualToCode, CODE_SYNC_DELAY);
-      });
-      doc.addEventListener('keydown', e => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); veExec('undo'); }
-        if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); veExec('redo'); }
-      });
-      // Handle paste with formatting
-      doc.addEventListener('paste', e => {
-        const clipHtml = e.clipboardData.getData('text/html');
-        if (clipHtml) {
-          e.preventDefault();
-          doc.execCommand('insertHTML', false, clipHtml);
-          syncVisualToCode();
-        }
-      });
     }
 
     function syncVisualToCode() {
       if (!_veReady) return;
-      const doc = getVeDoc();
-      if (!doc) return;
-      document.getElementById('tmpl-code').value = doc.body.innerHTML;
+      document.getElementById('tmpl-code').value = tmplQuill.root.innerHTML;
       updatePreviewFrame();
     }
 
     function syncCodeToVisual() {
-      if (!_veReady) return;
-      const doc = getVeDoc();
-      if (!doc) return;
-      doc.body.innerHTML = document.getElementById('tmpl-code').value;
+      if (!_veReady || !tmplQuill) return;
+      tmplQuill.clipboard.dangerouslyPasteHTML(document.getElementById('tmpl-code').value);
     }
 
     function onCodeInput() {
@@ -484,18 +452,8 @@
       }, 500);
     }
 
-    function veExec(cmd, val) {
-      const doc = getVeDoc();
-      if (doc && doc.designMode === 'on') { doc.execCommand(cmd, false, val || null); doc.body.focus(); syncVisualToCode(); }
-    }
-
-    function veExecBlock(tag) {
-      const doc = getVeDoc();
-      if (!doc) return;
-      doc.execCommand('formatBlock', false, tag);
-      doc.body.focus();
-      syncVisualToCode();
-    }
+    function veExec(cmd, val) {} 
+    function veExecBlock(tag) {} 
 
     function setEditorMode(mode) {
       editorMode = mode;
@@ -509,18 +467,13 @@
       const modeBtn = document.getElementById('btn-mode-' + mode);
       if (modeBtn) modeBtn.classList.add('active-mode');
 
-      // Reset all
       [codePane, visualPane, previewPane].forEach(p => { if (p) p.style.display = 'none'; });
-      veToolbar.style.display = 'none';
+      if (veToolbar) veToolbar.style.display = 'none';
 
       if (mode === 'visual') {
         area.style.gridTemplateColumns = '1fr';
         area.classList.remove('split-mode');
         visualPane.style.display = '';
-        veToolbar.style.display = '';
-        // Reset iframe scale
-        const veFrame = document.getElementById('ve-frame');
-        if (veFrame) { veFrame.style.transform = ''; veFrame.style.width = ''; veFrame.style.height = ''; }
         if (!_veReady) initVisualEditor();
         else syncCodeToVisual();
       } else if (mode === 'split') {
@@ -528,26 +481,6 @@
         area.classList.add('split-mode');
         codePane.style.display = '';
         visualPane.style.display = '';
-        veToolbar.style.display = '';
-        // Scale down iframe to fit the pane
-        const veFrame = document.getElementById('ve-frame');
-        if (veFrame) {
-          requestAnimationFrame(() => {
-            const paneW = visualPane.offsetWidth;
-            // Use 600px as the email design width
-            const emailW = 600;
-            if (paneW > 0 && paneW < emailW) {
-              const scale = paneW / emailW;
-              veFrame.style.transform = `scale(${scale})`;
-              veFrame.style.width = emailW + 'px';
-              veFrame.style.height = (460 / scale) + 'px';
-            } else {
-              veFrame.style.transform = '';
-              veFrame.style.width = '100%';
-              veFrame.style.height = '';
-            }
-          });
-        }
         if (!_veReady) initVisualEditor();
         else syncCodeToVisual();
       } else if (mode === 'code') {
@@ -559,6 +492,44 @@
         area.classList.remove('split-mode');
         previewPane.style.display = '';
         updatePreviewFrame();
+      }
+    }
+
+    // New Campaign Quill logic
+    function initCampaignQuill() {
+      if (!campQuill) {
+        campQuill = new Quill('#c-quill', {
+          theme: 'snow',
+          modules: {
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'strike'],
+              [{ 'color': [] }, { 'background': [] }],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              [{ 'align': [] }],
+              ['link', 'image', 'clean']
+            ]
+          }
+        });
+        campQuill.getModule('toolbar').addHandler('image', () => {
+          openImageDialog();
+        });
+        campQuill.on('text-change', () => {
+          updateCampaignCodeFromQuill();
+        });
+      }
+    }
+
+    function updateCampaignCodeFromQuill() {
+      if (campQuill) {
+        document.getElementById('c-body').value = campQuill.root.innerHTML;
+        updateCampaignPreview();
+      }
+    }
+
+    function updateCampaignQuillFromCode() {
+      if (campQuill) {
+        campQuill.clipboard.dangerouslyPasteHTML(document.getElementById('c-body').value);
       }
     }
 
@@ -606,19 +577,20 @@
       const target = document.getElementById('link-target').value;
       if (!url) { toast('Nhập URL!', 'err'); return; }
 
-      const doc = getVeDoc();
-      if (doc && doc.designMode === 'on') {
-        doc.body.focus();
-        if (_savedRange) {
-          const sel = doc.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(_savedRange);
-        }
-        const html = `<a href="${url}" target="${target}">${text || url}</a>`;
-        doc.execCommand('insertHTML', false, html);
-        syncVisualToCode();
+      const html = `<a href="${url}" target="${target}">${text || url}</a>`;
+
+      if (typeof tmplQuill !== 'undefined' && tmplQuill && (editorMode === 'visual' || editorMode === 'split')) {
+          const range = tmplQuill.getSelection(true);
+          if (range) tmplQuill.clipboard.dangerouslyPasteHTML(range.index, html);
+          else tmplQuill.clipboard.dangerouslyPasteHTML(tmplQuill.getLength(), html);
+          syncVisualToCode();
+      } else if (typeof campQuill !== 'undefined' && campQuill && document.getElementById('c-body-code-wrap').style.display !== 'none') {
+          const range = campQuill.getSelection(true);
+          if (range) campQuill.clipboard.dangerouslyPasteHTML(range.index, html);
+          else campQuill.clipboard.dangerouslyPasteHTML(campQuill.getLength(), html);
+          updateCampaignCodeFromQuill();
       } else {
-        insertTmplVar(`<a href="${url}" target="${target}">${text || url}</a>`);
+          insertTmplVar(html);
       }
       closeModal('modal-link');
     }
@@ -652,12 +624,19 @@
       const style = `max-width:100%;width:${width};height:auto;display:block;${width === 'center' ? 'margin:0 auto' : ''}`;
       const html = `<img src="${url}" alt="${alt}" style="${style}">`;
 
-      const doc = getVeDoc();
-      if (doc && doc.designMode === 'on') {
-        doc.body.focus();
-        doc.execCommand('insertHTML', false, html);
-        syncVisualToCode();
-      } else { insertTmplVar(html); }
+      if (typeof tmplQuill !== 'undefined' && tmplQuill && document.getElementById('modal-image').classList.contains('open') && document.getElementById('ve-quill')) {
+          const range = tmplQuill.getSelection(true);
+          if (range) tmplQuill.clipboard.dangerouslyPasteHTML(range.index, html);
+          else tmplQuill.clipboard.dangerouslyPasteHTML(tmplQuill.getLength(), html);
+          syncVisualToCode();
+      } else if (typeof campQuill !== 'undefined' && campQuill) {
+          const range = campQuill.getSelection(true);
+          if (range) campQuill.clipboard.dangerouslyPasteHTML(range.index, html);
+          else campQuill.clipboard.dangerouslyPasteHTML(campQuill.getLength(), html);
+          updateCampaignCodeFromQuill();
+      } else {
+          insertTmplVar(html);
+      }
       closeModal('modal-image');
     }
 
@@ -712,14 +691,16 @@
     }
 
     function insertTmplVar(v) {
-      const mode = editorMode;
-      if ((mode === 'visual' || mode === 'split') && _veReady) {
-        const doc = getVeDoc();
-        if (doc) { doc.body.focus(); doc.execCommand('insertHTML', false, v); syncVisualToCode(); return; }
+      if ((editorMode === 'visual' || editorMode === 'split') && typeof tmplQuill !== 'undefined' && tmplQuill) {
+        const range = tmplQuill.getSelection(true);
+        if (range) tmplQuill.clipboard.dangerouslyPasteHTML(range.index, v);
+        else tmplQuill.clipboard.dangerouslyPasteHTML(tmplQuill.getLength(), v);
+        syncVisualToCode();
+        return;
       }
       const ta = document.getElementById('tmpl-code');
-      const s = ta.selectionStart;
-      ta.value = ta.value.substring(0, s) + v + ta.value.substring(ta.selectionEnd);
+      const s = ta.selectionStart || 0;
+      ta.value = ta.value.substring(0, s) + v + ta.value.substring(ta.selectionEnd || ta.value.length);
       ta.selectionStart = ta.selectionEnd = s + v.length;
       ta.focus();
     }
@@ -801,6 +782,9 @@
       const t = templates.find(x => x.id === id);
       if (!t) return;
       document.getElementById('c-body').value = t.body;
+      if (typeof campQuill !== 'undefined' && campQuill) {
+          campQuill.clipboard.dangerouslyPasteHTML(t.body);
+      }
       document.getElementById('c-name').placeholder = t.name;
       updateCampaignPreview();
       toast(`Đã tải: ${t.name}`);
@@ -812,6 +796,12 @@
       document.getElementById('c-tab-preview').classList.toggle('active', tab === 'preview');
       document.getElementById('c-body-code-wrap').style.display = tab === 'code' ? '' : 'none';
       document.getElementById('c-body-preview-wrap').style.display = tab === 'preview' ? '' : 'none';
+      if (tab === 'code') {
+        if (typeof initCampaignQuill === 'function') {
+            initCampaignQuill();
+            updateCampaignQuillFromCode();
+        }
+      }
       if (tab === 'preview') updateCampaignPreview();
     }
 
@@ -1337,4 +1327,20 @@ ${html}
         scheduleRefresh();
       } catch (e) { toast('Lỗi: ' + e.message, 'err'); }
     }
-
+
+function insertCampaignVar(v) {
+      if (typeof campQuill !== 'undefined' && campQuill && document.getElementById('c-body-code-wrap').style.display !== 'none') {
+        const range = campQuill.getSelection(true);
+        if (range) campQuill.clipboard.dangerouslyPasteHTML(range.index, v);
+        else campQuill.clipboard.dangerouslyPasteHTML(campQuill.getLength(), v);
+        updateCampaignCodeFromQuill();
+      } else {
+        const ta = document.getElementById('c-body');
+        const s = ta.selectionStart || 0;
+        ta.value = ta.value.substring(0, s) + v + ta.value.substring(ta.selectionEnd || ta.value.length);
+        ta.selectionStart = ta.selectionEnd = s + v.length;
+        ta.focus();
+        if (typeof campQuill !== 'undefined' && campQuill) campQuill.clipboard.dangerouslyPasteHTML(ta.value);
+        updateCampaignPreview();
+      }
+    }
